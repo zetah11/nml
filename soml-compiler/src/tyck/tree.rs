@@ -101,9 +101,17 @@ pub enum Type<'a> {
     Integer,
     Fun(&'a Type<'a>, &'a Type<'a>),
 
-    Record(&'a Type<'a>),
+    Record(&'a RecordRow<'a>),
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
+pub enum RecordRow<'a> {
+    Invalid(ErrorId),
     Empty,
-    Extend(Label, &'a Type<'a>, &'a Type<'a>),
+    Var(TypeVar, Level),
+    Param(Name),
+    Extend(Label, &'a Type<'a>, &'a RecordRow<'a>),
 }
 
 #[derive(Debug)]

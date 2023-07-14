@@ -4,12 +4,14 @@ mod rows;
 use malachite::Integer;
 use typed_arena::Arena;
 
+use super::memory::Alloc;
 use super::pretty::Pretty;
+use super::tree::RecordRow;
 use super::{Checker, Expr, Label, Name, Type};
 
 struct Store<'a> {
     pub exprs: &'a Arena<Expr<'a>>,
-    pub types: &'a Arena<Type<'a>>,
+    pub types: &'a Alloc<'a>,
 }
 
 impl<'a> Store<'a> {
@@ -20,12 +22,14 @@ impl<'a> Store<'a> {
         let _ = pretty_env_logger::try_init();
         let exprs = Arena::new();
         let types = Arena::new();
+        let records = Arena::new();
+        let alloc = Alloc::new(&types, &records);
         let mut pretty = Pretty::default().with_show_levels(true);
         let this = Store {
             exprs: &exprs,
-            types: &types,
+            types: &alloc,
         };
-        let checker = Checker::new(&types, &mut pretty);
+        let checker = Checker::new(&alloc, &mut pretty);
         f(this, checker)
     }
 
@@ -77,18 +81,18 @@ impl<'a> Store<'a> {
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {
-        self.types.alloc(Type::Fun(t, u))
+        self.types.ty(Type::Fun(t, u))
     }
 
     pub fn boolean(&self) -> &'a Type<'a> {
-        self.types.alloc(Type::Boolean)
+        self.types.ty(Type::Boolean)
     }
 
     pub fn int(&self) -> &'a Type<'a> {
-        self.types.alloc(Type::Integer)
+        self.types.ty(Type::Integer)
     }
 
-    pub fn extend<L, I, Ii>(&self, fields: I, rest: &'a Type<'a>) -> &'a Type<'a>
+    pub fn extend<L, I, Ii>(&self, fields: I, rest: &'a RecordRow<'a>) -> &'a Type<'a>
     where
         L: Into<String>,
         I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
@@ -98,8 +102,8 @@ impl<'a> Store<'a> {
         for (label, field) in fields.into_iter().rev() {
             rest = self
                 .types
-                .alloc(Type::Extend(Label::new(label), field, rest));
+                .record(RecordRow::Extend(Label::new(label), field, rest));
         }
-        self.types.alloc(Type::Record(rest))
+        self.types.ty(Type::Record(rest))
     }
 }

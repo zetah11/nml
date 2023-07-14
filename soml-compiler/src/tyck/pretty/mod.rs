@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::solve::TypeVar;
-use super::{to_name, Scheme, Type};
+use super::solve::{Level, TypeVar};
+use super::tree::RecordRow;
+use super::{to_name, ErrorId, Name, Scheme, Type};
 
 #[derive(Debug, Default)]
 pub struct Pretty {
@@ -61,63 +62,74 @@ impl Prettifier<'_> {
 
     fn simple(&mut self, ty: &Type) -> String {
         match ty {
-            Type::Invalid(e) => format!("<{e}>"),
-
-            Type::Var(var, l) => {
-                let show_levels = self.pretty.show_levels;
-                let name = self.pretty.name(*var);
-                if show_levels {
-                    format!("{name}/{}", l.as_usize())
-                } else {
-                    String::from(name)
-                }
-            }
-
-            Type::Param(name) => name.to_string(),
+            Type::Invalid(e) => self.error(e),
+            Type::Var(var, level) => self.var(var, level),
+            Type::Param(name) => self.param(name),
 
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
 
-            Type::Record(ty) => {
-                let (fields, rest) = self.record(ty);
+            Type::Record(row) => {
+                let (fields, rest) = self.record(row);
                 let fields = fields.join(", ");
                 let rest = rest.map(|rest| format!(" | {rest}")).unwrap_or_default();
                 format!("{{ {fields}{rest} }}")
             }
 
-            Type::Empty | Type::Extend(..) => {
-                let (fields, rest) = self.record(ty);
-                let fields = fields.join(", ");
-                let rest = rest.map(|rest| format!(" | {rest}")).unwrap_or_default();
-                format!("{{ {fields}{rest} }}")
-            }
-
-            ty => self.arrow(ty),
+            ty => format!("({})", self.arrow(ty)),
         }
     }
 
-    fn record(&mut self, ty: &Type) -> (Vec<String>, Option<String>) {
+    fn record(&mut self, row: &RecordRow) -> (Vec<String>, Option<String>) {
         let mut fields = vec![];
         let mut rest = None;
-        let mut ty = ty;
+        let mut row = row;
 
         loop {
-            match ty {
-                Type::Extend(label, field, rest) => {
+            match row {
+                RecordRow::Extend(label, field, rest) => {
                     let field = self.arrow(field);
                     fields.push(format!("{label}: {field}"));
-                    ty = rest;
+                    row = rest;
                 }
 
-                Type::Empty => break,
+                RecordRow::Empty => break,
 
-                ty => {
-                    rest = Some(self.arrow(ty));
+                RecordRow::Invalid(e) => {
+                    rest = Some(self.error(e));
+                    break;
+                }
+
+                RecordRow::Var(var, level) => {
+                    rest = Some(self.var(var, level));
+                    break;
+                }
+
+                RecordRow::Param(name) => {
+                    rest = Some(self.param(name));
                     break;
                 }
             }
         }
 
         (fields, rest)
+    }
+
+    fn error(&mut self, e: &ErrorId) -> String {
+        format!("<{e}>")
+    }
+
+    fn var(&mut self, var: &TypeVar, level: &Level) -> String {
+        let show_levels = self.pretty.show_levels;
+        let name = self.pretty.name(*var);
+        if show_levels {
+            format!("{name}/{}", level.as_usize())
+        } else {
+            String::from(name)
+        }
+    }
+
+    fn param(&mut self, name: &Name) -> String {
+        name.to_string()
     }
 }

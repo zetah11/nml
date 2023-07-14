@@ -13,7 +13,7 @@ fn fields() {
         let expr = s.lambda("r", inner);
 
         let xt = checker.fresh();
-        let expected = s.extend([("x", xt), ("y", checker.fresh())], checker.fresh());
+        let expected = s.extend([("x", xt), ("y", checker.fresh())], checker.fresh_record());
         let expected = s.arrow(expected, xt);
 
         let actual = checker.infer(expr);
@@ -31,7 +31,7 @@ fn overwrite() {
         let body = s.update("x", s.num(5), old);
         let expr = s.lambda("r", body);
 
-        let rest = checker.fresh();
+        let rest = checker.fresh_record();
         let t = s.extend([("x", checker.fresh())], rest);
         let u = s.extend([("x", s.int())], rest);
         let expected = s.arrow(t, u);

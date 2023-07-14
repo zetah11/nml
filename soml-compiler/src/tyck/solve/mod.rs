@@ -6,9 +6,10 @@ mod vars;
 use std::collections::BTreeMap;
 
 use log::trace;
-use typed_arena::Arena;
 
+use super::memory::Alloc;
 use super::pretty::Prettifier;
+use super::tree::RecordRow;
 use super::{to_name, ErrorId, Name, Scheme, Type};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -16,6 +17,7 @@ pub struct TypeVar(usize);
 
 pub struct Solver<'a> {
     subst: BTreeMap<TypeVar, &'a Type<'a>>,
+    record_subst: BTreeMap<TypeVar, &'a RecordRow<'a>>,
     counter: usize,
     level: usize,
 }
@@ -24,14 +26,23 @@ impl<'a> Solver<'a> {
     pub fn new() -> Self {
         Self {
             subst: BTreeMap::new(),
+            record_subst: BTreeMap::new(),
             counter: 0,
             level: 0,
         }
     }
 
-    pub fn fresh(&mut self, alloc: &'a Arena<Type<'a>>) -> &'a Type<'a> {
+    pub fn fresh(&mut self, alloc: &'a Alloc<'a>) -> &'a Type<'a> {
         self.counter += 1;
-        alloc.alloc(Type::Var(TypeVar(self.counter), Level::new(self.level)))
+        alloc.ty(Type::Var(TypeVar(self.counter), Level::new(self.level)))
+    }
+
+    pub fn fresh_record(&mut self, alloc: &'a Alloc<'a>) -> &'a RecordRow<'a> {
+        self.counter += 1;
+        alloc.record(RecordRow::Var(
+            TypeVar(self.counter),
+            Level::new(self.level),
+        ))
     }
 
     pub fn enter(&mut self) {
@@ -41,14 +52,19 @@ impl<'a> Solver<'a> {
     pub fn exit(&mut self) {
         self.level -= 1;
     }
+
+    fn new_var(&mut self) -> (TypeVar, Level) {
+        self.counter += 1;
+        (TypeVar(self.counter), Level::new(self.level))
+    }
 }
 
 /// Apply
 impl<'a> Solver<'a> {
     /// Apply the current substitution to the given type.
-    pub fn apply(&self, alloc: &'a Arena<Type<'a>>, ty: &'a Type<'a>) -> &'a Type<'a> {
+    pub fn apply(&self, alloc: &'a Alloc<'a>, ty: &'a Type<'a>) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Empty | Type::Param(_) => ty,
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => ty,
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -61,18 +77,32 @@ impl<'a> Solver<'a> {
             Type::Fun(t, u) => {
                 let t = self.apply(alloc, t);
                 let u = self.apply(alloc, u);
-                alloc.alloc(Type::Fun(t, u))
+                alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(t) => {
-                let t = self.apply(alloc, t);
-                alloc.alloc(Type::Record(t))
+            Type::Record(record) => {
+                let record = self.apply_record(alloc, record);
+                alloc.ty(Type::Record(record))
+            }
+        }
+    }
+
+    fn apply_record(&self, alloc: &'a Alloc<'a>, record: &'a RecordRow<'a>) -> &'a RecordRow<'a> {
+        match record {
+            RecordRow::Invalid(_) | RecordRow::Empty | RecordRow::Param(_) => record,
+
+            RecordRow::Var(v, _) => {
+                if let Some(record) = self.record_subst.get(v) {
+                    self.apply_record(alloc, record)
+                } else {
+                    record
+                }
             }
 
-            Type::Extend(label, field, rest) => {
+            RecordRow::Extend(label, field, rest) => {
                 let field = self.apply(alloc, field);
-                let rest = self.apply(alloc, rest);
-                alloc.alloc(Type::Extend(label.clone(), field, rest))
+                let rest = self.apply_record(alloc, rest);
+                alloc.record(RecordRow::Extend(label.clone(), field, rest))
             }
         }
     }
@@ -83,7 +113,7 @@ impl<'a> Solver<'a> {
     pub fn instantiate(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Arena<Type<'a>>,
+        alloc: &'a Alloc<'a>,
         scheme: &Scheme<'a>,
     ) -> &'a Type<'a> {
         trace!(
@@ -97,7 +127,7 @@ impl<'a> Solver<'a> {
         let subst = scheme
             .params
             .iter()
-            .map(|name| (name, self.fresh(alloc)))
+            .map(|name| (name, self.new_var()))
             .collect();
 
         self.inst_ty(alloc, &subst, scheme.ty)
@@ -105,12 +135,12 @@ impl<'a> Solver<'a> {
 
     fn inst_ty(
         &self,
-        alloc: &'a Arena<Type<'a>>,
-        subst: &BTreeMap<&Name, &'a Type<'a>>,
+        alloc: &'a Alloc<'a>,
+        subst: &BTreeMap<&Name, (TypeVar, Level)>,
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Empty => ty,
+            Type::Invalid(_) | Type::Boolean | Type::Integer => ty,
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -120,23 +150,50 @@ impl<'a> Solver<'a> {
                 }
             }
 
-            Type::Param(n) => subst.get(n).copied().unwrap_or(ty),
+            Type::Param(n) => subst
+                .get(n)
+                .map(|(var, level)| alloc.ty(Type::Var(*var, level.clone())))
+                .unwrap_or(ty),
 
             Type::Fun(t, u) => {
                 let t = self.inst_ty(alloc, subst, t);
                 let u = self.inst_ty(alloc, subst, u);
-                alloc.alloc(Type::Fun(t, u))
+                alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(t) => {
-                let t = self.inst_ty(alloc, subst, t);
-                alloc.alloc(Type::Record(t))
+            Type::Record(record) => {
+                let record = self.inst_record(alloc, subst, record);
+                alloc.ty(Type::Record(record))
+            }
+        }
+    }
+
+    fn inst_record(
+        &self,
+        alloc: &'a Alloc<'a>,
+        subst: &BTreeMap<&Name, (TypeVar, Level)>,
+        record: &'a RecordRow<'a>,
+    ) -> &'a RecordRow<'a> {
+        match record {
+            RecordRow::Invalid(_) | RecordRow::Empty => record,
+
+            RecordRow::Var(v, _) => {
+                if let Some(record) = self.record_subst.get(v) {
+                    self.inst_record(alloc, subst, record)
+                } else {
+                    record
+                }
             }
 
-            Type::Extend(label, field, rest) => {
+            RecordRow::Param(n) => subst
+                .get(n)
+                .map(|(var, level)| alloc.record(RecordRow::Var(*var, level.clone())))
+                .unwrap_or(record),
+
+            RecordRow::Extend(label, field, rest) => {
                 let field = self.inst_ty(alloc, subst, field);
-                let rest = self.inst_ty(alloc, subst, rest);
-                alloc.alloc(Type::Extend(label.clone(), field, rest))
+                let rest = self.inst_record(alloc, subst, rest);
+                alloc.record(RecordRow::Extend(label.clone(), field, rest))
             }
         }
     }
@@ -147,36 +204,35 @@ impl<'a> Solver<'a> {
     pub fn generalize(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Arena<Type<'a>>,
+        alloc: &'a Alloc<'a>,
         ty: &'a Type<'a>,
     ) -> Scheme<'a> {
         trace!("gen {}", pretty.ty(self.apply(alloc, ty)));
 
         let mut subst = BTreeMap::new();
         let ty = self.gen_ty(alloc, &mut subst, ty);
-        let params = subst.into_iter().map(|(_, (_, name))| name).collect();
+        let params = subst.into_values().collect();
         Scheme { params, ty }
     }
 
     fn gen_ty(
         &mut self,
-        alloc: &'a Arena<Type<'a>>,
-        subst: &mut BTreeMap<TypeVar, (&'a Type<'a>, Name)>,
+        alloc: &'a Alloc<'a>,
+        subst: &mut BTreeMap<TypeVar, Name>,
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Param(_) | Type::Boolean | Type::Integer | Type::Empty => ty,
+            Type::Invalid(_) | Type::Param(_) | Type::Boolean | Type::Integer => ty,
 
             Type::Var(v, level) => {
                 if let Some(ty) = self.subst.get(v) {
                     self.gen_ty(alloc, subst, ty)
-                } else if let Some((param, _)) = subst.get(v) {
-                    param
+                } else if let Some(param) = subst.get(v) {
+                    alloc.ty(Type::Param(param.clone()))
                 } else if level.can_generalize(self.level) {
                     let name = Name::new(to_name(v.0));
-                    let param = alloc.alloc(Type::Param(name.clone()));
-                    subst.insert(*v, (param, name));
-                    param
+                    subst.insert(*v, name.clone());
+                    alloc.ty(Type::Param(name))
                 } else {
                     ty
                 }
@@ -185,18 +241,43 @@ impl<'a> Solver<'a> {
             Type::Fun(t, u) => {
                 let t = self.gen_ty(alloc, subst, t);
                 let u = self.gen_ty(alloc, subst, u);
-                alloc.alloc(Type::Fun(t, u))
+                alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(t) => {
-                let t = self.gen_ty(alloc, subst, t);
-                alloc.alloc(Type::Record(t))
+            Type::Record(record) => {
+                let record = self.gen_record(alloc, subst, record);
+                alloc.ty(Type::Record(record))
+            }
+        }
+    }
+
+    fn gen_record(
+        &mut self,
+        alloc: &'a Alloc<'a>,
+        subst: &mut BTreeMap<TypeVar, Name>,
+        record: &'a RecordRow<'a>,
+    ) -> &'a RecordRow<'a> {
+        match record {
+            RecordRow::Invalid(_) | RecordRow::Param(_) | RecordRow::Empty => record,
+
+            RecordRow::Var(v, level) => {
+                if let Some(record) = self.record_subst.get(v) {
+                    self.gen_record(alloc, subst, record)
+                } else if let Some(param) = subst.get(v) {
+                    alloc.record(RecordRow::Param(param.clone()))
+                } else if level.can_generalize(self.level) {
+                    let name = Name::new(to_name(v.0));
+                    subst.insert(*v, name.clone());
+                    alloc.record(RecordRow::Param(name))
+                } else {
+                    record
+                }
             }
 
-            Type::Extend(label, field, rest) => {
+            RecordRow::Extend(label, field, rest) => {
                 let field = self.gen_ty(alloc, subst, field);
-                let rest = self.gen_ty(alloc, subst, rest);
-                alloc.alloc(Type::Extend(label.clone(), field, rest))
+                let rest = self.gen_record(alloc, subst, rest);
+                alloc.record(RecordRow::Extend(label.clone(), field, rest))
             }
         }
     }
@@ -207,7 +288,7 @@ impl<'a> Solver<'a> {
     pub fn unify(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Arena<Type<'a>>,
+        alloc: &'a Alloc<'a>,
         lhs: &'a Type<'a>,
         rhs: &'a Type<'a>,
     ) {
@@ -222,7 +303,7 @@ impl<'a> Solver<'a> {
     fn unify_ty(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Arena<Type<'a>>,
+        alloc: &'a Alloc<'a>,
         lhs: &'a Type<'a>,
         rhs: &'a Type<'a>,
     ) {
@@ -245,24 +326,13 @@ impl<'a> Solver<'a> {
                 self.unify_ty(pretty, alloc, u, e);
             }
 
-            (Type::Empty, Type::Empty) => {}
-            (Type::Empty, Type::Invalid(_)) | (Type::Invalid(_), Type::Empty) => {}
-
-            (Type::Record(row1), Type::Record(row2)) => self.unify_ty(pretty, alloc, row1, row2),
-            (Type::Record(row), e @ Type::Invalid(_))
-            | (e @ Type::Invalid(_), Type::Record(row)) => self.unify_ty(pretty, alloc, row, e),
-
-            (Type::Extend(label, field_ty1, rest1), row2 @ Type::Extend(..)) => {
-                let (field_ty2, rest2) = self.rewrite(pretty, alloc, row2, label);
-                // todo occurs check here!
-                self.unify_ty(pretty, alloc, field_ty1, field_ty2);
-                self.unify_ty(pretty, alloc, rest1, rest2);
+            (Type::Record(row1), Type::Record(row2)) => {
+                self.unify_record(pretty, alloc, row1, row2)
             }
 
-            (Type::Extend(_, field_ty, rest), e @ Type::Invalid(_))
-            | (e @ Type::Invalid(_), Type::Extend(_, field_ty, rest)) => {
-                self.unify_ty(pretty, alloc, field_ty, e);
-                self.unify_ty(pretty, alloc, rest, e);
+            (Type::Record(row), Type::Invalid(e)) | (Type::Invalid(e), Type::Record(row)) => {
+                let e = alloc.record(RecordRow::Invalid(e.clone()));
+                self.unify_record(pretty, alloc, row, e)
             }
 
             (Type::Var(var, level), ty) | (ty, Type::Var(var, level)) => {
@@ -278,29 +348,67 @@ impl<'a> Solver<'a> {
             // Use the exhaustiveness check to ensure termination when unifying
             // with error types
             (
-                Type::Boolean
-                | Type::Integer
-                | Type::Param(_)
-                | Type::Fun(..)
-                | Type::Empty
-                | Type::Record(_)
-                | Type::Extend(..),
-                Type::Boolean
-                | Type::Integer
-                | Type::Param(_)
-                | Type::Fun(..)
-                | Type::Empty
-                | Type::Record(_)
-                | Type::Extend(..),
+                Type::Boolean | Type::Integer | Type::Param(_) | Type::Fun(..) | Type::Record(_),
+                Type::Boolean | Type::Integer | Type::Param(_) | Type::Fun(..) | Type::Record(_),
             ) => {
-                let e = alloc.alloc(Type::Invalid(ErrorId::new("inequal types")));
+                let e = alloc.ty(Type::Invalid(ErrorId::new("inequal types")));
                 self.unify_ty(pretty, alloc, lhs, e);
-                self.unify_ty(pretty, alloc, rhs, e);
+                self.unify_ty(pretty, alloc, e, rhs);
             }
         }
     }
 
-    fn set(&mut self, alloc: &'a Arena<Type<'a>>, var: &TypeVar, level: &Level, ty: &'a Type<'a>) {
+    fn unify_record(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Alloc<'a>,
+        lhs: &'a RecordRow<'a>,
+        rhs: &'a RecordRow<'a>,
+    ) {
+        match (lhs, rhs) {
+            (RecordRow::Empty, RecordRow::Empty) => {}
+            (RecordRow::Empty, RecordRow::Invalid(_))
+            | (RecordRow::Invalid(_), RecordRow::Empty) => {}
+
+            (RecordRow::Extend(label, field1, rest1), row2 @ RecordRow::Extend(..)) => {
+                let (field2, rest2) = self.rewrite(pretty, alloc, row2, label);
+                self.unify_ty(pretty, alloc, field1, field2);
+                self.unify_record(pretty, alloc, rest1, rest2);
+            }
+
+            (RecordRow::Extend(_, field, rest), e @ RecordRow::Invalid(id))
+            | (e @ RecordRow::Invalid(id), RecordRow::Extend(_, field, rest)) => {
+                let et = alloc.ty(Type::Invalid(id.clone()));
+                self.unify_ty(pretty, alloc, field, et);
+                self.unify_record(pretty, alloc, rest, e);
+            }
+
+            (RecordRow::Param(n), RecordRow::Param(m)) if n == m => {}
+            (RecordRow::Param(_), RecordRow::Invalid(_))
+            | (RecordRow::Invalid(_), RecordRow::Param(_)) => {}
+
+            (RecordRow::Var(var, level), record) | (record, RecordRow::Var(var, level)) => {
+                if let Some(rhs) = self.record_subst.get(var) {
+                    self.unify_record(pretty, alloc, record, rhs)
+                } else {
+                    self.set_record(alloc, var, level, record)
+                }
+            }
+
+            (RecordRow::Invalid(_), RecordRow::Invalid(_)) => {}
+
+            (
+                RecordRow::Empty | RecordRow::Extend(..) | RecordRow::Param(_),
+                RecordRow::Empty | RecordRow::Extend(..) | RecordRow::Param(_),
+            ) => {
+                let e = alloc.record(RecordRow::Invalid(ErrorId::new("inequal rows")));
+                self.unify_record(pretty, alloc, lhs, e);
+                self.unify_record(pretty, alloc, e, rhs);
+            }
+        }
+    }
+
+    fn set(&mut self, alloc: &'a Alloc<'a>, var: &TypeVar, level: &Level, ty: &'a Type<'a>) {
         if let Type::Var(v, l2) = ty {
             l2.set_min(level);
             if v == var {
@@ -310,7 +418,7 @@ impl<'a> Solver<'a> {
 
         // Occurs check
         if self.occurs(var, level, ty) {
-            let ty = alloc.alloc(Type::Invalid(ErrorId::new("recursive type")));
+            let ty = alloc.ty(Type::Invalid(ErrorId::new("recursive type")));
             return self.set(alloc, var, level, ty);
         }
 
@@ -318,11 +426,35 @@ impl<'a> Solver<'a> {
         debug_assert!(prev.is_none(), "overwrote previous unification variable");
     }
 
+    fn set_record(
+        &mut self,
+        alloc: &'a Alloc<'a>,
+        var: &TypeVar,
+        level: &Level,
+        record: &'a RecordRow<'a>,
+    ) {
+        if let RecordRow::Var(v, l2) = record {
+            l2.set_min(level);
+            if v == var {
+                return;
+            }
+        }
+
+        if self.occurs_record(var, level, record) {
+            let record = alloc.record(RecordRow::Invalid(ErrorId::new("recursive record")));
+            return self.set_record(alloc, var, level, record);
+        }
+
+        let prev = self.record_subst.insert(*var, record);
+        debug_assert!(
+            prev.is_none(),
+            "overwrote previous record row unificiation variable"
+        );
+    }
+
     fn occurs(&self, var: &TypeVar, l1: &Level, ty: &Type) -> bool {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Empty => {
-                false
-            }
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => false,
 
             Type::Var(war, l2) => {
                 if let Some(ty) = self.subst.get(war) {
@@ -332,9 +464,28 @@ impl<'a> Solver<'a> {
                     var == war
                 }
             }
-            Type::Record(t) => self.occurs(var, l1, t),
-            Type::Fun(t, u) | Type::Extend(_, t, u) => {
-                self.occurs(var, l1, t) || self.occurs(var, l1, u)
+
+            Type::Record(record) => self.occurs_record(var, l1, record),
+
+            Type::Fun(t, u) => self.occurs(var, l1, t) || self.occurs(var, l1, u),
+        }
+    }
+
+    fn occurs_record(&self, var: &TypeVar, l1: &Level, record: &RecordRow) -> bool {
+        match record {
+            RecordRow::Invalid(_) | RecordRow::Empty | RecordRow::Param(_) => false,
+
+            RecordRow::Var(war, l2) => {
+                if let Some(record) = self.record_subst.get(war) {
+                    self.occurs_record(var, l1, record)
+                } else {
+                    l2.set_min(l1);
+                    var == war
+                }
+            }
+
+            RecordRow::Extend(_, field, rest) => {
+                self.occurs(var, l1, field) || self.occurs_record(var, l1, rest)
             }
         }
     }

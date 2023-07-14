@@ -1,5 +1,8 @@
+use self::memory::Alloc;
+use self::tree::RecordRow;
 pub use self::tree::{Env, ErrorId, Expr, Label, Name, Scheme, Type};
 
+mod memory;
 mod pretty;
 mod solve;
 mod tree;
@@ -8,20 +11,19 @@ mod tree;
 mod tests;
 
 use log::trace;
-use typed_arena::Arena;
 
 use self::pretty::Pretty;
 use self::solve::Solver;
 
 pub struct Checker<'a, 'p> {
-    types: &'a Arena<Type<'a>>,
+    types: &'a Alloc<'a>,
     env: Env<'a>,
     solver: Solver<'a>,
     pretty: &'p mut Pretty,
 }
 
 impl<'a, 'p> Checker<'a, 'p> {
-    pub fn new(types: &'a Arena<Type<'a>>, pretty: &'p mut Pretty) -> Self {
+    pub fn new(types: &'a Alloc<'a>, pretty: &'p mut Pretty) -> Self {
         Self {
             types,
             env: Env::new(),
@@ -35,7 +37,7 @@ impl<'a, 'p> Checker<'a, 'p> {
             Expr::Invalid(e) => {
                 trace!("infer err");
                 trace!("done err");
-                self.types.alloc(Type::Invalid(e.clone()))
+                self.types.ty(Type::Invalid(e.clone()))
             }
 
             Expr::Var(name) => {
@@ -50,12 +52,12 @@ impl<'a, 'p> Checker<'a, 'p> {
             Expr::Bool(_) => {
                 trace!("infer bool");
                 trace!("done bool");
-                self.types.alloc(Type::Boolean)
+                self.types.ty(Type::Boolean)
             }
             Expr::Number(_) => {
                 trace!("infer num");
                 trace!("done num");
-                self.types.alloc(Type::Integer)
+                self.types.ty(Type::Integer)
             }
 
             Expr::If(cond, then, otherwise) => {
@@ -66,7 +68,7 @@ impl<'a, 'p> Checker<'a, 'p> {
 
                 let mut pretty = self.pretty.build();
                 self.solver
-                    .unify(&mut pretty, self.types, t1, self.types.alloc(Type::Boolean));
+                    .unify(&mut pretty, self.types, t1, self.types.ty(Type::Boolean));
                 self.solver.unify(&mut pretty, self.types, t2, t3);
                 trace!("done if");
 
@@ -76,9 +78,9 @@ impl<'a, 'p> Checker<'a, 'p> {
             Expr::Field(record, label) => {
                 trace!("infer field");
                 let t = self.fresh();
-                let r = self.fresh();
-                let record_ty = self.types.alloc(Type::Extend(label.clone(), t, r));
-                let record_ty = self.types.alloc(Type::Record(record_ty));
+                let r = self.fresh_record();
+                let record_ty = self.types.record(RecordRow::Extend(label.clone(), t, r));
+                let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(record);
 
                 let mut pretty = self.pretty.build();
@@ -91,21 +93,23 @@ impl<'a, 'p> Checker<'a, 'p> {
 
             Expr::Empty => {
                 trace!("infer empty");
-                let ty = self.types.alloc(Type::Empty);
+                let ty = self.types.record(RecordRow::Empty);
                 trace!("done empty");
-                self.types.alloc(Type::Record(ty))
+                self.types.ty(Type::Record(ty))
             }
 
             Expr::Extend(old, label, value) => {
                 trace!("infer extend");
-                let r = self.fresh();
+                let r = self.fresh_record();
 
-                let record_ty = self.types.alloc(Type::Record(r));
+                let record_ty = self.types.ty(Type::Record(r));
                 let value_ty = self.infer(value);
                 let inferred = self.infer(old);
 
-                let ty = self.types.alloc(Type::Extend(label.clone(), value_ty, r));
-                let ty = self.types.alloc(Type::Record(ty));
+                let ty = self
+                    .types
+                    .record(RecordRow::Extend(label.clone(), value_ty, r));
+                let ty = self.types.ty(Type::Record(ty));
 
                 let mut pretty = self.pretty.build();
                 self.solver
@@ -118,13 +122,13 @@ impl<'a, 'p> Checker<'a, 'p> {
             Expr::Restrict(old, label) => {
                 trace!("infer restrict");
                 let t = self.fresh();
-                let r = self.fresh();
+                let r = self.fresh_record();
 
-                let record_ty = self.types.alloc(Type::Extend(label.clone(), t, r));
-                let record_ty = self.types.alloc(Type::Record(record_ty));
+                let record_ty = self.types.record(RecordRow::Extend(label.clone(), t, r));
+                let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(old);
 
-                let ty = self.types.alloc(Type::Record(r));
+                let ty = self.types.ty(Type::Record(r));
 
                 let mut pretty = self.pretty.build();
                 self.solver
@@ -139,7 +143,7 @@ impl<'a, 'p> Checker<'a, 'p> {
                 let arg_ty = self.infer(arg);
 
                 let u = self.fresh();
-                let expected = self.types.alloc(Type::Fun(arg_ty, u));
+                let expected = self.types.ty(Type::Fun(arg_ty, u));
 
                 let mut pretty = self.pretty.build();
                 self.solver.unify(&mut pretty, self.types, fun_ty, expected);
@@ -157,7 +161,7 @@ impl<'a, 'p> Checker<'a, 'p> {
                 self.env.insert(param.clone(), scheme);
                 let u = self.infer(body);
                 trace!("done lambda");
-                self.types.alloc(Type::Fun(t, u))
+                self.types.ty(Type::Fun(t, u))
             }
 
             Expr::Let(name, bound, body) => {
@@ -194,6 +198,10 @@ impl<'a, 'p> Checker<'a, 'p> {
         self.solver.fresh(self.types)
     }
 
+    fn fresh_record(&mut self) -> &'a RecordRow<'a> {
+        self.solver.fresh_record(self.types)
+    }
+
     fn enter<F, T>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
@@ -226,10 +234,9 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
     use crate::tyck::solve::TypeVar;
     use std::collections::BTreeMap;
 
-    fn inner<'a>(subst: &mut BTreeMap<TypeVar, TypeVar>, t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
+    fn inner(subst: &mut BTreeMap<TypeVar, TypeVar>, t: &Type, u: &Type) -> bool {
         match (t, u) {
             (Type::Invalid(_), Type::Invalid(_)) => true,
-
             (Type::Var(v1, _), Type::Var(v2, _)) => {
                 if let Some(v1) = subst.get(v1) {
                     v1 == v2
@@ -243,17 +250,33 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
             }
 
             (Type::Param(n), Type::Param(m)) => n == m,
-
-            (Type::Boolean, Type::Boolean)
-            | (Type::Integer, Type::Integer)
-            | (Type::Empty, Type::Empty) => true,
-
+            (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),
+            (Type::Record(r), Type::Record(s)) => inner_record(subst, r, s),
 
-            (Type::Record(t), Type::Record(u)) => inner(subst, t, u),
+            _ => false,
+        }
+    }
 
-            (Type::Extend(l1, f1, r1), Type::Extend(l2, f2, r2)) => {
-                l1 == l2 && inner(subst, f1, f2) && inner(subst, r1, r2)
+    fn inner_record(subst: &mut BTreeMap<TypeVar, TypeVar>, r: &RecordRow, s: &RecordRow) -> bool {
+        match (r, s) {
+            (RecordRow::Invalid(_), RecordRow::Invalid(_)) => true,
+            (RecordRow::Var(v1, _), RecordRow::Var(v2, _)) => {
+                if let Some(v1) = subst.get(v1) {
+                    v1 == v2
+                } else if let Some(v2) = subst.get(v2) {
+                    v1 == v2
+                } else {
+                    subst.insert(*v1, *v2);
+                    subst.insert(*v2, *v1);
+                    true
+                }
+            }
+
+            (RecordRow::Param(n), RecordRow::Param(m)) => n == m,
+            (RecordRow::Empty, RecordRow::Empty) => true,
+            (RecordRow::Extend(l1, field1, rest1), RecordRow::Extend(l2, field2, rest2)) => {
+                l1 == l2 && inner(subst, field1, field2) && inner_record(subst, rest1, rest2)
             }
 
             _ => false,
