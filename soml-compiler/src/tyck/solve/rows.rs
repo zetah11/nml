@@ -1,11 +1,13 @@
 use typed_arena::Arena;
 
 use super::Solver;
+use crate::tyck::pretty::Prettifier;
 use crate::tyck::{ErrorId, Label, Type};
 
 impl<'a> Solver<'a> {
     pub(super) fn rewrite(
         &mut self,
+        pretty: &mut Prettifier,
         alloc: &'a Arena<Type<'a>>,
         ty: &'a Type<'a>,
         label: &Label,
@@ -23,17 +25,17 @@ impl<'a> Solver<'a> {
             Type::Extend(old, field, rest) if old == label => (*field, *rest),
 
             Type::Extend(old, field, rest @ Type::Var(..)) => {
-                let beta = self.fresh(alloc);
-                let gamma = self.fresh(alloc);
-                let rhs = alloc.alloc(Type::Extend(label.clone(), gamma, beta));
-                self.unify(alloc, rest, rhs);
+                let r = self.fresh(alloc);
+                let t = self.fresh(alloc);
+                let rhs = alloc.alloc(Type::Extend(label.clone(), t, r));
+                self.unify_ty(pretty, alloc, rest, rhs);
 
-                let rest = alloc.alloc(Type::Extend(old.clone(), field, beta));
-                (gamma, rest)
+                let rest = alloc.alloc(Type::Extend(old.clone(), field, r));
+                (t, rest)
             }
 
             Type::Extend(old, field, rest) => {
-                let (label_ty, rest) = self.rewrite(alloc, rest, label);
+                let (label_ty, rest) = self.rewrite(pretty, alloc, rest, label);
                 let rest = alloc.alloc(Type::Extend(old.clone(), field, rest));
                 (label_ty, rest)
             }

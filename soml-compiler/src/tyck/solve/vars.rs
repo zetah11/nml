@@ -20,4 +20,8 @@ impl Level {
     pub fn set_min(&self, other: &Self) {
         self.0.set(self.0.get().min(other.0.get()))
     }
+
+    pub fn as_usize(&self) -> usize {
+        self.0.get()
+    }
 }

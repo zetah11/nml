@@ -5,9 +5,11 @@ mod vars;
 
 use std::collections::BTreeMap;
 
+use log::trace;
 use typed_arena::Arena;
 
-use super::{ErrorId, Name, Scheme, Type};
+use super::pretty::Prettifier;
+use super::{to_name, ErrorId, Name, Scheme, Type};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TypeVar(usize);
@@ -78,7 +80,20 @@ impl<'a> Solver<'a> {
 
 /// Instantiation
 impl<'a> Solver<'a> {
-    pub fn instantiate(&mut self, alloc: &'a Arena<Type<'a>>, scheme: &Scheme<'a>) -> &'a Type<'a> {
+    pub fn instantiate(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Arena<Type<'a>>,
+        scheme: &Scheme<'a>,
+    ) -> &'a Type<'a> {
+        trace!(
+            "ins {}",
+            pretty.scheme(&Scheme {
+                params: scheme.params.clone(),
+                ty: self.apply(alloc, scheme.ty),
+            })
+        );
+
         let subst = scheme
             .params
             .iter()
@@ -129,7 +144,14 @@ impl<'a> Solver<'a> {
 
 /// Generalization
 impl<'a> Solver<'a> {
-    pub fn generalize(&mut self, alloc: &'a Arena<Type<'a>>, ty: &'a Type<'a>) -> Scheme<'a> {
+    pub fn generalize(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Arena<Type<'a>>,
+        ty: &'a Type<'a>,
+    ) -> Scheme<'a> {
+        trace!("gen {}", pretty.ty(self.apply(alloc, ty)));
+
         let mut subst = BTreeMap::new();
         let ty = self.gen_ty(alloc, &mut subst, ty);
         let params = subst.into_iter().map(|(_, (_, name))| name).collect();
@@ -151,7 +173,7 @@ impl<'a> Solver<'a> {
                 } else if let Some((param, _)) = subst.get(v) {
                     param
                 } else if level.can_generalize(self.level) {
-                    let name = Self::fresh_name(v);
+                    let name = Name::new(to_name(v.0));
                     let param = alloc.alloc(Type::Param(name.clone()));
                     subst.insert(*v, (param, name));
                     param
@@ -178,23 +200,32 @@ impl<'a> Solver<'a> {
             }
         }
     }
-
-    fn fresh_name(var: &TypeVar) -> Name {
-        let mut n = var.0;
-        let mut res = String::new();
-        while n > 0 {
-            let c = char::from_u32('a' as u32 + (n % 26) as u32)
-                .expect("a + [0, 26) is always a lowercase letter");
-            n /= 26;
-            res.push(c);
-        }
-        Name::new(res)
-    }
 }
 
 /// Unification
 impl<'a> Solver<'a> {
-    pub fn unify(&mut self, alloc: &'a Arena<Type<'a>>, lhs: &'a Type<'a>, rhs: &'a Type<'a>) {
+    pub fn unify(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Arena<Type<'a>>,
+        lhs: &'a Type<'a>,
+        rhs: &'a Type<'a>,
+    ) {
+        trace!(
+            "uni {}  ~  {}",
+            pretty.ty(self.apply(alloc, lhs)),
+            pretty.ty(self.apply(alloc, rhs))
+        );
+        self.unify_ty(pretty, alloc, lhs, rhs)
+    }
+
+    fn unify_ty(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Arena<Type<'a>>,
+        lhs: &'a Type<'a>,
+        rhs: &'a Type<'a>,
+    ) {
         match (lhs, rhs) {
             (Type::Boolean, Type::Boolean) => {}
             (Type::Boolean, Type::Invalid(_)) | (Type::Invalid(_), Type::Boolean) => {}
@@ -206,37 +237,37 @@ impl<'a> Solver<'a> {
             (Type::Param(_), Type::Invalid(_)) | (Type::Invalid(_), Type::Param(_)) => {}
 
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => {
-                self.unify(alloc, t1, t2);
-                self.unify(alloc, u1, u2);
+                self.unify_ty(pretty, alloc, t1, t2);
+                self.unify_ty(pretty, alloc, u1, u2);
             }
             (Type::Fun(t, u), e @ Type::Invalid(_)) | (e @ Type::Invalid(_), Type::Fun(t, u)) => {
-                self.unify(alloc, t, e);
-                self.unify(alloc, u, e);
+                self.unify_ty(pretty, alloc, t, e);
+                self.unify_ty(pretty, alloc, u, e);
             }
 
             (Type::Empty, Type::Empty) => {}
             (Type::Empty, Type::Invalid(_)) | (Type::Invalid(_), Type::Empty) => {}
 
-            (Type::Record(row1), Type::Record(row2)) => self.unify(alloc, row1, row2),
+            (Type::Record(row1), Type::Record(row2)) => self.unify_ty(pretty, alloc, row1, row2),
             (Type::Record(row), e @ Type::Invalid(_))
-            | (e @ Type::Invalid(_), Type::Record(row)) => self.unify(alloc, row, e),
+            | (e @ Type::Invalid(_), Type::Record(row)) => self.unify_ty(pretty, alloc, row, e),
 
             (Type::Extend(label, field_ty1, rest1), row2 @ Type::Extend(..)) => {
-                let (field_ty2, rest2) = self.rewrite(alloc, row2, label);
+                let (field_ty2, rest2) = self.rewrite(pretty, alloc, row2, label);
                 // todo occurs check here!
-                self.unify(alloc, field_ty1, field_ty2);
-                self.unify(alloc, rest1, rest2);
+                self.unify_ty(pretty, alloc, field_ty1, field_ty2);
+                self.unify_ty(pretty, alloc, rest1, rest2);
             }
 
             (Type::Extend(_, field_ty, rest), e @ Type::Invalid(_))
             | (e @ Type::Invalid(_), Type::Extend(_, field_ty, rest)) => {
-                self.unify(alloc, field_ty, e);
-                self.unify(alloc, rest, e);
+                self.unify_ty(pretty, alloc, field_ty, e);
+                self.unify_ty(pretty, alloc, rest, e);
             }
 
             (Type::Var(var, level), ty) | (ty, Type::Var(var, level)) => {
                 if let Some(rhs) = self.subst.get(var) {
-                    self.unify(alloc, ty, rhs)
+                    self.unify_ty(pretty, alloc, ty, rhs)
                 } else {
                     self.set(alloc, var, level, ty)
                 }
@@ -263,15 +294,15 @@ impl<'a> Solver<'a> {
                 | Type::Extend(..),
             ) => {
                 let e = alloc.alloc(Type::Invalid(ErrorId::new("inequal types")));
-                self.unify(alloc, lhs, e);
-                self.unify(alloc, rhs, e);
+                self.unify_ty(pretty, alloc, lhs, e);
+                self.unify_ty(pretty, alloc, rhs, e);
             }
         }
     }
 
     fn set(&mut self, alloc: &'a Arena<Type<'a>>, var: &TypeVar, level: &Level, ty: &'a Type<'a>) {
         if let Type::Var(v, l2) = ty {
-            level.set_min(l2);
+            l2.set_min(level);
             if v == var {
                 return;
             }
@@ -297,7 +328,7 @@ impl<'a> Solver<'a> {
                 if let Some(ty) = self.subst.get(war) {
                     self.occurs(var, l1, ty)
                 } else {
-                    l1.set_min(l2);
+                    l2.set_min(l1);
                     var == war
                 }
             }
