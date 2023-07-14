@@ -41,3 +41,20 @@ fn overwrite() {
         checker.assert_alpha_equal(expected, actual);
     });
 }
+
+#[test]
+fn sneakily_recursive() {
+    // r => if True then { x = 2 | r } else { y = 2 | r }
+    // --> [error, branches do not unify]
+    // from "Extensible Records with Scoped Labels" (Daan Leijen, 2005)
+    // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf
+    Store::with(|s, mut checker| {
+        let then = s.update("x", s.num(2), s.var("r"));
+        let elze = s.update("y", s.num(2), s.var("r"));
+        let cond = s.if_then(s.bool(true), then, elze);
+        let expr = s.lambda("r", cond);
+
+        let _actual = checker.infer(expr);
+        // todo check that an error actually occured!
+    });
+}

@@ -371,7 +371,8 @@ impl<'a> Solver<'a> {
             | (RecordRow::Invalid(_), RecordRow::Empty) => {}
 
             (RecordRow::Extend(label, field1, rest1), row2 @ RecordRow::Extend(..)) => {
-                let (field2, rest2) = self.rewrite(pretty, alloc, row2, label);
+                let tail = Self::row_tail(rest1);
+                let (field2, rest2) = self.rewrite(pretty, alloc, label, row2, tail);
                 self.unify_ty(pretty, alloc, field1, field2);
                 self.unify_record(pretty, alloc, rest1, rest2);
             }

@@ -45,6 +45,15 @@ impl<'a> Store<'a> {
         self.exprs.alloc(Expr::Var(Name::new(name)))
     }
 
+    pub fn if_then(
+        &self,
+        cond: &'a Expr<'a>,
+        then: &'a Expr<'a>,
+        elze: &'a Expr<'a>,
+    ) -> &'a Expr<'a> {
+        self.exprs.alloc(Expr::If(cond, then, elze))
+    }
+
     pub fn field(&self, of: &'a Expr<'a>, label: impl Into<String>) -> &'a Expr<'a> {
         self.exprs.alloc(Expr::Field(of, Label::new(label)))
     }
