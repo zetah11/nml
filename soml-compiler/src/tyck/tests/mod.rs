@@ -45,6 +45,20 @@ impl<'a> Store<'a> {
         self.exprs.alloc(Expr::Field(of, Label::new(label)))
     }
 
+    pub fn update(
+        &self,
+        label: impl Into<String>,
+        value: &'a Expr<'a>,
+        old: &'a Expr<'a>,
+    ) -> &'a Expr<'a> {
+        self.exprs
+            .alloc(Expr::Extend(old, Label::new(label), value))
+    }
+
+    pub fn restrict(&self, expr: &'a Expr<'a>, label: impl Into<String>) -> &'a Expr<'a> {
+        self.exprs.alloc(Expr::Restrict(expr, Label::new(label)))
+    }
+
     pub fn apply(&self, fun: &'a Expr<'a>, arg: &'a Expr<'a>) -> &'a Expr<'a> {
         self.exprs.alloc(Expr::Apply(fun, arg))
     }

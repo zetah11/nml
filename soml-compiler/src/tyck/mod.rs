@@ -178,10 +178,10 @@ impl<'a, 'p> Checker<'a, 'p> {
 
     #[cfg(test)]
     fn assert_alpha_equal(&mut self, lhs: &'a Type<'a>, rhs: &'a Type<'a>) {
-        if !alpha_equal(lhs, rhs) {
-            let lhs = self.apply(lhs);
-            let rhs = self.apply(rhs);
+        let lhs = self.apply(lhs);
+        let rhs = self.apply(rhs);
 
+        if !alpha_equal(lhs, rhs) {
             let mut pretty = self.pretty.build();
             let lhs = pretty.ty(self.solver.apply(self.types, lhs));
             let rhs = pretty.ty(self.solver.apply(self.types, rhs));

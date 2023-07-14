@@ -17,7 +17,26 @@ fn fields() {
         let expected = s.arrow(expected, xt);
 
         let actual = checker.infer(expr);
-        let actual = checker.apply(actual);
+
+        checker.assert_alpha_equal(expected, actual);
+    });
+}
+
+#[test]
+fn overwrite() {
+    // r => { x = 5 | r \ x }
+    // --> { x: '1 | '2 } -> { x: int | '2 }
+    Store::with(|s, mut checker| {
+        let old = s.restrict(s.var("r"), "x");
+        let body = s.update("x", s.num(5), old);
+        let expr = s.lambda("r", body);
+
+        let rest = checker.fresh();
+        let t = s.extend([("x", checker.fresh())], rest);
+        let u = s.extend([("x", s.int())], rest);
+        let expected = s.arrow(t, u);
+
+        let actual = checker.infer(expr);
 
         checker.assert_alpha_equal(expected, actual);
     });
