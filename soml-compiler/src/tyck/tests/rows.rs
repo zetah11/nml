@@ -55,6 +55,6 @@ fn sneakily_recursive() {
         let expr = s.lambda("r", cond);
 
         let _actual = checker.infer(expr);
-        // todo check that an error actually occured!
+        assert_eq!(checker.errors.num_errors(), 1);
     });
 }

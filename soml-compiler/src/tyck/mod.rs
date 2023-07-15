@@ -1,6 +1,4 @@
-use self::memory::Alloc;
-use self::tree::RecordRow;
-pub use self::tree::{Env, ErrorId, Expr, Label, Name, Scheme, Type};
+pub use self::tree::{Env, Expr, Scheme, Type};
 
 mod memory;
 mod pretty;
@@ -12,35 +10,52 @@ mod tests;
 
 use log::trace;
 
-use self::pretty::Pretty;
+use self::memory::Alloc;
+use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
+use self::tree::{ExprNode, RecordRow};
+use crate::errors::Errors;
+use crate::source::Span;
 
-pub struct Checker<'a, 'p> {
+struct Reporting<'a, 'b, 'c> {
+    pretty: &'a mut Prettifier<'b, 'c>,
+    errors: &'a mut Errors,
+    at: Span,
+}
+
+pub struct Checker<'a, 'err, 'ids, 'p> {
     types: &'a Alloc<'a>,
     env: Env<'a>,
     solver: Solver<'a>,
-    pretty: &'p mut Pretty,
+    errors: &'err mut Errors,
+    pretty: &'p mut Pretty<'ids>,
 }
 
-impl<'a, 'p> Checker<'a, 'p> {
-    pub fn new(types: &'a Alloc<'a>, pretty: &'p mut Pretty) -> Self {
+impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
+    pub fn new(
+        types: &'a Alloc<'a>,
+        errors: &'err mut Errors,
+        pretty: &'p mut Pretty<'ids>,
+    ) -> Self {
         Self {
             types,
             env: Env::new(),
             solver: Solver::new(),
+            errors,
             pretty,
         }
     }
 
     pub fn infer(&mut self, expr: &Expr) -> &'a Type<'a> {
-        match expr {
-            Expr::Invalid(e) => {
+        let span = expr.span;
+        match &expr.node {
+            ExprNode::Invalid(e) => {
                 trace!("infer err");
                 trace!("done err");
-                self.types.ty(Type::Invalid(e.clone()))
+                self.types.ty(Type::Invalid(*e))
             }
 
-            Expr::Var(name) => {
+            ExprNode::Var(name) => {
                 trace!("infer var");
                 let scheme = self.env.lookup(name);
                 let mut pretty = self.pretty.build();
@@ -49,56 +64,69 @@ impl<'a, 'p> Checker<'a, 'p> {
                 t
             }
 
-            Expr::Bool(_) => {
+            ExprNode::Bool(_) => {
                 trace!("infer bool");
                 trace!("done bool");
                 self.types.ty(Type::Boolean)
             }
-            Expr::Number(_) => {
+            ExprNode::Number(_) => {
                 trace!("infer num");
                 trace!("done num");
                 self.types.ty(Type::Integer)
             }
 
-            Expr::If(cond, then, otherwise) => {
+            ExprNode::If(cond, then, otherwise) => {
                 trace!("infer if");
                 let t1 = self.infer(cond);
                 let t2 = self.infer(then);
                 let t3 = self.infer(otherwise);
+                let bool = self.types.ty(Type::Boolean);
 
                 let mut pretty = self.pretty.build();
+
                 self.solver
-                    .unify(&mut pretty, self.types, t1, self.types.ty(Type::Boolean));
-                self.solver.unify(&mut pretty, self.types, t2, t3);
+                    .unify(&mut pretty, self.types, self.errors, span, t1, bool);
+
+                self.solver
+                    .unify(&mut pretty, self.types, self.errors, span, t2, t3);
+
                 trace!("done if");
 
                 t2
             }
 
-            Expr::Field(record, label) => {
+            ExprNode::Field(record, label) => {
                 trace!("infer field");
                 let t = self.fresh();
                 let r = self.fresh_record();
-                let record_ty = self.types.record(RecordRow::Extend(label.clone(), t, r));
+                let record_ty = self.types.record(RecordRow::Extend(*label, t, r));
                 let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(record);
 
                 let mut pretty = self.pretty.build();
-                self.solver
-                    .unify(&mut pretty, self.types, inferred, record_ty);
+
+                self.solver.unify(
+                    &mut pretty,
+                    self.types,
+                    self.errors,
+                    span,
+                    inferred,
+                    record_ty,
+                );
+
                 trace!("done field");
 
                 t
             }
 
-            Expr::Empty => {
+            ExprNode::Empty => {
                 trace!("infer empty");
                 let ty = self.types.record(RecordRow::Empty);
                 trace!("done empty");
                 self.types.ty(Type::Record(ty))
             }
 
-            Expr::Extend(old, label, value) => {
+            ExprNode::Extend(old, label, value) => {
                 trace!("infer extend");
                 let r = self.fresh_record();
 
@@ -106,38 +134,52 @@ impl<'a, 'p> Checker<'a, 'p> {
                 let value_ty = self.infer(value);
                 let inferred = self.infer(old);
 
-                let ty = self
-                    .types
-                    .record(RecordRow::Extend(label.clone(), value_ty, r));
+                let ty = self.types.record(RecordRow::Extend(*label, value_ty, r));
                 let ty = self.types.ty(Type::Record(ty));
 
                 let mut pretty = self.pretty.build();
-                self.solver
-                    .unify(&mut pretty, self.types, inferred, record_ty);
+
+                self.solver.unify(
+                    &mut pretty,
+                    self.types,
+                    self.errors,
+                    span,
+                    inferred,
+                    record_ty,
+                );
+
                 trace!("done extend");
 
                 ty
             }
 
-            Expr::Restrict(old, label) => {
+            ExprNode::Restrict(old, label) => {
                 trace!("infer restrict");
                 let t = self.fresh();
                 let r = self.fresh_record();
 
-                let record_ty = self.types.record(RecordRow::Extend(label.clone(), t, r));
+                let record_ty = self.types.record(RecordRow::Extend(*label, t, r));
                 let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(old);
 
                 let ty = self.types.ty(Type::Record(r));
 
                 let mut pretty = self.pretty.build();
-                self.solver
-                    .unify(&mut pretty, self.types, inferred, record_ty);
+
+                self.solver.unify(
+                    &mut pretty,
+                    self.types,
+                    self.errors,
+                    span,
+                    inferred,
+                    record_ty,
+                );
+
                 trace!("done restrict");
                 ty
             }
 
-            Expr::Apply(fun, arg) => {
+            ExprNode::Apply(fun, arg) => {
                 trace!("infer apply");
                 let fun_ty = self.infer(fun);
                 let arg_ty = self.infer(arg);
@@ -146,30 +188,33 @@ impl<'a, 'p> Checker<'a, 'p> {
                 let expected = self.types.ty(Type::Fun(arg_ty, u));
 
                 let mut pretty = self.pretty.build();
-                self.solver.unify(&mut pretty, self.types, fun_ty, expected);
+
+                self.solver
+                    .unify(&mut pretty, self.types, self.errors, span, fun_ty, expected);
+
                 trace!("done apply");
                 u
             }
 
-            Expr::Lambda(param, body) => {
+            ExprNode::Lambda(param, body) => {
                 trace!("infer lambda");
                 let t = self.fresh();
                 let scheme = Scheme {
                     params: Vec::new(),
                     ty: t,
                 };
-                self.env.insert(param.clone(), scheme);
+                self.env.insert(*param, scheme);
                 let u = self.infer(body);
                 trace!("done lambda");
                 self.types.ty(Type::Fun(t, u))
             }
 
-            Expr::Let(name, bound, body) => {
+            ExprNode::Let(name, bound, body) => {
                 trace!("infer let");
                 let bound = self.enter(|this| this.infer(bound));
                 let mut pretty = self.pretty.build();
                 let scheme = self.solver.generalize(&mut pretty, self.types, bound);
-                self.env.insert(name.clone(), scheme);
+                self.env.insert(*name, scheme);
                 trace!("done let");
                 self.infer(body)
             }
@@ -178,20 +223,6 @@ impl<'a, 'p> Checker<'a, 'p> {
 
     pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
         self.solver.apply(self.types, ty)
-    }
-
-    #[cfg(test)]
-    fn assert_alpha_equal(&mut self, lhs: &'a Type<'a>, rhs: &'a Type<'a>) {
-        let lhs = self.apply(lhs);
-        let rhs = self.apply(rhs);
-
-        if !alpha_equal(lhs, rhs) {
-            let mut pretty = self.pretty.build();
-            let lhs = pretty.ty(self.solver.apply(self.types, lhs));
-            let rhs = pretty.ty(self.solver.apply(self.types, rhs));
-
-            panic!("Inequal types\n    {lhs}\nand {rhs}");
-        }
     }
 
     fn fresh(&mut self) -> &'a Type<'a> {
@@ -210,6 +241,20 @@ impl<'a, 'p> Checker<'a, 'p> {
         let result = f(self);
         self.solver.exit();
         result
+    }
+
+    #[cfg(test)]
+    fn assert_alpha_equal(&mut self, lhs: &'a Type<'a>, rhs: &'a Type<'a>) {
+        let lhs = self.apply(lhs);
+        let rhs = self.apply(rhs);
+
+        if !alpha_equal(lhs, rhs) {
+            let mut pretty = self.pretty.build();
+            let lhs = pretty.ty(self.solver.apply(self.types, lhs));
+            let rhs = pretty.ty(self.solver.apply(self.types, rhs));
+
+            panic!("Inequal types\n    {lhs}\nand {rhs}");
+        }
     }
 }
 

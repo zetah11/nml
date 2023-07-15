@@ -1,57 +1,21 @@
 use std::collections::BTreeMap;
-use std::fmt;
 
 use malachite::Integer;
 
+use crate::errors::ErrorId;
+use crate::names::{Label, Name};
+use crate::source::Span;
+
 use super::solve::{Level, TypeVar};
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Name(String);
-
-impl Name {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
-    }
-}
-
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Label(String);
-
-impl Label {
-    pub fn new(label: impl Into<String>) -> Self {
-        Self(label.into())
-    }
-}
-
-impl fmt::Display for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ErrorId(String);
-
-impl ErrorId {
-    pub fn new(error: impl Into<String>) -> Self {
-        Self(error.into())
-    }
-}
-
-impl fmt::Display for ErrorId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+#[derive(Clone, Debug)]
+pub struct Expr<'a> {
+    pub node: ExprNode<'a>,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
-pub enum Expr<'a> {
+pub enum ExprNode<'a> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -95,7 +59,7 @@ pub enum Type<'a> {
     Invalid(ErrorId),
 
     Var(TypeVar, Level),
-    Param(Name),
+    Param(Generic),
 
     Boolean,
     Integer,
@@ -110,13 +74,16 @@ pub enum RecordRow<'a> {
     Invalid(ErrorId),
     Empty,
     Var(TypeVar, Level),
-    Param(Name),
+    Param(Generic),
     Extend(Label, &'a Type<'a>, &'a RecordRow<'a>),
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
+pub struct Generic(pub TypeVar);
+
 #[derive(Debug)]
 pub struct Scheme<'a> {
-    pub params: Vec<Name>,
+    pub params: Vec<Generic>,
     pub ty: &'a Type<'a>,
 }
 
