@@ -12,7 +12,7 @@ use log::trace;
 
 use super::memory::Alloc;
 use super::pretty::Prettifier;
-use super::tree::{Generic, RecordRow};
+use super::tree::{Generic, Row};
 use super::{Reporting, Scheme, Type};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -20,7 +20,8 @@ pub struct TypeVar(usize);
 
 pub struct Solver<'a> {
     subst: BTreeMap<TypeVar, &'a Type<'a>>,
-    record_subst: BTreeMap<TypeVar, &'a RecordRow<'a>>,
+    row_subst: BTreeMap<TypeVar, &'a Row<'a>>,
+
     counter: usize,
     level: usize,
 }
@@ -29,7 +30,8 @@ impl<'a> Solver<'a> {
     pub fn new() -> Self {
         Self {
             subst: BTreeMap::new(),
-            record_subst: BTreeMap::new(),
+            row_subst: BTreeMap::new(),
+
             counter: 0,
             level: 0,
         }
@@ -40,12 +42,9 @@ impl<'a> Solver<'a> {
         alloc.ty(Type::Var(TypeVar(self.counter), Level::new(self.level)))
     }
 
-    pub fn fresh_record(&mut self, alloc: &'a Alloc<'a>) -> &'a RecordRow<'a> {
+    pub fn fresh_record(&mut self, alloc: &'a Alloc<'a>) -> &'a Row<'a> {
         self.counter += 1;
-        alloc.record(RecordRow::Var(
-            TypeVar(self.counter),
-            Level::new(self.level),
-        ))
+        alloc.row(Row::Var(TypeVar(self.counter), Level::new(self.level)))
     }
 
     pub fn enter(&mut self) {
@@ -83,29 +82,34 @@ impl<'a> Solver<'a> {
                 alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(record) => {
-                let record = self.apply_record(alloc, record);
-                alloc.ty(Type::Record(record))
+            Type::Record(row) => {
+                let row = self.apply_row(alloc, row);
+                alloc.ty(Type::Record(row))
+            }
+
+            Type::Variant(row) => {
+                let row = self.apply_row(alloc, row);
+                alloc.ty(Type::Variant(row))
             }
         }
     }
 
-    fn apply_record(&self, alloc: &'a Alloc<'a>, record: &'a RecordRow<'a>) -> &'a RecordRow<'a> {
-        match record {
-            RecordRow::Invalid(_) | RecordRow::Empty | RecordRow::Param(_) => record,
+    fn apply_row(&self, alloc: &'a Alloc<'a>, row: &'a Row<'a>) -> &'a Row<'a> {
+        match row {
+            Row::Invalid(_) | Row::Empty | Row::Param(_) => row,
 
-            RecordRow::Var(v, _) => {
-                if let Some(record) = self.record_subst.get(v) {
-                    self.apply_record(alloc, record)
+            Row::Var(v, _) => {
+                if let Some(record) = self.row_subst.get(v) {
+                    self.apply_row(alloc, record)
                 } else {
-                    record
+                    row
                 }
             }
 
-            RecordRow::Extend(label, field, rest) => {
-                let field = self.apply(alloc, field);
-                let rest = self.apply_record(alloc, rest);
-                alloc.record(RecordRow::Extend(*label, field, rest))
+            Row::Extend(label, ty, rest) => {
+                let ty = self.apply(alloc, ty);
+                let rest = self.apply_row(alloc, rest);
+                alloc.row(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -164,39 +168,44 @@ impl<'a> Solver<'a> {
                 alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(record) => {
-                let record = self.inst_record(alloc, subst, record);
-                alloc.ty(Type::Record(record))
+            Type::Record(row) => {
+                let row = self.inst_row(alloc, subst, row);
+                alloc.ty(Type::Record(row))
+            }
+
+            Type::Variant(row) => {
+                let row = self.inst_row(alloc, subst, row);
+                alloc.ty(Type::Variant(row))
             }
         }
     }
 
-    fn inst_record(
+    fn inst_row(
         &self,
         alloc: &'a Alloc<'a>,
         subst: &BTreeMap<&Generic, (TypeVar, Level)>,
-        record: &'a RecordRow<'a>,
-    ) -> &'a RecordRow<'a> {
-        match record {
-            RecordRow::Invalid(_) | RecordRow::Empty => record,
+        row: &'a Row<'a>,
+    ) -> &'a Row<'a> {
+        match row {
+            Row::Invalid(_) | Row::Empty => row,
 
-            RecordRow::Var(v, _) => {
-                if let Some(record) = self.record_subst.get(v) {
-                    self.inst_record(alloc, subst, record)
+            Row::Var(v, _) => {
+                if let Some(record) = self.row_subst.get(v) {
+                    self.inst_row(alloc, subst, record)
                 } else {
-                    record
+                    row
                 }
             }
 
-            RecordRow::Param(n) => subst
+            Row::Param(n) => subst
                 .get(n)
-                .map(|(var, level)| alloc.record(RecordRow::Var(*var, level.clone())))
-                .unwrap_or(record),
+                .map(|(var, level)| alloc.row(Row::Var(*var, level.clone())))
+                .unwrap_or(row),
 
-            RecordRow::Extend(label, field, rest) => {
-                let field = self.inst_ty(alloc, subst, field);
-                let rest = self.inst_record(alloc, subst, rest);
-                alloc.record(RecordRow::Extend(*label, field, rest))
+            Row::Extend(label, ty, rest) => {
+                let ty = self.inst_ty(alloc, subst, ty);
+                let rest = self.inst_row(alloc, subst, rest);
+                alloc.row(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -245,38 +254,43 @@ impl<'a> Solver<'a> {
                 alloc.ty(Type::Fun(t, u))
             }
 
-            Type::Record(record) => {
-                let record = self.gen_record(alloc, subst, record);
-                alloc.ty(Type::Record(record))
+            Type::Record(row) => {
+                let row = self.gen_row(alloc, subst, row);
+                alloc.ty(Type::Record(row))
+            }
+
+            Type::Variant(row) => {
+                let row = self.gen_row(alloc, subst, row);
+                alloc.ty(Type::Variant(row))
             }
         }
     }
 
-    fn gen_record(
+    fn gen_row(
         &mut self,
         alloc: &'a Alloc<'a>,
         subst: &mut BTreeSet<Generic>,
-        record: &'a RecordRow<'a>,
-    ) -> &'a RecordRow<'a> {
-        match record {
-            RecordRow::Invalid(_) | RecordRow::Param(_) | RecordRow::Empty => record,
+        row: &'a Row<'a>,
+    ) -> &'a Row<'a> {
+        match row {
+            Row::Invalid(_) | Row::Param(_) | Row::Empty => row,
 
-            RecordRow::Var(v, level) => {
-                if let Some(record) = self.record_subst.get(v) {
-                    self.gen_record(alloc, subst, record)
+            Row::Var(v, level) => {
+                if let Some(record) = self.row_subst.get(v) {
+                    self.gen_row(alloc, subst, record)
                 } else if level.can_generalize(self.level) {
                     let name = Generic(*v);
                     subst.insert(name);
-                    alloc.record(RecordRow::Param(name))
+                    alloc.row(Row::Param(name))
                 } else {
-                    record
+                    row
                 }
             }
 
-            RecordRow::Extend(label, field, rest) => {
-                let field = self.gen_ty(alloc, subst, field);
-                let rest = self.gen_record(alloc, subst, rest);
-                alloc.record(RecordRow::Extend(*label, field, rest))
+            Row::Extend(label, ty, rest) => {
+                let ty = self.gen_ty(alloc, subst, ty);
+                let rest = self.gen_row(alloc, subst, rest);
+                alloc.row(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -327,13 +341,17 @@ impl<'a> Solver<'a> {
                 self.unify_ty(reporting, alloc, u, e);
             }
 
-            (Type::Record(row1), Type::Record(row2)) => {
-                self.unify_record(reporting, alloc, row1, row2)
+            (Type::Record(row1), Type::Record(row2))
+            | (Type::Variant(row1), Type::Variant(row2)) => {
+                self.unify_row(reporting, alloc, row1, row2)
             }
 
-            (Type::Record(row), Type::Invalid(e)) | (Type::Invalid(e), Type::Record(row)) => {
-                let e = alloc.record(RecordRow::Invalid(*e));
-                self.unify_record(reporting, alloc, row, e)
+            (Type::Record(row), Type::Invalid(e))
+            | (Type::Invalid(e), Type::Record(row))
+            | (Type::Variant(row), Type::Invalid(e))
+            | (Type::Invalid(e), Type::Variant(row)) => {
+                let e = alloc.row(Row::Invalid(*e));
+                self.unify_row(reporting, alloc, row, e)
             }
 
             (Type::Var(var, level), ty) | (ty, Type::Var(var, level)) => {
@@ -349,8 +367,18 @@ impl<'a> Solver<'a> {
             // Use the exhaustiveness check to ensure termination when unifying
             // with error types
             (
-                Type::Boolean | Type::Integer | Type::Param(_) | Type::Fun(..) | Type::Record(_),
-                Type::Boolean | Type::Integer | Type::Param(_) | Type::Fun(..) | Type::Record(_),
+                Type::Boolean
+                | Type::Integer
+                | Type::Param(_)
+                | Type::Fun(..)
+                | Type::Record(_)
+                | Type::Variant(_),
+                Type::Boolean
+                | Type::Integer
+                | Type::Param(_)
+                | Type::Fun(..)
+                | Type::Record(_)
+                | Type::Variant(_),
             ) => {
                 let e = {
                     let lhs = reporting.pretty.ty(lhs);
@@ -368,49 +396,47 @@ impl<'a> Solver<'a> {
         }
     }
 
-    fn unify_record(
+    fn unify_row(
         &mut self,
         reporting: &mut Reporting,
         alloc: &'a Alloc<'a>,
-        lhs: &'a RecordRow<'a>,
-        rhs: &'a RecordRow<'a>,
+        lhs: &'a Row<'a>,
+        rhs: &'a Row<'a>,
     ) {
         match (lhs, rhs) {
-            (RecordRow::Empty, RecordRow::Empty) => {}
-            (RecordRow::Empty, RecordRow::Invalid(_))
-            | (RecordRow::Invalid(_), RecordRow::Empty) => {}
+            (Row::Empty, Row::Empty) => {}
+            (Row::Empty, Row::Invalid(_)) | (Row::Invalid(_), Row::Empty) => {}
 
-            (RecordRow::Extend(label, field1, rest1), row2 @ RecordRow::Extend(..)) => {
+            (Row::Extend(label, ty1, rest1), row2 @ Row::Extend(..)) => {
                 let tail = Self::row_tail(rest1);
-                let (field2, rest2) = self.rewrite(reporting, alloc, label, row2, tail);
-                self.unify_ty(reporting, alloc, field1, field2);
-                self.unify_record(reporting, alloc, rest1, rest2);
+                let (ty2, rest2) = self.rewrite(reporting, alloc, label, row2, tail);
+                self.unify_ty(reporting, alloc, ty1, ty2);
+                self.unify_row(reporting, alloc, rest1, rest2);
             }
 
-            (RecordRow::Extend(_, field, rest), e @ RecordRow::Invalid(id))
-            | (e @ RecordRow::Invalid(id), RecordRow::Extend(_, field, rest)) => {
+            (Row::Extend(_, ty, rest), e @ Row::Invalid(id))
+            | (e @ Row::Invalid(id), Row::Extend(_, ty, rest)) => {
                 let et = alloc.ty(Type::Invalid(*id));
-                self.unify_ty(reporting, alloc, field, et);
-                self.unify_record(reporting, alloc, rest, e);
+                self.unify_ty(reporting, alloc, ty, et);
+                self.unify_row(reporting, alloc, rest, e);
             }
 
-            (RecordRow::Param(n), RecordRow::Param(m)) if n == m => {}
-            (RecordRow::Param(_), RecordRow::Invalid(_))
-            | (RecordRow::Invalid(_), RecordRow::Param(_)) => {}
+            (Row::Param(n), Row::Param(m)) if n == m => {}
+            (Row::Param(_), Row::Invalid(_)) | (Row::Invalid(_), Row::Param(_)) => {}
 
-            (RecordRow::Var(var, level), record) | (record, RecordRow::Var(var, level)) => {
-                if let Some(rhs) = self.record_subst.get(var) {
-                    self.unify_record(reporting, alloc, record, rhs)
+            (Row::Var(var, level), record) | (record, Row::Var(var, level)) => {
+                if let Some(rhs) = self.row_subst.get(var) {
+                    self.unify_row(reporting, alloc, record, rhs)
                 } else {
                     self.set_record(reporting, alloc, var, level, record)
                 }
             }
 
-            (RecordRow::Invalid(_), RecordRow::Invalid(_)) => {}
+            (Row::Invalid(_), Row::Invalid(_)) => {}
 
             (
-                RecordRow::Empty | RecordRow::Extend(..) | RecordRow::Param(_),
-                RecordRow::Empty | RecordRow::Extend(..) | RecordRow::Param(_),
+                Row::Empty | Row::Extend(..) | Row::Param(_),
+                Row::Empty | Row::Extend(..) | Row::Param(_),
             ) => {
                 let e = {
                     let lhs = reporting.pretty.record(lhs);
@@ -419,11 +445,11 @@ impl<'a> Solver<'a> {
                         .errors
                         .type_error(reporting.at)
                         .inequal_types(lhs, rhs);
-                    alloc.record(RecordRow::Invalid(e))
+                    alloc.row(Row::Invalid(e))
                 };
 
-                self.unify_record(reporting, alloc, lhs, e);
-                self.unify_record(reporting, alloc, e, rhs);
+                self.unify_row(reporting, alloc, lhs, e);
+                self.unify_row(reporting, alloc, e, rhs);
             }
         }
     }
@@ -468,16 +494,16 @@ impl<'a> Solver<'a> {
         alloc: &'a Alloc<'a>,
         var: &TypeVar,
         level: &Level,
-        record: &'a RecordRow<'a>,
+        record: &'a Row<'a>,
     ) {
-        if let RecordRow::Var(v, l2) = record {
+        if let Row::Var(v, l2) = record {
             l2.set_min(level);
             if v == var {
                 return;
             }
         }
 
-        if self.occurs_record(var, level, record) {
+        if self.occurs_row(var, level, record) {
             let record = {
                 let var = reporting.pretty.var(var, level);
                 let ty = reporting.pretty.record(record);
@@ -485,13 +511,13 @@ impl<'a> Solver<'a> {
                     .errors
                     .type_error(reporting.at)
                     .recursive_type(var, ty);
-                alloc.record(RecordRow::Invalid(e))
+                alloc.row(Row::Invalid(e))
             };
 
             return self.set_record(reporting, alloc, var, level, record);
         }
 
-        let prev = self.record_subst.insert(*var, record);
+        let prev = self.row_subst.insert(*var, record);
         debug_assert!(
             prev.is_none(),
             "overwrote previous record row unificiation variable"
@@ -511,28 +537,27 @@ impl<'a> Solver<'a> {
                 }
             }
 
-            Type::Record(record) => self.occurs_record(var, l1, record),
+            Type::Record(row) => self.occurs_row(var, l1, row),
+            Type::Variant(row) => self.occurs_row(var, l1, row),
 
             Type::Fun(t, u) => self.occurs(var, l1, t) || self.occurs(var, l1, u),
         }
     }
 
-    fn occurs_record(&self, var: &TypeVar, l1: &Level, record: &RecordRow) -> bool {
-        match record {
-            RecordRow::Invalid(_) | RecordRow::Empty | RecordRow::Param(_) => false,
+    fn occurs_row(&self, var: &TypeVar, l1: &Level, row: &Row) -> bool {
+        match row {
+            Row::Invalid(_) | Row::Empty | Row::Param(_) => false,
 
-            RecordRow::Var(war, l2) => {
-                if let Some(record) = self.record_subst.get(war) {
-                    self.occurs_record(var, l1, record)
+            Row::Var(war, l2) => {
+                if let Some(record) = self.row_subst.get(war) {
+                    self.occurs_row(var, l1, record)
                 } else {
                     l2.set_min(l1);
                     var == war
                 }
             }
 
-            RecordRow::Extend(_, field, rest) => {
-                self.occurs(var, l1, field) || self.occurs_record(var, l1, rest)
-            }
+            Row::Extend(_, ty, rest) => self.occurs(var, l1, ty) || self.occurs_row(var, l1, rest),
         }
     }
 }

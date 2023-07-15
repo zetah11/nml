@@ -14,7 +14,7 @@ use crate::source::SourceId;
 
 use super::memory::Alloc;
 use super::pretty::Pretty;
-use super::tree::{ExprNode, RecordRow};
+use super::tree::{ExprNode, Row};
 use super::{Checker, Expr, Type};
 
 struct Store<'a, 'ids> {
@@ -92,14 +92,17 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.exprs.alloc(Expr { node, span })
     }
 
-    pub fn update(
-        &self,
-        label: impl AsRef<str>,
-        value: &'a Expr<'a>,
-        old: &'a Expr<'a>,
-    ) -> &'a Expr<'a> {
-        let label = self.names.borrow().label(label);
-        let node = ExprNode::Extend(old, label, value);
+    pub fn record<L, I>(&self, fields: I, rest: Option<&'a Expr<'a>>) -> &'a Expr<'a>
+    where
+        L: AsRef<str>,
+        I: IntoIterator<Item = (L, &'a Expr<'a>)>,
+    {
+        let fields = fields
+            .into_iter()
+            .map(|(label, field)| (self.names.borrow().label(label), field))
+            .collect();
+
+        let node = ExprNode::Record(fields, rest);
         let span = self.source.span(0, 0);
         self.exprs.alloc(Expr { node, span })
     }
@@ -107,6 +110,44 @@ impl<'a, 'ids> Store<'a, 'ids> {
     pub fn restrict(&self, expr: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.borrow().label(label);
         let node = ExprNode::Restrict(expr, label);
+        let span = self.source.span(0, 0);
+        self.exprs.alloc(Expr { node, span })
+    }
+
+    pub fn variant(&self, label: impl AsRef<str>) -> &'a Expr<'a> {
+        let label = self.names.borrow().label(label);
+        let node = ExprNode::Variant(label);
+        let span = self.source.span(0, 0);
+        self.exprs.alloc(Expr { node, span })
+    }
+
+    pub fn case<L, N, I>(
+        &self,
+        scrutinee: &'a Expr<'a>,
+        cases: I,
+        catchall: Option<(&str, &'a Expr<'a>)>,
+    ) -> &'a Expr<'a>
+    where
+        L: AsRef<str>,
+        N: Into<String>,
+        I: IntoIterator<Item = (L, N, &'a Expr<'a>)>,
+    {
+        let cases = cases
+            .into_iter()
+            .map(|(label, name, field)| {
+                let label = self.names.borrow().label(label);
+                (label, self.name(name), field)
+            })
+            .collect();
+
+        let catchall = catchall.map(|(name, expr)| (self.name(name), expr));
+
+        let node = ExprNode::Case {
+            scrutinee,
+            cases,
+            catchall,
+        };
+
         let span = self.source.span(0, 0);
         self.exprs.alloc(Expr { node, span })
     }
@@ -148,18 +189,38 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.types.ty(Type::Integer)
     }
 
-    pub fn extend<L, I, Ii>(&self, fields: I, rest: &'a RecordRow<'a>) -> &'a Type<'a>
+    pub fn extend<L, I, Ii>(&self, fields: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
     where
         L: AsRef<str>,
         I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
         Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
     {
-        let mut rest = rest;
-        for (label, field) in fields.into_iter().rev() {
+        let row = self.row(fields, rest);
+        self.types.ty(Type::Record(row))
+    }
+
+    pub fn sum<L, I, Ii>(&self, cases: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
+    where
+        L: AsRef<str>,
+        I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
+        Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
+    {
+        let row = self.row(cases, rest);
+        self.types.ty(Type::Variant(row))
+    }
+
+    fn row<L, I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>
+    where
+        L: AsRef<str>,
+        I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
+        Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
+    {
+        let mut rest = rest.unwrap_or_else(|| self.types.row(Row::Empty));
+        for (label, field) in labels.into_iter().rev() {
             let label = self.names.borrow().label(label);
-            rest = self.types.record(RecordRow::Extend(label, field, rest));
+            rest = self.types.row(Row::Extend(label, field, rest));
         }
-        self.types.ty(Type::Record(rest))
+        rest
     }
 
     fn name(&self, name: impl Into<String>) -> Name {

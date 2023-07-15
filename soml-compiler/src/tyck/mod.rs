@@ -13,7 +13,7 @@ use log::trace;
 use self::memory::Alloc;
 use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
-use self::tree::{ExprNode, RecordRow};
+use self::tree::{ExprNode, Row};
 use crate::errors::Errors;
 use crate::source::Span;
 
@@ -98,8 +98,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             ExprNode::Field(record, label) => {
                 trace!("infer field");
                 let t = self.fresh();
-                let r = self.fresh_record();
-                let record_ty = self.types.record(RecordRow::Extend(*label, t, r));
+                let r = self.fresh_row();
+                let record_ty = self.types.row(Row::Extend(*label, t, r));
                 let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(record);
 
@@ -119,46 +119,43 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                 t
             }
 
-            ExprNode::Empty => {
-                trace!("infer empty");
-                let ty = self.types.record(RecordRow::Empty);
-                trace!("done empty");
-                self.types.ty(Type::Record(ty))
-            }
+            ExprNode::Record(fields, extend) => {
+                trace!("infer record");
+                let mut row = if let Some(extend) = extend {
+                    let row = self.fresh_row();
+                    let arg_ty = self.types.ty(Type::Record(row));
+                    let extend_ty = self.infer(extend);
 
-            ExprNode::Extend(old, label, value) => {
-                trace!("infer extend");
-                let r = self.fresh_record();
+                    let mut pretty = self.pretty.build();
+                    self.solver.unify(
+                        &mut pretty,
+                        self.types,
+                        self.errors,
+                        span,
+                        arg_ty,
+                        extend_ty,
+                    );
 
-                let record_ty = self.types.ty(Type::Record(r));
-                let value_ty = self.infer(value);
-                let inferred = self.infer(old);
+                    row
+                } else {
+                    self.types.row(Row::Empty)
+                };
 
-                let ty = self.types.record(RecordRow::Extend(*label, value_ty, r));
-                let ty = self.types.ty(Type::Record(ty));
+                for (label, field) in fields.iter().rev() {
+                    let field_ty = self.infer(field);
+                    row = self.types.row(Row::Extend(*label, field_ty, row));
+                }
 
-                let mut pretty = self.pretty.build();
-
-                self.solver.unify(
-                    &mut pretty,
-                    self.types,
-                    self.errors,
-                    span,
-                    inferred,
-                    record_ty,
-                );
-
-                trace!("done extend");
-
-                ty
+                trace!("done record");
+                self.types.ty(Type::Record(row))
             }
 
             ExprNode::Restrict(old, label) => {
                 trace!("infer restrict");
                 let t = self.fresh();
-                let r = self.fresh_record();
+                let r = self.fresh_row();
 
-                let record_ty = self.types.record(RecordRow::Extend(*label, t, r));
+                let record_ty = self.types.row(Row::Extend(*label, t, r));
                 let record_ty = self.types.ty(Type::Record(record_ty));
                 let inferred = self.infer(old);
 
@@ -177,6 +174,76 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                 trace!("done restrict");
                 ty
+            }
+
+            ExprNode::Variant(name) => {
+                let arg_ty = self.fresh();
+                let row_ty = self.fresh_row();
+                let row_ty = self.types.row(Row::Extend(*name, arg_ty, row_ty));
+                let row_ty = self.types.ty(Type::Variant(row_ty));
+
+                self.types.ty(Type::Fun(arg_ty, row_ty))
+            }
+
+            ExprNode::Case {
+                scrutinee,
+                cases,
+                catchall,
+            } => {
+                let scrutinee_ty = self.infer(scrutinee);
+                let result_ty = self.fresh();
+
+                let mut row = if let Some((binding, then)) = catchall {
+                    let row = self.fresh_row();
+                    let arg_ty = self.types.ty(Type::Variant(row));
+                    self.env.insert(*binding, Scheme::mono(arg_ty));
+                    let then_ty = self.infer(then);
+
+                    let mut pretty = self.pretty.build();
+                    self.solver.unify(
+                        &mut pretty,
+                        self.types,
+                        self.errors,
+                        span,
+                        result_ty,
+                        then_ty,
+                    );
+
+                    row
+                } else {
+                    self.types.row(Row::Empty)
+                };
+
+                for (label, binding, then) in cases.iter().rev() {
+                    let arg_ty = self.fresh();
+                    self.env.insert(*binding, Scheme::mono(arg_ty));
+                    let then_ty = self.infer(then);
+
+                    let mut pretty = self.pretty.build();
+                    self.solver.unify(
+                        &mut pretty,
+                        self.types,
+                        self.errors,
+                        span,
+                        result_ty,
+                        then_ty,
+                    );
+
+                    row = self.types.row(Row::Extend(*label, arg_ty, row));
+                }
+
+                let mut pretty = self.pretty.build();
+                let row = self.types.ty(Type::Variant(row));
+                self.solver.unify(
+                    &mut pretty,
+                    self.types,
+                    self.errors,
+                    span,
+                    scrutinee_ty,
+                    row,
+                );
+
+                result_ty
             }
 
             ExprNode::Apply(fun, arg) => {
@@ -199,10 +266,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             ExprNode::Lambda(param, body) => {
                 trace!("infer lambda");
                 let t = self.fresh();
-                let scheme = Scheme {
-                    params: Vec::new(),
-                    ty: t,
-                };
+                let scheme = Scheme::mono(t);
                 self.env.insert(*param, scheme);
                 let u = self.infer(body);
                 trace!("done lambda");
@@ -229,7 +293,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         self.solver.fresh(self.types)
     }
 
-    fn fresh_record(&mut self) -> &'a RecordRow<'a> {
+    fn fresh_row(&mut self) -> &'a Row<'a> {
         self.solver.fresh_record(self.types)
     }
 
@@ -297,16 +361,18 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
             (Type::Param(n), Type::Param(m)) => n == m,
             (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),
-            (Type::Record(r), Type::Record(s)) => inner_record(subst, r, s),
+            (Type::Record(r), Type::Record(s)) | (Type::Variant(r), Type::Variant(s)) => {
+                inner_row(subst, r, s)
+            }
 
             _ => false,
         }
     }
 
-    fn inner_record(subst: &mut BTreeMap<TypeVar, TypeVar>, r: &RecordRow, s: &RecordRow) -> bool {
+    fn inner_row(subst: &mut BTreeMap<TypeVar, TypeVar>, r: &Row, s: &Row) -> bool {
         match (r, s) {
-            (RecordRow::Invalid(_), RecordRow::Invalid(_)) => true,
-            (RecordRow::Var(v1, _), RecordRow::Var(v2, _)) => {
+            (Row::Invalid(_), Row::Invalid(_)) => true,
+            (Row::Var(v1, _), Row::Var(v2, _)) => {
                 if let Some(v1) = subst.get(v1) {
                     v1 == v2
                 } else if let Some(v2) = subst.get(v2) {
@@ -318,10 +384,10 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
                 }
             }
 
-            (RecordRow::Param(n), RecordRow::Param(m)) => n == m,
-            (RecordRow::Empty, RecordRow::Empty) => true,
-            (RecordRow::Extend(l1, field1, rest1), RecordRow::Extend(l2, field2, rest2)) => {
-                l1 == l2 && inner(subst, field1, field2) && inner_record(subst, rest1, rest2)
+            (Row::Param(n), Row::Param(m)) => n == m,
+            (Row::Empty, Row::Empty) => true,
+            (Row::Extend(l1, field1, rest1), Row::Extend(l2, field2, rest2)) => {
+                l1 == l2 && inner(subst, field1, field2) && inner_row(subst, rest1, rest2)
             }
 
             _ => false,

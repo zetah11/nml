@@ -13,11 +13,13 @@ fn fields() {
         let expr = s.lambda("r", inner);
 
         let xt = checker.fresh();
-        let expected = s.extend([("x", xt), ("y", checker.fresh())], checker.fresh_record());
+        let expected = s.extend(
+            [("x", xt), ("y", checker.fresh())],
+            Some(checker.fresh_row()),
+        );
         let expected = s.arrow(expected, xt);
 
         let actual = checker.infer(expr);
-
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -28,16 +30,15 @@ fn overwrite() {
     // --> { x: '1 | '2 } -> { x: int | '2 }
     Store::with(|s, mut checker| {
         let old = s.restrict(s.var("r"), "x");
-        let body = s.update("x", s.num(5), old);
+        let body = s.record([("x", s.num(5))], Some(old));
         let expr = s.lambda("r", body);
 
-        let rest = checker.fresh_record();
-        let t = s.extend([("x", checker.fresh())], rest);
-        let u = s.extend([("x", s.int())], rest);
+        let rest = checker.fresh_row();
+        let t = s.extend([("x", checker.fresh())], Some(rest));
+        let u = s.extend([("x", s.int())], Some(rest));
         let expected = s.arrow(t, u);
 
         let actual = checker.infer(expr);
-
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -49,12 +50,83 @@ fn sneakily_recursive() {
     // from "Extensible Records with Scoped Labels" (Daan Leijen, 2005)
     // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf
     Store::with(|s, mut checker| {
-        let then = s.update("x", s.num(2), s.var("r"));
-        let elze = s.update("y", s.num(2), s.var("r"));
+        let then = s.record([("x", s.num(2))], Some(s.var("r")));
+        let elze = s.record([("y", s.num(2))], Some(s.var("r")));
         let cond = s.if_then(s.bool(true), then, elze);
         let expr = s.lambda("r", cond);
 
         let _actual = checker.infer(expr);
         assert_eq!(checker.errors.num_errors(), 1);
+    });
+}
+
+#[test]
+fn record_literal() {
+    // { x = 1, y = f => f true }
+    // --> { x: int, y: (bool -> '1) -> '1 }
+    Store::with(|s, mut checker| {
+        let lit = s.num(1);
+        let lambda = s.lambda("f", s.apply(s.var("f"), s.bool(true)));
+        let expr = s.record([("x", lit), ("y", lambda)], None);
+
+        let a = checker.fresh();
+        let lit_ty = s.int();
+        let lambda_ty = s.arrow(s.arrow(s.boolean(), a), a);
+        let expected = s.extend([("x", lit_ty), ("y", lambda_ty)], None);
+
+        let actual = checker.infer(expr);
+        checker.assert_alpha_equal(expected, actual);
+    })
+}
+
+#[test]
+fn single_variant() {
+    // x => Test x
+    // --> '1 -> Test '1 | '2
+    Store::with(|s, mut checker| {
+        let expr = s.lambda("x", s.apply(s.variant("Test"), s.var("x")));
+
+        let xt = checker.fresh();
+        let expected = s.sum([("Test", xt)], Some(checker.fresh_row()));
+        let expected = s.arrow(xt, expected);
+
+        let actual = checker.infer(expr);
+        checker.assert_alpha_equal(expected, actual);
+    });
+}
+
+#[test]
+fn exhaustive_case() {
+    // case A 5 | A x -> x | B y -> 0 end
+    // --> int
+    Store::with(|s, mut checker| {
+        let scrutinee = s.apply(s.variant("A"), s.num(5));
+        let first = s.var("x");
+        let second = s.num(5);
+        let expr = s.case(scrutinee, [("A", "x", first), ("B", "y", second)], None);
+
+        let expected = s.int();
+
+        let actual = checker.infer(expr);
+        checker.assert_alpha_equal(expected, actual);
+    });
+}
+
+#[test]
+fn catchall_case() {
+    // x => case x | A y -> y | z -> z end
+    // --> A '1 | '1 -> '1
+    Store::with(|s, mut checker| {
+        let catchall = Some(("z", s.var("z")));
+        let case = s.case(s.var("x"), [("A", "y", s.var("y"))], catchall);
+        let expr = s.lambda("x", case);
+
+        let rt = checker.fresh_row();
+        let ret = s.sum::<&str, [_; 0], _>([], Some(rt));
+        let arg = s.sum([("A", ret)], Some(rt));
+        let expected = s.arrow(arg, ret);
+
+        let actual = checker.infer(expr);
+        checker.assert_alpha_equal(expected, actual);
     });
 }

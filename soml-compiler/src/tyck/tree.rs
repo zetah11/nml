@@ -31,18 +31,28 @@ pub enum ExprNode<'a> {
     /// `if x then y else z`
     If(&'a Expr<'a>, &'a Expr<'a>, &'a Expr<'a>),
 
+    /* Records -------------------------------------------------------------- */
     /// `x.a`
     Field(&'a Expr<'a>, Label),
 
-    /// `{}`
-    Empty,
-
-    /// `x with { a = y }`
-    Extend(&'a Expr<'a>, Label, &'a Expr<'a>),
+    /// `{ a = x, b = y | r }`
+    Record(Vec<(Label, &'a Expr<'a>)>, Option<&'a Expr<'a>>),
 
     /// `x \ a`
     Restrict(&'a Expr<'a>, Label),
 
+    /* Variants ------------------------------------------------------------- */
+    /// `A`
+    Variant(Label),
+
+    /// `case x | A a -> y | B b -> z | c -> w end`
+    Case {
+        scrutinee: &'a Expr<'a>,
+        cases: Vec<(Label, Name, &'a Expr<'a>)>,
+        catchall: Option<(Name, &'a Expr<'a>)>,
+    },
+
+    /* Functions ------------------------------------------------------------ */
     /// `x y`
     Apply(&'a Expr<'a>, &'a Expr<'a>),
 
@@ -65,17 +75,18 @@ pub enum Type<'a> {
     Integer,
     Fun(&'a Type<'a>, &'a Type<'a>),
 
-    Record(&'a RecordRow<'a>),
+    Record(&'a Row<'a>),
+    Variant(&'a Row<'a>),
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
-pub enum RecordRow<'a> {
+pub enum Row<'a> {
     Invalid(ErrorId),
     Empty,
     Var(TypeVar, Level),
     Param(Generic),
-    Extend(Label, &'a Type<'a>, &'a RecordRow<'a>),
+    Extend(Label, &'a Type<'a>, &'a Row<'a>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
@@ -85,6 +96,15 @@ pub struct Generic(pub TypeVar);
 pub struct Scheme<'a> {
     pub params: Vec<Generic>,
     pub ty: &'a Type<'a>,
+}
+
+impl<'a> Scheme<'a> {
+    pub fn mono(ty: &'a Type<'a>) -> Self {
+        Self {
+            params: Vec::new(),
+            ty,
+        }
+    }
 }
 
 #[derive(Debug, Default)]

@@ -6,7 +6,7 @@ use crate::errors::ErrorId;
 use crate::names::{Ident, Label};
 
 use super::solve::{Level, TypeVar};
-use super::tree::{Generic, RecordRow};
+use super::tree::{Generic, Row};
 use super::{to_name, Scheme, Type};
 
 #[derive(Debug)]
@@ -77,7 +77,7 @@ impl Prettifier<'_, '_> {
         self.ty_with_subst(ty, &BTreeMap::new())
     }
 
-    pub fn record(&mut self, row: &RecordRow) -> String {
+    pub fn record(&mut self, row: &Row) -> String {
         self.record_with_subst(row, &BTreeMap::new())
     }
 
@@ -117,20 +117,36 @@ impl Prettifier<'_, '_> {
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
             Type::Record(row) => self.record_with_subst(row, subst),
+            Type::Variant(row) => self.variant_with_subst(row, subst),
             ty => format!("({})", self.arrow(ty, subst)),
         }
     }
 
-    fn record_with_subst(&mut self, row: &RecordRow, subst: &BTreeMap<Generic, String>) -> String {
-        let (fields, rest) = self.record_row(row, subst);
+    fn record_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
+        let (fields, rest) = self.row(row, Some(":"), subst);
         let fields = fields.join(", ");
         let rest = rest.map(|rest| format!(" | {rest}")).unwrap_or_default();
         format!("{{ {fields}{rest} }}")
     }
 
-    fn record_row(
+    fn variant_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
+        let (fields, rest) = self.row(row, None, subst);
+
+        let rest = if fields.is_empty() {
+            rest
+        } else {
+            rest.map(|rest| format!(" | {rest}"))
+        }
+        .unwrap_or_default();
+        let fields = fields.join(" | ");
+
+        format!("{fields}{rest}")
+    }
+
+    fn row(
         &mut self,
-        row: &RecordRow,
+        row: &Row,
+        sep: Option<&str>,
         subst: &BTreeMap<Generic, String>,
     ) -> (Vec<String>, Option<String>) {
         let mut fields = vec![];
@@ -139,25 +155,30 @@ impl Prettifier<'_, '_> {
 
         loop {
             match row {
-                RecordRow::Extend(label, field, rest) => {
-                    let field = self.arrow(field, subst);
-                    fields.push(format!("{}: {field}", self.label(label)));
+                Row::Extend(label, field, rest) => {
+                    let (field, sep) = if let Some(sep) = sep {
+                        (self.arrow(field, subst), sep)
+                    } else {
+                        (self.simple(field, subst), "")
+                    };
+
+                    fields.push(format!("{}{sep} {field}", self.label(label)));
                     row = rest;
                 }
 
-                RecordRow::Empty => break,
+                Row::Empty => break,
 
-                RecordRow::Invalid(e) => {
+                Row::Invalid(e) => {
                     rest = Some(self.error(e));
                     break;
                 }
 
-                RecordRow::Var(var, level) => {
+                Row::Var(var, level) => {
                     rest = Some(self.var(var, level));
                     break;
                 }
 
-                RecordRow::Param(name) => {
+                Row::Param(name) => {
                     rest = Some(self.param(name, subst));
                     break;
                 }

@@ -1,15 +1,15 @@
 use typed_arena::Arena;
 
-use super::tree::RecordRow;
+use super::tree::Row;
 use super::Type;
 
 pub struct Alloc<'a> {
     types: &'a Arena<Type<'a>>,
-    records: &'a Arena<RecordRow<'a>>,
+    records: &'a Arena<Row<'a>>,
 }
 
 impl<'a> Alloc<'a> {
-    pub fn new(types: &'a Arena<Type<'a>>, records: &'a Arena<RecordRow<'a>>) -> Self {
+    pub fn new(types: &'a Arena<Type<'a>>, records: &'a Arena<Row<'a>>) -> Self {
         Self { types, records }
     }
 
@@ -17,7 +17,7 @@ impl<'a> Alloc<'a> {
         self.types.alloc(ty)
     }
 
-    pub fn record(&self, row: RecordRow<'a>) -> &'a RecordRow<'a> {
+    pub fn row(&self, row: Row<'a>) -> &'a Row<'a> {
         self.records.alloc(row)
     }
 }
