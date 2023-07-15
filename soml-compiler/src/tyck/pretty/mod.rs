@@ -6,7 +6,7 @@ use crate::errors::ErrorId;
 use crate::names::{Ident, Label};
 
 use super::solve::{Level, TypeVar};
-use super::tree::{Generic, Row};
+use super::types::{Generic, Row};
 use super::{to_name, Scheme, Type};
 
 #[derive(Debug)]

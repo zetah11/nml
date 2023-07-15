@@ -1,7 +1,7 @@
 use super::{Solver, TypeVar};
 use crate::names::Label;
 use crate::tyck::memory::Alloc;
-use crate::tyck::tree::Row;
+use crate::tyck::types::Row;
 use crate::tyck::{Reporting, Type};
 
 impl<'a> Solver<'a> {

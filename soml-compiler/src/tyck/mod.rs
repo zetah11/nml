@@ -1,9 +1,10 @@
-pub use self::tree::{Env, Expr, Scheme, Type};
+pub use self::types::{Env, Scheme, Type};
 
 mod memory;
 mod pretty;
 mod solve;
 mod tree;
+mod types;
 
 #[cfg(test)]
 mod tests;
@@ -13,7 +14,8 @@ use log::trace;
 use self::memory::Alloc;
 use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
-use self::tree::{ExprNode, Row};
+use self::tree::{Expr, ExprNode};
+use self::types::Row;
 use crate::errors::Errors;
 use crate::source::Span;
 

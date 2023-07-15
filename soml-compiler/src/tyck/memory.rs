@@ -1,6 +1,6 @@
 use typed_arena::Arena;
 
-use super::tree::Row;
+use super::types::Row;
 use super::Type;
 
 pub struct Alloc<'a> {

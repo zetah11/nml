@@ -14,8 +14,9 @@ use crate::source::SourceId;
 
 use super::memory::Alloc;
 use super::pretty::Pretty;
-use super::tree::{ExprNode, Row};
-use super::{Checker, Expr, Type};
+use super::tree::{Expr, ExprNode};
+use super::types::Row;
+use super::{Checker, Type};
 
 struct Store<'a, 'ids> {
     pub exprs: &'a Arena<Expr<'a>>,

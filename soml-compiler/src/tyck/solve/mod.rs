@@ -12,7 +12,7 @@ use log::trace;
 
 use super::memory::Alloc;
 use super::pretty::Prettifier;
-use super::tree::{Generic, Row};
+use super::types::{Generic, Row};
 use super::{Reporting, Scheme, Type};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
