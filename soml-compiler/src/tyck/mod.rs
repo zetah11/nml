@@ -178,6 +178,7 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
                 }
             }
 
+            (Type::Named(n), Type::Named(m)) => n == m,
             (Type::Param(n), Type::Param(m)) => n == m,
             (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),

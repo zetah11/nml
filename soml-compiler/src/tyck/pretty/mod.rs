@@ -118,6 +118,7 @@ impl Prettifier<'_, '_> {
             Type::Invalid(e) => self.error(e),
             Type::Var(var, level) => self.var(var, Some(level)),
             Type::Param(name) => self.param(name, subst),
+            Type::Named(_name) => "<name>".into(),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
             Type::Record(row) => self.record_with_subst(row, subst),

@@ -89,6 +89,12 @@ pub enum PatternNode<'a> {
     /// `a`
     Bind(Name),
 
-    /// `M p`
+    /// A named pattern which is _not_ a binding (e.g. an explicit constructor).
+    Named(Name),
+
+    /// `M p` (anonymous variant destruction)
     Deconstruct(Label, &'a Pattern<'a>),
+
+    /// `p q`
+    Apply(&'a Pattern<'a>, &'a Pattern<'a>),
 }

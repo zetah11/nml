@@ -1,5 +1,6 @@
 mod generalize;
 mod rows;
+mod sums;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -144,9 +145,18 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.pattern(PatternNode::Bind(name))
     }
 
+    pub fn named(&self, name: impl Into<String>) -> &'a Pattern<'a> {
+        let name = self.name(name);
+        self.pattern(PatternNode::Named(name))
+    }
+
     pub fn deconstruct(&self, label: impl AsRef<str>, pattern: &'a Pattern<'a>) -> &'a Pattern<'a> {
         let label = self.names.borrow().label(label);
         self.pattern(PatternNode::Deconstruct(label, pattern))
+    }
+
+    pub fn apply_pat(&self, ctr: &'a Pattern<'a>, arg: &'a Pattern<'a>) -> &'a Pattern<'a> {
+        self.pattern(PatternNode::Apply(ctr, arg))
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {
@@ -181,6 +191,25 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.types.ty(Type::Variant(row))
     }
 
+    pub fn nominal(&self, name: impl Into<String>) -> &'a Type<'a> {
+        let name = self.name(name);
+        self.types.ty(Type::Named(name))
+    }
+
+    pub fn name(&self, name: impl Into<String>) -> Name {
+        let name = name.into();
+        let mut interned = self.name_intern.borrow_mut();
+        if let Some(name) = interned.get(&name) {
+            *name
+        } else {
+            let mut names = self.names.borrow_mut();
+            let id = names.intern(&name);
+            let id = names.name(None, id);
+            interned.insert(name, id);
+            id
+        }
+    }
+
     fn expr(&self, node: ExprNode<'a>) -> &'a Expr<'a> {
         let span = self.source.span(0, 0);
         self.exprs.alloc(Expr { node, span })
@@ -203,19 +232,5 @@ impl<'a, 'ids> Store<'a, 'ids> {
             rest = self.types.row(Row::Extend(label, field, rest));
         }
         rest
-    }
-
-    fn name(&self, name: impl Into<String>) -> Name {
-        let name = name.into();
-        let mut interned = self.name_intern.borrow_mut();
-        if let Some(name) = interned.get(&name) {
-            *name
-        } else {
-            let mut names = self.names.borrow_mut();
-            let id = names.intern(&name);
-            let id = names.name(None, id);
-            interned.insert(name, id);
-            id
-        }
     }
 }

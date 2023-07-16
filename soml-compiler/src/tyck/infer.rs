@@ -221,6 +221,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
         wildcards: &mut Vec<&'a Type<'a>>,
         pattern: &Pattern,
     ) -> &'a Type<'a> {
+        let span = pattern.span;
         match &pattern.node {
             PatternNode::Invalid(e) => self.types.ty(Type::Invalid(*e)),
 
@@ -232,11 +233,30 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 ty
             }
 
+            PatternNode::Named(name) => {
+                let scheme = self.env.lookup(name);
+                let mut pretty = self.pretty.build();
+                self.solver.instantiate(&mut pretty, self.types, scheme)
+            }
+
             PatternNode::Deconstruct(label, pattern) => {
                 let pattern_ty = self.infer_pattern(wildcards, pattern);
                 let row_ty = self.fresh_row();
                 let row_ty = self.types.row(Row::Extend(*label, pattern_ty, row_ty));
                 self.types.ty(Type::Variant(row_ty))
+            }
+
+            PatternNode::Apply(ctr, arg) => {
+                let ctr_ty = self.infer_pattern(wildcards, ctr);
+                let arg_ty = self.infer_pattern(wildcards, arg);
+
+                let res_ty = self.fresh();
+                let fun_ty = self.types.ty(Type::Fun(arg_ty, res_ty));
+
+                let mut pretty = self.pretty.build();
+                self.solver.unify(&mut pretty, self.types, self.errors, span, ctr_ty, fun_ty);
+
+                res_ty
             }
         }
     }
