@@ -1,30 +1,28 @@
 use std::collections::BTreeMap;
 
-use lasso::ThreadedRodeo;
-
 use crate::errors::ErrorId;
-use crate::names::{Ident, Label};
+use crate::names::{Label, Name, Names};
 
 use super::solve::{Level, TypeVar};
 use super::types::{Generic, Row};
 use super::{to_name, Scheme, Type};
 
 #[derive(Debug)]
-pub struct Pretty<'ids> {
+pub struct Pretty<'a> {
     vars: BTreeMap<TypeVar, String>,
     show_levels: bool,
     show_error_id: bool,
 
     counter: usize,
-    idents: &'ids ThreadedRodeo<Ident>,
+    names: &'a Names<'a>,
 }
 
-impl<'ids> Pretty<'ids> {
-    pub fn new(idents: &'ids ThreadedRodeo<Ident>) -> Self {
-        Self { vars: BTreeMap::new(), show_levels: false, show_error_id: false, counter: 0, idents }
+impl<'a> Pretty<'a> {
+    pub fn new(names: &'a Names) -> Self {
+        Self { vars: BTreeMap::new(), show_levels: false, show_error_id: false, counter: 0, names }
     }
 
-    pub fn build(&mut self) -> Prettifier<'_, 'ids> {
+    pub fn build(&mut self) -> Prettifier<'_, 'a> {
         Prettifier { pretty: self }
     }
 
@@ -76,7 +74,7 @@ impl Prettifier<'_, '_> {
     }
 
     pub fn label(&self, label: &Label) -> String {
-        self.pretty.idents.resolve(&label.0).into()
+        self.pretty.names.get_ident(&label.0).into()
     }
 
     pub fn var(&mut self, var: &TypeVar, level: Option<&Level>) -> String {
@@ -118,7 +116,7 @@ impl Prettifier<'_, '_> {
             Type::Invalid(e) => self.error(e),
             Type::Var(var, level) => self.var(var, Some(level)),
             Type::Param(name) => self.param(name, subst),
-            Type::Named(_name) => "<name>".into(),
+            Type::Named(name) => self.name(name),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
             Type::Record(row) => self.record_with_subst(row, subst),
@@ -194,6 +192,11 @@ impl Prettifier<'_, '_> {
         } else {
             "<error>".into()
         }
+    }
+
+    fn name(&mut self, name: &Name) -> String {
+        let ident = self.pretty.names.get_name(name).name;
+        self.pretty.names.get_ident(&ident).into()
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {

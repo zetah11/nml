@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
+use dashmap::DashMap;
 use lasso::{Key, ThreadedRodeo};
+
+use crate::source::SourceId;
 
 /// A fully qualified name, globally and uniquely identifying a particular
 /// entity.
@@ -21,14 +24,14 @@ pub struct Ident(usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ScopeName {
     Item(Name),
-    Anonymous(usize),
+    TopLevel(SourceId),
 }
 
 /// The actual component parts of a fully qualified name, consisting of an
 /// optional parent name and an identifier.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Qualified {
-    pub parent: Option<ScopeName>,
+    pub parent: ScopeName,
     pub name: Ident,
 }
 
@@ -36,13 +39,13 @@ pub struct Qualified {
 #[derive(Debug)]
 pub struct Names<'a> {
     idents: &'a ThreadedRodeo<Ident>,
-    names: HashMap<Name, Qualified>,
-    counter: usize,
+    names: DashMap<Name, Qualified>,
+    counter: AtomicUsize,
 }
 
 impl<'a> Names<'a> {
     pub fn new(idents: &'a ThreadedRodeo<Ident>) -> Self {
-        Self { idents, names: HashMap::new(), counter: 0 }
+        Self { idents, names: DashMap::new(), counter: AtomicUsize::new(0) }
     }
 
     pub fn intern(&self, name: impl AsRef<str>) -> Ident {
@@ -53,10 +56,9 @@ impl<'a> Names<'a> {
         Label(self.intern(name))
     }
 
-    pub fn name(&mut self, parent: Option<ScopeName>, name: Ident) -> Name {
+    pub fn name(&self, parent: ScopeName, name: Ident) -> Name {
         let qualified = Qualified { parent, name };
-        self.counter += 1;
-        let name = Name(self.counter);
+        let name = Name(self.counter.fetch_add(1, Ordering::SeqCst));
         self.names.insert(name, qualified);
         name
     }
@@ -65,8 +67,8 @@ impl<'a> Names<'a> {
         self.idents.resolve(ident)
     }
 
-    pub fn get_name(&self, name: &Name) -> &Qualified {
-        self.names.get(name).expect("names from separate name stores are never mixed")
+    pub fn get_name(&self, name: &Name) -> Qualified {
+        *self.names.get(name).expect("names from separate name stores are never mixed")
     }
 }
 

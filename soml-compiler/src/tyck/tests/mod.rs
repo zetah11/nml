@@ -10,7 +10,7 @@ use malachite::Integer;
 use typed_arena::Arena;
 
 use crate::errors::Errors;
-use crate::names::{Name, Names};
+use crate::names::{Name, Names, ScopeName};
 use crate::source::SourceId;
 
 use super::memory::Alloc;
@@ -23,7 +23,7 @@ struct Store<'a, 'ids> {
     pub exprs: &'a Arena<Expr<'a>>,
     pub patterns: &'a Arena<Pattern<'a>>,
     pub types: &'a Alloc<'a>,
-    pub names: RefCell<Names<'ids>>,
+    pub names: &'a Names<'ids>,
     pub source: SourceId,
 
     name_intern: RefCell<BTreeMap<String, Name>>,
@@ -42,18 +42,19 @@ impl<'a, 'ids> Store<'a, 'ids> {
         let alloc = Alloc::new(&types, &records);
         let ids = ThreadedRodeo::new();
         let source = SourceId::new(0);
+        let names = Names::new(&ids);
         let this = Store {
             exprs: &exprs,
             patterns: &patterns,
             types: &alloc,
             source,
 
-            names: RefCell::new(Names::new(&ids)),
+            names: &names,
             name_intern: RefCell::new(BTreeMap::new()),
         };
 
         let mut errors = Errors::new();
-        let mut pretty = Pretty::new(&ids).with_show_levels(true).with_show_error_id(true);
+        let mut pretty = Pretty::new(&names).with_show_levels(true).with_show_error_id(true);
 
         let checker = Checker::new(&alloc, &mut errors, &mut pretty);
         f(this, checker)
@@ -82,7 +83,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn field(&self, of: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
-        let label = self.names.borrow().label(label);
+        let label = self.names.label(label);
         self.expr(ExprNode::Field(of, label))
     }
 
@@ -91,21 +92,19 @@ impl<'a, 'ids> Store<'a, 'ids> {
         L: AsRef<str>,
         I: IntoIterator<Item = (L, &'a Expr<'a>)>,
     {
-        let fields = fields
-            .into_iter()
-            .map(|(label, field)| (self.names.borrow().label(label), field))
-            .collect();
+        let fields =
+            fields.into_iter().map(|(label, field)| (self.names.label(label), field)).collect();
 
         self.expr(ExprNode::Record(fields, rest))
     }
 
     pub fn restrict(&self, expr: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
-        let label = self.names.borrow().label(label);
+        let label = self.names.label(label);
         self.expr(ExprNode::Restrict(expr, label))
     }
 
     pub fn variant(&self, label: impl AsRef<str>) -> &'a Expr<'a> {
-        let label = self.names.borrow().label(label);
+        let label = self.names.label(label);
         self.expr(ExprNode::Variant(label))
     }
 
@@ -151,7 +150,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn deconstruct(&self, label: impl AsRef<str>, pattern: &'a Pattern<'a>) -> &'a Pattern<'a> {
-        let label = self.names.borrow().label(label);
+        let label = self.names.label(label);
         self.pattern(PatternNode::Deconstruct(label, pattern))
     }
 
@@ -202,9 +201,8 @@ impl<'a, 'ids> Store<'a, 'ids> {
         if let Some(name) = interned.get(&name) {
             *name
         } else {
-            let mut names = self.names.borrow_mut();
-            let id = names.intern(&name);
-            let id = names.name(None, id);
+            let id = self.names.intern(&name);
+            let id = self.names.name(ScopeName::TopLevel(self.source), id);
             interned.insert(name, id);
             id
         }
@@ -228,7 +226,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
     {
         let mut rest = rest.unwrap_or_else(|| self.types.row(Row::Empty));
         for (label, field) in labels.into_iter().rev() {
-            let label = self.names.borrow().label(label);
+            let label = self.names.label(label);
             rest = self.types.row(Row::Extend(label, field, rest));
         }
         rest

@@ -1,6 +1,3 @@
-use lasso::ThreadedRodeo;
-use typed_arena::Arena;
-
 pub use self::types::{Env, Row, Scheme, Type};
 
 mod infer;
@@ -12,20 +9,22 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+use typed_arena::Arena;
+
 use self::memory::Alloc;
 use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
 use crate::errors::Errors;
-use crate::names::Ident;
+use crate::names::Names;
 use crate::source::Span;
 use crate::trees::resolved::{Item, ItemNode, Program};
 
-pub fn infer(idents: &ThreadedRodeo<Ident>, program: &Program) -> Errors {
+pub fn infer(names: &Names, program: &Program) -> Errors {
     let types = Arena::new();
     let rows = Arena::new();
     let types = Alloc::new(&types, &rows);
     let mut errors = program.errors.clone();
-    let mut pretty = Pretty::new(idents).with_show_levels(false).with_show_error_id(false);
+    let mut pretty = Pretty::new(names).with_show_levels(false).with_show_error_id(false);
     let mut checker = Checker::new(&types, &mut errors, &mut pretty);
 
     for items in program.items {
