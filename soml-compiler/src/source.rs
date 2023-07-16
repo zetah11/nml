@@ -7,11 +7,7 @@ pub struct SourceId(usize);
 
 impl SourceId {
     pub fn span(&self, start: usize, end: usize) -> Span {
-        Span {
-            source: *self,
-            start,
-            end,
-        }
+        Span { source: *self, start, end }
     }
 }
 
@@ -38,11 +34,7 @@ impl Add for Span {
             self.source, rhs.source,
             "only spans from the same source can be combined"
         );
-        Self {
-            source: self.source,
-            start: self.start.min(rhs.start),
-            end: self.end.max(rhs.end),
-        }
+        Self { source: self.source, start: self.start.min(rhs.start), end: self.end.max(rhs.end) }
     }
 }
 

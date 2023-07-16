@@ -36,13 +36,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         errors: &'err mut Errors,
         pretty: &'p mut Pretty<'ids>,
     ) -> Self {
-        Self {
-            types,
-            env: Env::new(),
-            solver: Solver::new(),
-            errors,
-            pretty,
-        }
+        Self { types, env: Env::new(), solver: Solver::new(), errors, pretty }
     }
     pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
         self.solver.apply(self.types, ty)

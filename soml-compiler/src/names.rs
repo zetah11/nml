@@ -45,12 +45,7 @@ pub struct Names<'a> {
 
 impl<'a> Names<'a> {
     pub fn new(idents: &'a ThreadedRodeo<Ident>, source: SourceId) -> Self {
-        Self {
-            idents,
-            source,
-            names: HashMap::new(),
-            counter: 0,
-        }
+        Self { idents, source, names: HashMap::new(), counter: 0 }
     }
 
     pub fn intern(&self, name: impl AsRef<str>) -> Ident {
@@ -75,9 +70,7 @@ impl<'a> Names<'a> {
 
     pub fn get_name(&self, name: &Name) -> &Qualified {
         debug_assert_eq!(name.1, self.source);
-        self.names
-            .get(name)
-            .expect("names from separate name stores are never mixed")
+        self.names.get(name).expect("names from separate name stores are never mixed")
     }
 }
 

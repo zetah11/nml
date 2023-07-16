@@ -21,13 +21,7 @@ pub struct Pretty<'ids> {
 
 impl<'ids> Pretty<'ids> {
     pub fn new(idents: &'ids ThreadedRodeo<Ident>) -> Self {
-        Self {
-            vars: BTreeMap::new(),
-            show_levels: false,
-            show_error_id: false,
-            counter: 0,
-            idents,
-        }
+        Self { vars: BTreeMap::new(), show_levels: false, show_error_id: false, counter: 0, idents }
     }
 
     pub fn build(&mut self) -> Prettifier<'_, 'ids> {
@@ -35,17 +29,11 @@ impl<'ids> Pretty<'ids> {
     }
 
     pub fn with_show_levels(self, show_levels: bool) -> Self {
-        Self {
-            show_levels,
-            ..self
-        }
+        Self { show_levels, ..self }
     }
 
     pub fn with_show_error_id(self, show_error_id: bool) -> Self {
-        Self {
-            show_error_id,
-            ..self
-        }
+        Self { show_error_id, ..self }
     }
 
     fn name(&mut self, var: TypeVar) -> &str {
@@ -75,11 +63,7 @@ impl Prettifier<'_, '_> {
 
             let params: Vec<_> = subst.values().cloned().collect();
 
-            format!(
-                "for {}. {}",
-                params.join(" "),
-                self.ty_with_subst(scheme.ty, &subst)
-            )
+            format!("for {}. {}", params.join(" "), self.ty_with_subst(scheme.ty, &subst))
         }
     }
 
@@ -151,12 +135,8 @@ impl Prettifier<'_, '_> {
     fn variant_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
         let (fields, rest) = self.row(row, None, subst);
 
-        let rest = if fields.is_empty() {
-            rest
-        } else {
-            rest.map(|rest| format!(" | {rest}"))
-        }
-        .unwrap_or_default();
+        let rest = if fields.is_empty() { rest } else { rest.map(|rest| format!(" | {rest}")) }
+            .unwrap_or_default();
         let fields = fields.join(" | ");
 
         format!("{fields}{rest}")
@@ -216,9 +196,6 @@ impl Prettifier<'_, '_> {
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {
-        subst
-            .get(name)
-            .expect("attempted to pretty-print unbound generic")
-            .clone()
+        subst.get(name).expect("attempted to pretty-print unbound generic").clone()
     }
 }

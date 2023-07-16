@@ -29,13 +29,10 @@ impl<'a> Solver<'a> {
                 // Side condition to ensure termination when records with a
                 // common tail but distinct prefix are unified
                 if tail == Some(alpha) {
-                    let id = reporting
-                        .errors
-                        .type_error(reporting.at)
-                        .incompatible_labels(
-                            reporting.pretty.label(old),
-                            reporting.pretty.label(label),
-                        );
+                    let id = reporting.errors.type_error(reporting.at).incompatible_labels(
+                        reporting.pretty.label(old),
+                        reporting.pretty.label(label),
+                    );
                     let e = alloc.row(Row::Invalid(id));
                     let et = alloc.ty(Type::Invalid(id));
                     self.unify_row(reporting, alloc, rest, e);

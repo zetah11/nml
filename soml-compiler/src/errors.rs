@@ -74,14 +74,7 @@ pub struct Error {
 
 impl Error {
     pub fn new(ty: ErrorType, severity: Severity, at: Span, title: impl Into<String>) -> Self {
-        Self {
-            ty,
-            severity,
-            at,
-            title: title.into(),
-            labels: Vec::new(),
-            notes: Vec::new(),
-        }
+        Self { ty, severity, at, title: title.into(), labels: Vec::new(), notes: Vec::new() }
     }
 
     pub fn with_label(mut self, at: Span, message: impl Into<String>) -> Self {

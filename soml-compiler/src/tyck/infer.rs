@@ -42,11 +42,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver
-                    .unify(&mut pretty, self.types, self.errors, span, t1, bool);
+                self.solver.unify(&mut pretty, self.types, self.errors, span, t1, bool);
 
-                self.solver
-                    .unify(&mut pretty, self.types, self.errors, span, t2, t3);
+                self.solver.unify(&mut pretty, self.types, self.errors, span, t2, t3);
 
                 trace!("done if");
 
@@ -63,14 +61,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver.unify(
-                    &mut pretty,
-                    self.types,
-                    self.errors,
-                    span,
-                    inferred,
-                    record_ty,
-                );
+                self.solver.unify(&mut pretty, self.types, self.errors, span, inferred, record_ty);
 
                 trace!("done field");
 
@@ -121,14 +112,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver.unify(
-                    &mut pretty,
-                    self.types,
-                    self.errors,
-                    span,
-                    inferred,
-                    record_ty,
-                );
+                self.solver.unify(&mut pretty, self.types, self.errors, span, inferred, record_ty);
 
                 trace!("done restrict");
                 ty
@@ -174,14 +158,11 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     );
                 }
 
-                let keep = wildcards
-                    .into_iter()
-                    .flat_map(|ty| self.solver.vars_in_ty(ty))
-                    .collect();
+                let keep =
+                    wildcards.into_iter().flat_map(|ty| self.solver.vars_in_ty(ty)).collect();
 
                 let mut pretty = self.pretty.build();
-                self.solver
-                    .minimize(&mut pretty, self.types, &keep, case_ty);
+                self.solver.minimize(&mut pretty, self.types, &keep, case_ty);
 
                 self.solver.unify(
                     &mut pretty,
@@ -205,8 +186,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver
-                    .unify(&mut pretty, self.types, self.errors, span, fun_ty, expected);
+                self.solver.unify(&mut pretty, self.types, self.errors, span, fun_ty, expected);
 
                 trace!("done apply");
                 u

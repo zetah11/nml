@@ -43,10 +43,7 @@ pub struct Scheme<'a> {
 
 impl<'a> Scheme<'a> {
     pub fn mono(ty: &'a Type<'a>) -> Self {
-        Self {
-            params: Vec::new(),
-            ty,
-        }
+        Self { params: Vec::new(), ty }
     }
 }
 
@@ -57,9 +54,7 @@ pub struct Env<'a> {
 
 impl<'a> Env<'a> {
     pub fn new() -> Self {
-        Self {
-            context: BTreeMap::new(),
-        }
+        Self { context: BTreeMap::new() }
     }
 
     pub fn insert(&mut self, name: Name, scheme: Scheme<'a>) {
@@ -68,8 +63,6 @@ impl<'a> Env<'a> {
     }
 
     pub fn lookup(&self, name: &Name) -> &Scheme<'a> {
-        self.context
-            .get(name)
-            .expect("all names are defined before use")
+        self.context.get(name).expect("all names are defined before use")
     }
 }

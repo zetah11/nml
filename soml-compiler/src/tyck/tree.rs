@@ -42,10 +42,7 @@ pub enum ExprNode<'a> {
     Variant(Label),
 
     /// `case x | p -> y | q -> z end`
-    Case {
-        scrutinee: &'a Expr<'a>,
-        cases: Vec<(&'a Pattern<'a>, &'a Expr<'a>)>,
-    },
+    Case { scrutinee: &'a Expr<'a>, cases: Vec<(&'a Pattern<'a>, &'a Expr<'a>)> },
 
     /* Functions ------------------------------------------------------------ */
     /// `x y`

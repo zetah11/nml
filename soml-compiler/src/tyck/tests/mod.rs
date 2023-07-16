@@ -52,9 +52,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         };
 
         let mut errors = Errors::new();
-        let mut pretty = Pretty::new(&ids)
-            .with_show_levels(true)
-            .with_show_error_id(true);
+        let mut pretty = Pretty::new(&ids).with_show_levels(true).with_show_error_id(true);
 
         let checker = Checker::new(&alloc, &mut errors, &mut pretty);
         f(this, checker)

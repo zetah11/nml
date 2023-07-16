@@ -3,10 +3,7 @@ use crate::source::Span;
 
 impl Errors {
     pub fn type_error(&mut self, at: Span) -> TypeErrors {
-        TypeErrors {
-            errors: self,
-            primary: at,
-        }
+        TypeErrors { errors: self, primary: at }
     }
 }
 
@@ -25,9 +22,9 @@ impl TypeErrors<'_> {
     }
 
     pub fn incompatible_labels(&mut self, lhs: String, rhs: String) -> ErrorId {
-        let error = self.error("incompatible record types").with_note(format!(
-            "record cannot have both labels `{lhs}` and `{rhs}`"
-        ));
+        let error = self
+            .error("incompatible record types")
+            .with_note(format!("record cannot have both labels `{lhs}` and `{rhs}`"));
         self.errors.add(error)
     }
 
@@ -39,9 +36,7 @@ impl TypeErrors<'_> {
     pub fn recursive_type(&mut self, var: String, ty: String) -> ErrorId {
         let error = self
             .error("infinite type")
-            .with_note(format!(
-                "the type `{ty}` contains the type variable `{var}`"
-            ))
+            .with_note(format!("the type `{ty}` contains the type variable `{var}`"))
             .with_note("equating these two would produce an infinite type");
         self.errors.add(error)
     }

@@ -13,10 +13,7 @@ fn fields() {
         let expr = s.lambda("r", inner);
 
         let xt = checker.fresh();
-        let expected = s.extend(
-            [("x", xt), ("y", checker.fresh())],
-            Some(checker.fresh_row()),
-        );
+        let expected = s.extend([("x", xt), ("y", checker.fresh())], Some(checker.fresh_row()));
         let expected = s.arrow(expected, xt);
 
         let actual = checker.infer(expr);

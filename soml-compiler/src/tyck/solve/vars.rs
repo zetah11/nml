@@ -44,11 +44,7 @@ impl Solver<'_> {
                 }
             }
 
-            Type::Fun(t, u) => self
-                .vars_in_ty(t)
-                .union(&self.vars_in_ty(u))
-                .copied()
-                .collect(),
+            Type::Fun(t, u) => self.vars_in_ty(t).union(&self.vars_in_ty(u)).copied().collect(),
             Type::Record(row) | Type::Variant(row) => self.vars_in_row(row),
         }
     }
@@ -65,11 +61,9 @@ impl Solver<'_> {
                 }
             }
 
-            Row::Extend(_, ty, rest) => self
-                .vars_in_ty(ty)
-                .union(&self.vars_in_row(rest))
-                .copied()
-                .collect(),
+            Row::Extend(_, ty, rest) => {
+                self.vars_in_ty(ty).union(&self.vars_in_row(rest)).copied().collect()
+            }
         }
     }
 }
