@@ -66,7 +66,9 @@ impl<'a> Solver<'a> {
     /// Apply the current substitution to the given type.
     pub fn apply(&self, alloc: &'a Alloc<'a>, ty: &'a Type<'a>) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => ty,
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {
+                ty
+            }
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -147,7 +149,7 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer => ty,
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Named(_) => ty,
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -234,7 +236,9 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Param(_) | Type::Boolean | Type::Integer => ty,
+            Type::Invalid(_) | Type::Param(_) | Type::Boolean | Type::Integer | Type::Named(_) => {
+                ty
+            }
 
             Type::Var(v, level) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -321,7 +325,7 @@ impl<'a> Solver<'a> {
 
     fn minimize_ty(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => {}
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {}
 
             Type::Var(v, _) => {
                 if keep.contains(v) {
@@ -395,8 +399,11 @@ impl<'a> Solver<'a> {
             (Type::Integer, Type::Integer) => {}
             (Type::Integer, Type::Invalid(_)) | (Type::Invalid(_), Type::Integer) => {}
 
-            (Type::Param(_), Type::Param(_)) => {}
+            (Type::Param(t), Type::Param(u)) if t == u => {}
             (Type::Param(_), Type::Invalid(_)) | (Type::Invalid(_), Type::Param(_)) => {}
+
+            (Type::Named(n), Type::Named(m)) if n == m => {}
+            (Type::Named(_), Type::Invalid(_)) | (Type::Invalid(_), Type::Named(_)) => {}
 
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => {
                 self.unify_ty(reporting, alloc, t1, t2);
@@ -436,12 +443,14 @@ impl<'a> Solver<'a> {
                 Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
+                | Type::Named(_)
                 | Type::Fun(..)
                 | Type::Record(_)
                 | Type::Variant(_),
                 Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
+                | Type::Named(_)
                 | Type::Fun(..)
                 | Type::Record(_)
                 | Type::Variant(_),
@@ -592,7 +601,9 @@ impl<'a> Solver<'a> {
 
     fn occurs(&self, var: &TypeVar, l1: &Level, ty: &Type) -> bool {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => false,
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {
+                false
+            }
 
             Type::Var(war, l2) => {
                 if let Some(ty) = self.subst.get(war) {

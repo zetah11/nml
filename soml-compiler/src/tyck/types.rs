@@ -12,6 +12,8 @@ pub enum Type<'a> {
     Var(TypeVar, Level),
     Param(Generic),
 
+    Named(Name),
+
     Boolean,
     Integer,
     Fun(&'a Type<'a>, &'a Type<'a>),

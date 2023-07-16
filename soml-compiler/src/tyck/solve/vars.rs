@@ -32,7 +32,9 @@ impl Solver<'_> {
     /// particular type.
     pub fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => BTreeSet::new(),
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {
+                BTreeSet::new()
+            }
 
             Type::Var(var, _) => {
                 if let Some(ty) = self.subst.get(var) {
