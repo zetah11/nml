@@ -95,14 +95,17 @@ impl Prettifier<'_, '_> {
         self.pretty.idents.resolve(&label.0).into()
     }
 
-    pub fn var(&mut self, var: &TypeVar, level: &Level) -> String {
+    pub fn var(&mut self, var: &TypeVar, level: Option<&Level>) -> String {
         let show_levels = self.pretty.show_levels;
         let name = self.pretty.name(*var);
-        if show_levels {
-            format!("{name}/{}", level.as_usize())
-        } else {
-            String::from(name)
+
+        if let Some(level) = level {
+            if show_levels {
+                return format!("{name}/{}", level.as_usize());
+            }
         }
+
+        String::from(name)
     }
 
     fn ty_with_subst(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
@@ -112,22 +115,28 @@ impl Prettifier<'_, '_> {
     fn arrow(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
         match ty {
             Type::Fun(t, u) => {
-                format!("{} -> {}", self.simple(t, subst), self.arrow(u, subst))
+                format!("{} -> {}", self.pipes(t, subst), self.arrow(u, subst))
             }
 
-            t => self.simple(t, subst),
+            t => self.pipes(t, subst),
+        }
+    }
+
+    fn pipes(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
+        match ty {
+            Type::Variant(row) => self.variant_with_subst(row, subst),
+            ty => self.simple(ty, subst),
         }
     }
 
     fn simple(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
         match ty {
             Type::Invalid(e) => self.error(e),
-            Type::Var(var, level) => self.var(var, level),
+            Type::Var(var, level) => self.var(var, Some(level)),
             Type::Param(name) => self.param(name, subst),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
             Type::Record(row) => self.record_with_subst(row, subst),
-            Type::Variant(row) => self.variant_with_subst(row, subst),
             ty => format!("({})", self.arrow(ty, subst)),
         }
     }
@@ -184,7 +193,7 @@ impl Prettifier<'_, '_> {
                 }
 
                 Row::Var(var, level) => {
-                    rest = Some(self.var(var, level));
+                    rest = Some(self.var(var, Some(level)));
                     break;
                 }
 

@@ -153,7 +153,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut wildcards = BTreeSet::new();
 
-                for (pattern, then) in cases.iter().rev() {
+                for (pattern, then) in cases.iter() {
                     let pattern_ty = self.infer_pattern(&mut wildcards, pattern);
                     let then_ty = self.infer(then);
 
@@ -177,9 +177,15 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     );
                 }
 
-                self.solver.minimize(self.types, &wildcards, case_ty);
+                let keep = wildcards
+                    .into_iter()
+                    .flat_map(|var| self.solver.referenced_variables(&var))
+                    .collect();
 
                 let mut pretty = self.pretty.build();
+                self.solver
+                    .minimize(&mut pretty, self.types, &keep, case_ty);
+
                 self.solver.unify(
                     &mut pretty,
                     self.types,

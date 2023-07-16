@@ -305,20 +305,39 @@ impl<'a> Solver<'a> {
 impl<'a> Solver<'a> {
     /// Unify all of the unbound row variables with the empty row in the given
     /// type, fixing/minimizing it to its current labels.
-    pub fn minimize(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
+    pub fn minimize(
+        &mut self,
+        pretty: &mut Prettifier,
+        alloc: &'a Alloc<'a>,
+        keep: &BTreeSet<TypeVar>,
+        ty: &'a Type<'a>,
+    ) {
+        trace!(
+            "min {} -- keep [{}]",
+            pretty.ty(self.apply(alloc, ty)),
+            keep.iter()
+                .map(|v| pretty.var(v, None))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        self.minimize_ty(alloc, keep, ty);
+    }
+
+    fn minimize_ty(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
         match ty {
             Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => {}
 
             Type::Var(v, _) => {
                 if keep.contains(v) {
                 } else if let Some(ty) = self.subst.get(v) {
-                    self.minimize(alloc, keep, ty);
+                    self.minimize_ty(alloc, keep, ty);
                 }
             }
 
             Type::Fun(t, u) => {
-                self.minimize(alloc, keep, t);
-                self.minimize(alloc, keep, u);
+                self.minimize_ty(alloc, keep, t);
+                self.minimize_ty(alloc, keep, u);
             }
 
             Type::Record(row) | Type::Variant(row) => self.minimize_row(alloc, keep, row),
@@ -341,7 +360,7 @@ impl<'a> Solver<'a> {
             }
 
             Row::Extend(_, ty, rest) => {
-                self.minimize(alloc, keep, ty);
+                self.minimize_ty(alloc, keep, ty);
                 self.minimize_row(alloc, keep, rest);
             }
         }
@@ -524,7 +543,7 @@ impl<'a> Solver<'a> {
         // Occurs check
         if self.occurs(var, level, ty) {
             let ty = {
-                let var = reporting.pretty.var(var, level);
+                let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.ty(ty);
                 let e = reporting
                     .errors
@@ -557,7 +576,7 @@ impl<'a> Solver<'a> {
 
         if self.occurs_row(var, level, record) {
             let record = {
-                let var = reporting.pretty.var(var, level);
+                let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.record(record);
                 let e = reporting
                     .errors

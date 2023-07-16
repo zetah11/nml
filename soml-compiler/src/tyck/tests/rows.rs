@@ -47,7 +47,10 @@ fn overwrite() {
 fn sneakily_recursive() {
     // r => if True then { x = 2 | r } else { y = 2 | r }
     // --> [error, branches do not unify]
-    // from "Extensible Records with Scoped Labels" (Daan Leijen, 2005)
+
+    // The types have a common tail but a distinct prefix, which implies that
+    // they are incompatible. Test case taken from
+    // "Extensible Records with Scoped Labels" (Daan Leijen, 2005) at
     // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf
     Store::with(|s, mut checker| {
         let then = s.record([("x", s.num(2))], Some(s.var("r")));
@@ -125,6 +128,34 @@ fn wildcard_case() {
         let rt = checker.fresh_row();
         let ret = s.int();
         let arg = s.sum([("A", ret)], Some(rt));
+        let expected = s.arrow(arg, ret);
+
+        let actual = checker.infer(expr);
+
+        checker.assert_alpha_equal(expected, actual);
+    });
+}
+
+#[test]
+fn wildcard_in_exhaustive_case() {
+    // x => case x | A (M y) -> y | A _ -> 5 | B z -> z end
+    // --> A (M int | '1) | B int -> int
+
+    // The pattern nested in the outer `A` constructors is "open" due to the
+    // wildcard, while the outer patterns are exhaustive due to the lack of
+    // wildcards.
+    Store::with(|s, mut checker| {
+        let patn1 = s.deconstruct("A", s.deconstruct("M", s.bind("y")));
+        let case1 = (patn1, s.var("y"));
+        let case2 = (s.deconstruct("A", s.wildcard()), s.num(5));
+        let case3 = (s.deconstruct("B", s.bind("z")), s.var("z"));
+        let case = s.case(s.var("x"), [case1, case2, case3]);
+        let expr = s.lambda("x", case);
+
+        let rest = checker.fresh_row();
+        let ret = s.int();
+        let nested = s.sum([("M", ret)], Some(rest));
+        let arg = s.sum([("A", nested), ("B", ret)], None);
         let expected = s.arrow(arg, ret);
 
         let actual = checker.infer(expr);

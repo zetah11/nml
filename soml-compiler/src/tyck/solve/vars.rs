@@ -1,5 +1,9 @@
 use std::cell::Cell;
+use std::collections::BTreeSet;
 use std::rc::Rc;
+
+use super::{Solver, TypeVar};
+use crate::tyck::{Row, Type};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Level(Rc<Cell<usize>>);
@@ -20,5 +24,44 @@ impl Level {
 
     pub fn as_usize(&self) -> usize {
         self.0.get()
+    }
+}
+
+impl Solver<'_> {
+    /// Return a set of all (currently) unbound type variables referenced by a
+    /// particular type variable.
+    pub fn referenced_variables(&self, var: &TypeVar) -> BTreeSet<TypeVar> {
+        match self.subst.get(var) {
+            None => match self.row_subst.get(var) {
+                None => BTreeSet::from([*var]),
+                Some(row) => self.vars_in_row(row),
+            },
+            Some(ty) => self.vars_in_ty(ty),
+        }
+    }
+
+    fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
+        match ty {
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => BTreeSet::new(),
+            Type::Var(var, _) => self.referenced_variables(var),
+            Type::Fun(t, u) => self
+                .vars_in_ty(t)
+                .union(&self.vars_in_ty(u))
+                .copied()
+                .collect(),
+            Type::Record(row) | Type::Variant(row) => self.vars_in_row(row),
+        }
+    }
+
+    fn vars_in_row(&self, row: &Row) -> BTreeSet<TypeVar> {
+        match row {
+            Row::Invalid(_) | Row::Empty | Row::Param(_) => BTreeSet::new(),
+            Row::Var(var, _) => self.referenced_variables(var),
+            Row::Extend(_, ty, rest) => self
+                .vars_in_ty(ty)
+                .union(&self.vars_in_row(rest))
+                .copied()
+                .collect(),
+        }
     }
 }
