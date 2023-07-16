@@ -45,6 +45,10 @@ impl<'a> Scheme<'a> {
     pub fn mono(ty: &'a Type<'a>) -> Self {
         Self { params: Vec::new(), ty }
     }
+
+    pub fn is_mono(&self) -> bool {
+        self.params.is_empty()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -60,6 +64,11 @@ impl<'a> Env<'a> {
     pub fn insert(&mut self, name: Name, scheme: Scheme<'a>) {
         let prev = self.context.insert(name, scheme);
         debug_assert!(prev.is_none());
+    }
+
+    pub fn overwrite(&mut self, name: Name, scheme: Scheme<'a>) {
+        let prev = self.context.insert(name, scheme);
+        debug_assert!(prev.is_some());
     }
 
     pub fn lookup(&self, name: &Name) -> &Scheme<'a> {

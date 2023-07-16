@@ -1,10 +1,12 @@
+use lasso::ThreadedRodeo;
+use typed_arena::Arena;
+
 pub use self::types::{Env, Row, Scheme, Type};
 
 mod infer;
 mod memory;
 mod pretty;
 mod solve;
-mod tree;
 mod types;
 
 #[cfg(test)]
@@ -14,7 +16,24 @@ use self::memory::Alloc;
 use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
 use crate::errors::Errors;
+use crate::names::Ident;
 use crate::source::Span;
+use crate::trees::resolved::{Item, ItemNode, Program};
+
+pub fn infer(idents: &ThreadedRodeo<Ident>, program: &Program) -> Errors {
+    let types = Arena::new();
+    let rows = Arena::new();
+    let types = Alloc::new(&types, &rows);
+    let mut errors = program.errors.clone();
+    let mut pretty = Pretty::new(idents).with_show_levels(false).with_show_error_id(false);
+    let mut checker = Checker::new(&types, &mut errors, &mut pretty);
+
+    for items in program.items {
+        checker.check_items(items);
+    }
+
+    errors
+}
 
 struct Reporting<'a, 'b, 'c> {
     pretty: &'a mut Prettifier<'b, 'c>,
@@ -22,7 +41,7 @@ struct Reporting<'a, 'b, 'c> {
     at: Span,
 }
 
-pub struct Checker<'a, 'err, 'ids, 'p> {
+struct Checker<'a, 'err, 'ids, 'p> {
     types: &'a Alloc<'a>,
     env: Env<'a>,
     solver: Solver<'a>,
@@ -38,8 +57,51 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     ) -> Self {
         Self { types, env: Env::new(), solver: Solver::new(), errors, pretty }
     }
-    pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
-        self.solver.apply(self.types, ty)
+
+    /// Check a set of mutually recursive items.
+    pub fn check_items(&mut self, items: &[Item<'a>]) {
+        let mut inferred_items = Vec::with_capacity(items.len());
+
+        self.enter(|this| {
+            // Bind each item to a fresh var
+            let mut typed_items = Vec::with_capacity(items.len());
+            for item in items {
+                let ty = match &item.node {
+                    ItemNode::Let(name, _) => {
+                        let ty = this.fresh();
+                        this.env.insert(*name, Scheme::mono(ty));
+                        ty
+                    }
+                };
+
+                typed_items.push((item, ty));
+            }
+
+            // Infer the type of each item and unify with bound type
+            for (item, ty) in typed_items {
+                let inferred = match &item.node {
+                    ItemNode::Let(_, body) => this.infer(body),
+                };
+
+                let mut pretty = this.pretty.build();
+                this.solver.unify(&mut pretty, this.types, this.errors, item.span, ty, inferred);
+
+                inferred_items.push(item);
+            }
+        });
+
+        // Generalize!
+        let mut pretty = self.pretty.build();
+        for item in inferred_items {
+            match &item.node {
+                ItemNode::Let(name, _) => {
+                    let scheme = self.env.lookup(name);
+                    debug_assert!(scheme.is_mono());
+                    let scheme = self.solver.generalize(&mut pretty, self.types, scheme.ty);
+                    self.env.overwrite(*name, scheme);
+                }
+            }
+        }
     }
 
     fn fresh(&mut self) -> &'a Type<'a> {
@@ -72,6 +134,11 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
             panic!("Inequal types\n    {lhs}\nand {rhs}");
         }
+    }
+
+    #[cfg(test)]
+    pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
+        self.solver.apply(self.types, ty)
     }
 }
 

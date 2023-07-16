@@ -14,9 +14,9 @@ use crate::source::SourceId;
 
 use super::memory::Alloc;
 use super::pretty::Pretty;
-use super::tree::{Expr, ExprNode, Pattern, PatternNode};
 use super::types::Row;
 use super::{Checker, Type};
+use crate::trees::resolved::{Expr, ExprNode, Pattern, PatternNode};
 
 struct Store<'a, 'ids> {
     pub exprs: &'a Arena<Expr<'a>>,
@@ -47,7 +47,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
             types: &alloc,
             source,
 
-            names: RefCell::new(Names::new(&ids, source)),
+            names: RefCell::new(Names::new(&ids)),
             name_intern: RefCell::new(BTreeMap::new()),
         };
 

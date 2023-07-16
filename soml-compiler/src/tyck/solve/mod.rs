@@ -236,7 +236,10 @@ impl<'a> Solver<'a> {
                 } else if level.can_generalize(self.level) {
                     let name = Generic(*v);
                     subst.insert(name);
-                    alloc.ty(Type::Param(name))
+                    let ty = alloc.ty(Type::Param(name));
+                    let prev = self.subst.insert(*v, ty);
+                    debug_assert!(prev.is_none());
+                    ty
                 } else {
                     ty
                 }
@@ -275,7 +278,10 @@ impl<'a> Solver<'a> {
                 } else if level.can_generalize(self.level) {
                     let name = Generic(*v);
                     subst.insert(name);
-                    alloc.row(Row::Param(name))
+                    let row = alloc.row(Row::Param(name));
+                    let prev = self.row_subst.insert(*v, row);
+                    debug_assert!(prev.is_none());
+                    row
                 } else {
                     row
                 }

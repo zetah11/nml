@@ -1,7 +1,7 @@
 use log::trace;
 
-use super::tree::{Expr, ExprNode, Pattern, PatternNode};
 use super::{Checker, Row, Scheme, Type};
+use crate::trees::resolved::{Expr, ExprNode, Pattern, PatternNode};
 
 impl<'a> Checker<'a, '_, '_, '_> {
     pub fn infer(&mut self, expr: &Expr) -> &'a Type<'a> {

@@ -1,8 +1,25 @@
 use malachite::Integer;
 
-use crate::errors::ErrorId;
+use crate::errors::{ErrorId, Errors};
 use crate::names::{Label, Name};
 use crate::source::Span;
+
+#[derive(Debug)]
+pub struct Program<'a> {
+    pub items: &'a [&'a [Item<'a>]],
+    pub errors: Errors,
+}
+
+#[derive(Clone, Debug)]
+pub struct Item<'a> {
+    pub node: ItemNode<'a>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum ItemNode<'a> {
+    Let(Name, &'a Expr<'a>),
+}
 
 #[derive(Clone, Debug)]
 pub struct Expr<'a> {

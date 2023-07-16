@@ -2,12 +2,10 @@ use std::collections::HashMap;
 
 use lasso::{Key, ThreadedRodeo};
 
-use crate::source::SourceId;
-
 /// A fully qualified name, globally and uniquely identifying a particular
 /// entity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Name(usize, SourceId);
+pub struct Name(usize);
 
 /// A label represents a "detached" name identifying a particular component of a
 /// type.
@@ -34,18 +32,17 @@ pub struct Qualified {
     pub name: Ident,
 }
 
-/// A name store is responsible for interning names on a per-source basis.
+/// A name store is responsible for interning names.
 #[derive(Debug)]
 pub struct Names<'a> {
     idents: &'a ThreadedRodeo<Ident>,
     names: HashMap<Name, Qualified>,
-    source: SourceId,
     counter: usize,
 }
 
 impl<'a> Names<'a> {
-    pub fn new(idents: &'a ThreadedRodeo<Ident>, source: SourceId) -> Self {
-        Self { idents, source, names: HashMap::new(), counter: 0 }
+    pub fn new(idents: &'a ThreadedRodeo<Ident>) -> Self {
+        Self { idents, names: HashMap::new(), counter: 0 }
     }
 
     pub fn intern(&self, name: impl AsRef<str>) -> Ident {
@@ -59,7 +56,7 @@ impl<'a> Names<'a> {
     pub fn name(&mut self, parent: Option<ScopeName>, name: Ident) -> Name {
         let qualified = Qualified { parent, name };
         self.counter += 1;
-        let name = Name(self.counter, self.source);
+        let name = Name(self.counter);
         self.names.insert(name, qualified);
         name
     }
@@ -69,7 +66,6 @@ impl<'a> Names<'a> {
     }
 
     pub fn get_name(&self, name: &Name) -> &Qualified {
-        debug_assert_eq!(name.1, self.source);
         self.names.get(name).expect("names from separate name stores are never mixed")
     }
 }

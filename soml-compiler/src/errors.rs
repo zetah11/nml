@@ -13,7 +13,7 @@ impl ErrorId {
 }
 
 /// Stores reported errors.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Errors {
     errors: HashMap<ErrorId, Error>,
     counter: usize,
@@ -62,7 +62,7 @@ impl Errors {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Error {
     pub ty: ErrorType,
     pub severity: Severity,
