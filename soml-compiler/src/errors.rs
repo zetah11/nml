@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::source::Span;
 
 /// Identifies a particular reported message.
+#[must_use]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ErrorId(usize);
 

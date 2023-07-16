@@ -1,0 +1,36 @@
+; soml concrete syntax ------------------------------------------------------- ;
+
+; Note:
+; The parser accepts a (large) superset of all valid soml programs, largely
+; because this makes it smaller (and hence easier to keep correct). It also
+; helps in keeping the syntax clean and consistent.
+; This process involves unifying the syntax for items, expressions, types, and
+; patterns into the one (tiny) grammar below.
+; The term "thing" was settled on to express a single "node" in the parse tree.
+; A "thing" might be an item, a pattern, an expression, or a type. The actual
+; distinction is not made until later in the compiler.
+
+start  = things
+things = *thing
+thing  = let / if / case / lambda
+
+let    = ("let" / "fun") def *("and" def) ["in" thing]
+def    = apply "=" thing
+
+if     = "if" thing "do" thing ("else" thing / "end")
+
+case   = "case" thing *arm "end"
+arm    = "|" lambda
+
+lambda = apply ["=>" lambda]
+apply  = 1*field
+field  = base *("." name)
+base   = name / NUMBER / "_"
+base  =/ "(" thing ")"
+base  =/ "{" *(def ",") [def] ["|" thing] "}"
+
+name   = SMALL / BIG
+
+SMALL  = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
+BIG    = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
+NUMBER = DIGIT *(DIGIT / "'" / "_")

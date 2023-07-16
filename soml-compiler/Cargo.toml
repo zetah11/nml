@@ -6,9 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bumpalo = "3.13"
 dashmap = "5.5"
 lasso = { version = "0.7", features = ["multi-threaded"] }
 log = "0.4"
+logos = "0.13"
 malachite = "0.3"
 typed-arena = "2.0"
 

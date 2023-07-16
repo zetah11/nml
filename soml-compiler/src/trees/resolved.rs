@@ -58,7 +58,7 @@ pub enum ExprNode<'a> {
     /// `A`
     Variant(Label),
 
-    /// `case x | p -> y | q -> z end`
+    /// `case x | p => y | q => z end`
     Case { scrutinee: &'a Expr<'a>, cases: Vec<(&'a Pattern<'a>, &'a Expr<'a>)> },
 
     /* Functions ------------------------------------------------------------ */
