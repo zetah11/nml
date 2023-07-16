@@ -29,21 +29,19 @@ impl Level {
 
 impl Solver<'_> {
     /// Return a set of all (currently) unbound type variables referenced by a
-    /// particular type variable.
-    pub fn referenced_variables(&self, var: &TypeVar) -> BTreeSet<TypeVar> {
-        match self.subst.get(var) {
-            None => match self.row_subst.get(var) {
-                None => BTreeSet::from([*var]),
-                Some(row) => self.vars_in_row(row),
-            },
-            Some(ty) => self.vars_in_ty(ty),
-        }
-    }
-
-    fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
+    /// particular type.
+    pub fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
         match ty {
             Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => BTreeSet::new(),
-            Type::Var(var, _) => self.referenced_variables(var),
+
+            Type::Var(var, _) => {
+                if let Some(ty) = self.subst.get(var) {
+                    self.vars_in_ty(ty)
+                } else {
+                    BTreeSet::from([*var])
+                }
+            }
+
             Type::Fun(t, u) => self
                 .vars_in_ty(t)
                 .union(&self.vars_in_ty(u))
@@ -56,7 +54,15 @@ impl Solver<'_> {
     fn vars_in_row(&self, row: &Row) -> BTreeSet<TypeVar> {
         match row {
             Row::Invalid(_) | Row::Empty | Row::Param(_) => BTreeSet::new(),
-            Row::Var(var, _) => self.referenced_variables(var),
+
+            Row::Var(var, _) => {
+                if let Some(row) = self.row_subst.get(var) {
+                    self.vars_in_row(row)
+                } else {
+                    BTreeSet::from([*var])
+                }
+            }
+
             Row::Extend(_, ty, rest) => self
                 .vars_in_ty(ty)
                 .union(&self.vars_in_row(rest))

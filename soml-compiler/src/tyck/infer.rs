@@ -1,8 +1,5 @@
-use std::collections::BTreeSet;
-
 use log::trace;
 
-use super::solve::TypeVar;
 use super::tree::{Expr, ExprNode, Pattern, PatternNode};
 use super::{Checker, Row, Scheme, Type};
 
@@ -151,7 +148,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 let result_ty = self.fresh();
                 let case_ty = self.fresh();
 
-                let mut wildcards = BTreeSet::new();
+                let mut wildcards = Vec::new();
 
                 for (pattern, then) in cases.iter() {
                     let pattern_ty = self.infer_pattern(&mut wildcards, pattern);
@@ -179,7 +176,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let keep = wildcards
                     .into_iter()
-                    .flat_map(|var| self.solver.referenced_variables(&var))
+                    .flat_map(|ty| self.solver.vars_in_ty(ty))
                     .collect();
 
                 let mut pretty = self.pretty.build();
@@ -241,7 +238,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
 impl<'a> Checker<'a, '_, '_, '_> {
     fn infer_pattern(
         &mut self,
-        wildcards: &mut BTreeSet<TypeVar>,
+        wildcards: &mut Vec<&'a Type<'a>>,
         pattern: &Pattern,
     ) -> &'a Type<'a> {
         match &pattern.node {
@@ -264,9 +261,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
         }
     }
 
-    fn wildcard_type(&mut self, wildcards: &mut BTreeSet<TypeVar>) -> &'a Type<'a> {
-        let (ty, var) = self.solver.fresh_with_var(self.types);
-        wildcards.insert(var);
+    fn wildcard_type(&mut self, wildcards: &mut Vec<&'a Type<'a>>) -> &'a Type<'a> {
+        let ty = self.fresh();
+        wildcards.push(ty);
         ty
     }
 }

@@ -47,11 +47,6 @@ impl<'a> Solver<'a> {
         alloc.row(Row::Var(var, level))
     }
 
-    pub fn fresh_with_var(&mut self, alloc: &'a Alloc<'a>) -> (&'a Type<'a>, TypeVar) {
-        let (var, level) = self.new_var();
-        (alloc.ty(Type::Var(var, level)), var)
-    }
-
     pub fn enter(&mut self) {
         self.level += 1;
     }
