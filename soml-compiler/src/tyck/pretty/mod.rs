@@ -13,6 +13,8 @@ use super::{to_name, Scheme, Type};
 pub struct Pretty<'ids> {
     vars: BTreeMap<TypeVar, String>,
     show_levels: bool,
+    show_error_id: bool,
+
     counter: usize,
     idents: &'ids ThreadedRodeo<Ident>,
 }
@@ -22,6 +24,7 @@ impl<'ids> Pretty<'ids> {
         Self {
             vars: BTreeMap::new(),
             show_levels: false,
+            show_error_id: false,
             counter: 0,
             idents,
         }
@@ -34,6 +37,13 @@ impl<'ids> Pretty<'ids> {
     pub fn with_show_levels(self, show_levels: bool) -> Self {
         Self {
             show_levels,
+            ..self
+        }
+    }
+
+    pub fn with_show_error_id(self, show_error_id: bool) -> Self {
+        Self {
+            show_error_id,
             ..self
         }
     }
@@ -188,8 +198,12 @@ impl Prettifier<'_, '_> {
         (fields, rest)
     }
 
-    fn error(&mut self, _e: &ErrorId) -> String {
-        "<error>".to_string()
+    fn error(&mut self, e: &ErrorId) -> String {
+        if self.pretty.show_error_id {
+            format!("<error {}>", e.as_usize())
+        } else {
+            "<error>".into()
+        }
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {

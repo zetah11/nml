@@ -6,6 +6,12 @@ use crate::source::Span;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ErrorId(usize);
 
+impl ErrorId {
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
+
 /// Stores reported errors.
 #[derive(Debug, Default)]
 pub struct Errors {
@@ -45,6 +51,14 @@ impl Errors {
 
     pub fn num_warnings(&self) -> usize {
         self.num_warnings
+    }
+
+    /// Drain this error store of its errors.
+    pub fn drain(&mut self) -> impl Iterator<Item = (ErrorId, Error)> + '_ {
+        self.num_errors = 0;
+        self.num_warnings = 0;
+        self.num_infos = 0;
+        self.errors.drain()
     }
 }
 

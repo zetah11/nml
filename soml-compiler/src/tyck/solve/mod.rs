@@ -38,13 +38,18 @@ impl<'a> Solver<'a> {
     }
 
     pub fn fresh(&mut self, alloc: &'a Alloc<'a>) -> &'a Type<'a> {
-        self.counter += 1;
-        alloc.ty(Type::Var(TypeVar(self.counter), Level::new(self.level)))
+        let (var, level) = self.new_var();
+        alloc.ty(Type::Var(var, level))
     }
 
     pub fn fresh_record(&mut self, alloc: &'a Alloc<'a>) -> &'a Row<'a> {
-        self.counter += 1;
-        alloc.row(Row::Var(TypeVar(self.counter), Level::new(self.level)))
+        let (var, level) = self.new_var();
+        alloc.row(Row::Var(var, level))
+    }
+
+    pub fn fresh_with_var(&mut self, alloc: &'a Alloc<'a>) -> (&'a Type<'a>, TypeVar) {
+        let (var, level) = self.new_var();
+        (alloc.ty(Type::Var(var, level)), var)
     }
 
     pub fn enter(&mut self) {
@@ -291,6 +296,53 @@ impl<'a> Solver<'a> {
                 let ty = self.gen_ty(alloc, subst, ty);
                 let rest = self.gen_row(alloc, subst, rest);
                 alloc.row(Row::Extend(*label, ty, rest))
+            }
+        }
+    }
+}
+
+/// Minimization
+impl<'a> Solver<'a> {
+    /// Unify all of the unbound row variables with the empty row in the given
+    /// type, fixing/minimizing it to its current labels.
+    pub fn minimize(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
+        match ty {
+            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) => {}
+
+            Type::Var(v, _) => {
+                if keep.contains(v) {
+                } else if let Some(ty) = self.subst.get(v) {
+                    self.minimize(alloc, keep, ty);
+                }
+            }
+
+            Type::Fun(t, u) => {
+                self.minimize(alloc, keep, t);
+                self.minimize(alloc, keep, u);
+            }
+
+            Type::Record(row) | Type::Variant(row) => self.minimize_row(alloc, keep, row),
+        }
+    }
+
+    fn minimize_row(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, row: &'a Row<'a>) {
+        match row {
+            Row::Invalid(_) | Row::Empty | Row::Param(_) => {}
+
+            Row::Var(v, _) => {
+                if keep.contains(v) {
+                } else if let Some(row) = self.row_subst.get(v) {
+                    self.minimize_row(alloc, keep, row)
+                } else {
+                    let row = alloc.row(Row::Empty);
+                    let prev = self.row_subst.insert(*v, row);
+                    debug_assert!(prev.is_none());
+                }
+            }
+
+            Row::Extend(_, ty, rest) => {
+                self.minimize(alloc, keep, ty);
+                self.minimize_row(alloc, keep, rest);
             }
         }
     }

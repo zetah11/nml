@@ -14,12 +14,13 @@ use crate::source::SourceId;
 
 use super::memory::Alloc;
 use super::pretty::Pretty;
-use super::tree::{Expr, ExprNode};
+use super::tree::{Expr, ExprNode, Pattern, PatternNode};
 use super::types::Row;
 use super::{Checker, Type};
 
 struct Store<'a, 'ids> {
     pub exprs: &'a Arena<Expr<'a>>,
+    pub patterns: &'a Arena<Pattern<'a>>,
     pub types: &'a Alloc<'a>,
     pub names: RefCell<Names<'ids>>,
     pub source: SourceId,
@@ -34,6 +35,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
     {
         let _ = pretty_env_logger::try_init();
         let exprs = Arena::new();
+        let patterns = Arena::new();
         let types = Arena::new();
         let records = Arena::new();
         let alloc = Alloc::new(&types, &records);
@@ -41,6 +43,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         let source = SourceId::new(0);
         let this = Store {
             exprs: &exprs,
+            patterns: &patterns,
             types: &alloc,
             source,
 
@@ -49,30 +52,25 @@ impl<'a, 'ids> Store<'a, 'ids> {
         };
 
         let mut errors = Errors::new();
-        let mut pretty = Pretty::new(&ids).with_show_levels(true);
+        let mut pretty = Pretty::new(&ids)
+            .with_show_levels(true)
+            .with_show_error_id(true);
 
         let checker = Checker::new(&alloc, &mut errors, &mut pretty);
-
         f(this, checker)
     }
 
     pub fn bool(&self, value: bool) -> &'a Expr<'a> {
-        let node = ExprNode::Bool(value);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Bool(value))
     }
 
     pub fn num(&self, value: impl Into<Integer>) -> &'a Expr<'a> {
-        let node = ExprNode::Number(value.into());
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Number(value.into()))
     }
 
     pub fn var(&self, name: impl Into<String>) -> &'a Expr<'a> {
         let name = self.name(name);
-        let node = ExprNode::Var(name);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Var(name))
     }
 
     pub fn if_then(
@@ -81,16 +79,12 @@ impl<'a, 'ids> Store<'a, 'ids> {
         then: &'a Expr<'a>,
         elze: &'a Expr<'a>,
     ) -> &'a Expr<'a> {
-        let node = ExprNode::If(cond, then, elze);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::If(cond, then, elze))
     }
 
     pub fn field(&self, of: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.borrow().label(label);
-        let node = ExprNode::Field(of, label);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Field(of, label))
     }
 
     pub fn record<L, I>(&self, fields: I, rest: Option<&'a Expr<'a>>) -> &'a Expr<'a>
@@ -103,79 +97,58 @@ impl<'a, 'ids> Store<'a, 'ids> {
             .map(|(label, field)| (self.names.borrow().label(label), field))
             .collect();
 
-        let node = ExprNode::Record(fields, rest);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Record(fields, rest))
     }
 
     pub fn restrict(&self, expr: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.borrow().label(label);
-        let node = ExprNode::Restrict(expr, label);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Restrict(expr, label))
     }
 
     pub fn variant(&self, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.borrow().label(label);
-        let node = ExprNode::Variant(label);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Variant(label))
     }
 
-    pub fn case<L, N, I>(
-        &self,
-        scrutinee: &'a Expr<'a>,
-        cases: I,
-        catchall: Option<(&str, &'a Expr<'a>)>,
-    ) -> &'a Expr<'a>
+    pub fn case<I>(&self, scrutinee: &'a Expr<'a>, cases: I) -> &'a Expr<'a>
     where
-        L: AsRef<str>,
-        N: Into<String>,
-        I: IntoIterator<Item = (L, N, &'a Expr<'a>)>,
+        I: IntoIterator<Item = (&'a Pattern<'a>, &'a Expr<'a>)>,
     {
-        let cases = cases
-            .into_iter()
-            .map(|(label, name, field)| {
-                let label = self.names.borrow().label(label);
-                (label, self.name(name), field)
-            })
-            .collect();
-
-        let catchall = catchall.map(|(name, expr)| (self.name(name), expr));
-
-        let node = ExprNode::Case {
-            scrutinee,
-            cases,
-            catchall,
-        };
-
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        let cases = cases.into_iter().collect();
+        self.expr(ExprNode::Case { scrutinee, cases })
     }
 
     pub fn apply(&self, fun: &'a Expr<'a>, arg: &'a Expr<'a>) -> &'a Expr<'a> {
-        let node = ExprNode::Apply(fun, arg);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Apply(fun, arg))
     }
 
     pub fn lambda(&self, arg: impl Into<String>, body: &'a Expr<'a>) -> &'a Expr<'a> {
         let arg = self.name(arg);
-        let node = ExprNode::Lambda(arg, body);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Lambda(arg, body))
     }
 
-    pub fn bind(
+    pub fn let_in(
         &self,
         name: impl Into<String>,
         bound: &'a Expr<'a>,
         body: &'a Expr<'a>,
     ) -> &'a Expr<'a> {
         let name = self.name(name);
-        let node = ExprNode::Let(name, bound, body);
-        let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.expr(ExprNode::Let(name, bound, body))
+    }
+
+    pub fn wildcard(&self) -> &'a Pattern<'a> {
+        self.pattern(PatternNode::Wildcard)
+    }
+
+    pub fn bind(&self, name: impl Into<String>) -> &'a Pattern<'a> {
+        let name = self.name(name);
+        self.pattern(PatternNode::Bind(name))
+    }
+
+    pub fn deconstruct(&self, label: impl AsRef<str>, pattern: &'a Pattern<'a>) -> &'a Pattern<'a> {
+        let label = self.names.borrow().label(label);
+        self.pattern(PatternNode::Deconstruct(label, pattern))
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {
@@ -208,6 +181,16 @@ impl<'a, 'ids> Store<'a, 'ids> {
     {
         let row = self.row(cases, rest);
         self.types.ty(Type::Variant(row))
+    }
+
+    fn expr(&self, node: ExprNode<'a>) -> &'a Expr<'a> {
+        let span = self.source.span(0, 0);
+        self.exprs.alloc(Expr { node, span })
+    }
+
+    fn pattern(&self, node: PatternNode<'a>) -> &'a Pattern<'a> {
+        let span = self.source.span(0, 0);
+        self.patterns.alloc(Pattern { node, span })
     }
 
     fn row<L, I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>

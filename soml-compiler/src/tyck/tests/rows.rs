@@ -7,9 +7,9 @@ fn fields() {
     Store::with(|s, mut checker| {
         let body = s.var("a");
         let bound = s.field(s.var("r"), "y");
-        let body = s.bind("b", bound, body);
+        let body = s.let_in("b", bound, body);
         let bound = s.field(s.var("r"), "x");
-        let inner = s.bind("a", bound, body);
+        let inner = s.let_in("a", bound, body);
         let expr = s.lambda("r", inner);
 
         let xt = checker.fresh();
@@ -101,9 +101,9 @@ fn exhaustive_case() {
     // --> int
     Store::with(|s, mut checker| {
         let scrutinee = s.apply(s.variant("A"), s.num(5));
-        let first = s.var("x");
-        let second = s.num(5);
-        let expr = s.case(scrutinee, [("A", "x", first), ("B", "y", second)], None);
+        let case1 = (s.deconstruct("A", s.bind("x")), s.var("x"));
+        let case2 = (s.deconstruct("B", s.wildcard()), s.num(5));
+        let expr = s.case(scrutinee, [case1, case2]);
 
         let expected = s.int();
 
@@ -113,20 +113,22 @@ fn exhaustive_case() {
 }
 
 #[test]
-fn catchall_case() {
-    // x => case x | A y -> y | z -> z end
-    // --> A '1 | '1 -> '1
+fn wildcard_case() {
+    // x => case x | A y -> y | _ -> 5 end
+    // --> A int | '1 -> int
     Store::with(|s, mut checker| {
-        let catchall = Some(("z", s.var("z")));
-        let case = s.case(s.var("x"), [("A", "y", s.var("y"))], catchall);
+        let case1 = (s.deconstruct("A", s.bind("y")), s.var("y"));
+        let case2 = (s.wildcard(), s.num(5));
+        let case = s.case(s.var("x"), [case1, case2]);
         let expr = s.lambda("x", case);
 
         let rt = checker.fresh_row();
-        let ret = s.sum::<&str, [_; 0], _>([], Some(rt));
+        let ret = s.int();
         let arg = s.sum([("A", ret)], Some(rt));
         let expected = s.arrow(arg, ret);
 
         let actual = checker.infer(expr);
+
         checker.assert_alpha_equal(expected, actual);
     });
 }
