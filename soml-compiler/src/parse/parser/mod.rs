@@ -34,9 +34,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// Parse an entire source.
-    pub fn program(mut self) -> Vec<&'a Thing<'a>> {
+    pub fn program(mut self) -> (Vec<&'a Thing<'a>>, Vec<(ErrorId, Span)>) {
         self.advance();
-        self.top_level()
+        let result = self.top_level();
+        (result, self.parse_errors)
     }
 
     /// Get the span closest to the next token.
