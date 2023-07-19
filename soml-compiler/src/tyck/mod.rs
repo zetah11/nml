@@ -1,7 +1,6 @@
 pub use self::types::{Env, Row, Scheme, Type};
 
 mod infer;
-mod memory;
 mod pretty;
 mod solve;
 mod types;
@@ -9,9 +8,8 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-use typed_arena::Arena;
+use bumpalo::Bump;
 
-use self::memory::Alloc;
 use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
 use crate::errors::Errors;
@@ -20,9 +18,7 @@ use crate::source::Span;
 use crate::trees::resolved::{Item, ItemNode, Program};
 
 pub fn infer(names: &Names, program: &Program) -> Errors {
-    let types = Arena::new();
-    let rows = Arena::new();
-    let types = Alloc::new(&types, &rows);
+    let types = Bump::new();
     let mut errors = program.errors.clone();
     let mut pretty = Pretty::new(names).with_show_levels(false).with_show_error_id(false);
     let mut checker = Checker::new(&types, &mut errors, &mut pretty);
@@ -41,20 +37,17 @@ struct Reporting<'a, 'b, 'c> {
 }
 
 struct Checker<'a, 'err, 'ids, 'p> {
-    types: &'a Alloc<'a>,
+    types: &'a Bump,
     env: Env<'a>,
     solver: Solver<'a>,
     errors: &'err mut Errors,
     pretty: &'p mut Pretty<'ids>,
+    holes: Vec<(Span, &'a Type<'a>)>,
 }
 
 impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
-    pub fn new(
-        types: &'a Alloc<'a>,
-        errors: &'err mut Errors,
-        pretty: &'p mut Pretty<'ids>,
-    ) -> Self {
-        Self { types, env: Env::new(), solver: Solver::new(), errors, pretty }
+    pub fn new(types: &'a Bump, errors: &'err mut Errors, pretty: &'p mut Pretty<'ids>) -> Self {
+        Self { types, env: Env::new(), solver: Solver::new(), errors, pretty, holes: Vec::new() }
     }
 
     /// Check a set of mutually recursive items.
@@ -68,7 +61,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                 let ty = match &item.node {
                     ItemNode::Let(name, _) => {
                         let ty = this.fresh();
-                        this.env.insert(*name, Scheme::mono(ty));
+                        if let Ok(name) = name {
+                            this.env.insert(*name, Scheme::mono(ty));
+                        }
                         ty
                     }
                 };
@@ -94,6 +89,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         for item in inferred_items {
             match &item.node {
                 ItemNode::Let(name, _) => {
+                    let Ok(name) = name else { continue; };
                     let scheme = self.env.lookup(name);
                     debug_assert!(scheme.is_mono());
                     let scheme = self.solver.generalize(&mut pretty, self.types, scheme.ty);

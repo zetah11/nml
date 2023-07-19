@@ -14,6 +14,7 @@ pub enum Type<'a> {
 
     Named(Name),
 
+    Unit,
     Boolean,
     Integer,
     Fun(&'a Type<'a>, &'a Type<'a>),

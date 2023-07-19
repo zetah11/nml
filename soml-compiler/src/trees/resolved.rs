@@ -8,6 +8,7 @@ use crate::source::Span;
 pub struct Program<'a> {
     pub items: &'a [&'a [Item<'a>]],
     pub errors: Errors,
+    pub unattached: Vec<(ErrorId, Span)>,
 }
 
 #[derive(Clone, Debug)]
@@ -18,7 +19,7 @@ pub struct Item<'a> {
 
 #[derive(Clone, Debug)]
 pub enum ItemNode<'a> {
-    Let(Name, &'a Expr<'a>),
+    Let(Result<Name, ErrorId>, &'a Expr<'a>),
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +36,12 @@ pub enum ExprNode<'a> {
     /// Variable name
     Var(Name),
 
+    /// `_`
+    Hole,
+
+    /// `()`
+    Unit,
+
     /// `true` or `false`
     Bool(bool),
 
@@ -46,10 +53,10 @@ pub enum ExprNode<'a> {
 
     /* Records -------------------------------------------------------------- */
     /// `x.a`
-    Field(&'a Expr<'a>, Label),
+    Field(&'a Expr<'a>, Result<Label, ErrorId>),
 
     /// `{ a = x, b = y | r }`
-    Record(Vec<(Label, &'a Expr<'a>)>, Option<&'a Expr<'a>>),
+    Record(Vec<(Result<Label, ErrorId>, Span, &'a Expr<'a>)>, Option<&'a Expr<'a>>),
 
     /// `x \ a`
     Restrict(&'a Expr<'a>, Label),
@@ -66,10 +73,10 @@ pub enum ExprNode<'a> {
     Apply(&'a Expr<'a>, &'a Expr<'a>),
 
     /// `a => x`
-    Lambda(Name, &'a Expr<'a>),
+    Lambda(&'a Pattern<'a>, &'a Expr<'a>),
 
     /// `let a = x in y`
-    Let(Name, &'a Expr<'a>, &'a Expr<'a>),
+    Let(Result<Name, ErrorId>, &'a Expr<'a>, &'a Expr<'a>),
 }
 
 #[derive(Clone, Debug)]
@@ -85,6 +92,9 @@ pub enum PatternNode<'a> {
 
     /// `_`
     Wildcard,
+
+    /// `()`
+    Unit,
 
     /// `a`
     Bind(Name),

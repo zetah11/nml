@@ -5,24 +5,21 @@ mod sums;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+use bumpalo::Bump;
 use lasso::ThreadedRodeo;
 use malachite::Integer;
-use typed_arena::Arena;
 
 use crate::errors::Errors;
 use crate::names::{Name, Names, ScopeName};
 use crate::source::SourceId;
 
-use super::memory::Alloc;
 use super::pretty::Pretty;
 use super::types::Row;
 use super::{Checker, Type};
 use crate::trees::resolved::{Expr, ExprNode, Pattern, PatternNode};
 
 struct Store<'a, 'ids> {
-    pub exprs: &'a Arena<Expr<'a>>,
-    pub patterns: &'a Arena<Pattern<'a>>,
-    pub types: &'a Alloc<'a>,
+    pub alloc: &'a Bump,
     pub names: &'a Names<'ids>,
     pub source: SourceId,
 
@@ -35,18 +32,12 @@ impl<'a, 'ids> Store<'a, 'ids> {
         F: for<'b, 'c, 'e, 'i, 'p> FnOnce(Store<'b, 'c>, Checker<'b, 'e, 'i, 'p>) -> T,
     {
         let _ = pretty_env_logger::try_init();
-        let exprs = Arena::new();
-        let patterns = Arena::new();
-        let types = Arena::new();
-        let records = Arena::new();
-        let alloc = Alloc::new(&types, &records);
+        let alloc = Bump::new();
         let ids = ThreadedRodeo::new();
         let source = SourceId::new(0);
         let names = Names::new(&ids);
         let this = Store {
-            exprs: &exprs,
-            patterns: &patterns,
-            types: &alloc,
+            alloc: &alloc,
             source,
 
             names: &names,
@@ -84,7 +75,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     pub fn field(&self, of: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.label(label);
-        self.expr(ExprNode::Field(of, label))
+        self.expr(ExprNode::Field(of, Ok(label)))
     }
 
     pub fn record<L, I>(&self, fields: I, rest: Option<&'a Expr<'a>>) -> &'a Expr<'a>
@@ -92,8 +83,10 @@ impl<'a, 'ids> Store<'a, 'ids> {
         L: AsRef<str>,
         I: IntoIterator<Item = (L, &'a Expr<'a>)>,
     {
-        let fields =
-            fields.into_iter().map(|(label, field)| (self.names.label(label), field)).collect();
+        let fields = fields
+            .into_iter()
+            .map(|(label, field)| (Ok(self.names.label(label)), self.source.span(0, 0), field))
+            .collect();
 
         self.expr(ExprNode::Record(fields, rest))
     }
@@ -120,8 +113,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Apply(fun, arg))
     }
 
-    pub fn lambda(&self, arg: impl Into<String>, body: &'a Expr<'a>) -> &'a Expr<'a> {
-        let arg = self.name(arg);
+    pub fn lambda(&self, arg: &'a Pattern<'a>, body: &'a Expr<'a>) -> &'a Expr<'a> {
         self.expr(ExprNode::Lambda(arg, body))
     }
 
@@ -132,7 +124,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         body: &'a Expr<'a>,
     ) -> &'a Expr<'a> {
         let name = self.name(name);
-        self.expr(ExprNode::Let(name, bound, body))
+        self.expr(ExprNode::Let(Ok(name), bound, body))
     }
 
     pub fn wildcard(&self) -> &'a Pattern<'a> {
@@ -159,15 +151,15 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {
-        self.types.ty(Type::Fun(t, u))
+        self.alloc.alloc(Type::Fun(t, u))
     }
 
     pub fn boolean(&self) -> &'a Type<'a> {
-        self.types.ty(Type::Boolean)
+        self.alloc.alloc(Type::Boolean)
     }
 
     pub fn int(&self) -> &'a Type<'a> {
-        self.types.ty(Type::Integer)
+        self.alloc.alloc(Type::Integer)
     }
 
     pub fn extend<L, I, Ii>(&self, fields: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
@@ -177,7 +169,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
     {
         let row = self.row(fields, rest);
-        self.types.ty(Type::Record(row))
+        self.alloc.alloc(Type::Record(row))
     }
 
     pub fn sum<L, I, Ii>(&self, cases: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
@@ -187,12 +179,12 @@ impl<'a, 'ids> Store<'a, 'ids> {
         Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
     {
         let row = self.row(cases, rest);
-        self.types.ty(Type::Variant(row))
+        self.alloc.alloc(Type::Variant(row))
     }
 
     pub fn nominal(&self, name: impl Into<String>) -> &'a Type<'a> {
         let name = self.name(name);
-        self.types.ty(Type::Named(name))
+        self.alloc.alloc(Type::Named(name))
     }
 
     pub fn name(&self, name: impl Into<String>) -> Name {
@@ -210,12 +202,12 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     fn expr(&self, node: ExprNode<'a>) -> &'a Expr<'a> {
         let span = self.source.span(0, 0);
-        self.exprs.alloc(Expr { node, span })
+        self.alloc.alloc(Expr { node, span })
     }
 
     fn pattern(&self, node: PatternNode<'a>) -> &'a Pattern<'a> {
         let span = self.source.span(0, 0);
-        self.patterns.alloc(Pattern { node, span })
+        self.alloc.alloc(Pattern { node, span })
     }
 
     fn row<L, I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>
@@ -224,10 +216,10 @@ impl<'a, 'ids> Store<'a, 'ids> {
         I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
         Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
     {
-        let mut rest = rest.unwrap_or_else(|| self.types.row(Row::Empty));
+        let mut rest = rest.unwrap_or_else(|| self.alloc.alloc(Row::Empty));
         for (label, field) in labels.into_iter().rev() {
             let label = self.names.label(label);
-            rest = self.types.row(Row::Extend(label, field, rest));
+            rest = self.alloc.alloc(Row::Extend(label, field, rest));
         }
         rest
     }

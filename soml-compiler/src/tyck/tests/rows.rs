@@ -10,7 +10,7 @@ fn fields() {
         let body = s.let_in("b", bound, body);
         let bound = s.field(s.var("r"), "x");
         let inner = s.let_in("a", bound, body);
-        let expr = s.lambda("r", inner);
+        let expr = s.lambda(s.bind("r"), inner);
 
         let xt = checker.fresh();
         let expected = s.extend([("x", xt), ("y", checker.fresh())], Some(checker.fresh_row()));
@@ -28,7 +28,7 @@ fn overwrite() {
     Store::with(|s, mut checker| {
         let old = s.restrict(s.var("r"), "x");
         let body = s.record([("x", s.num(5))], Some(old));
-        let expr = s.lambda("r", body);
+        let expr = s.lambda(s.bind("r"), body);
 
         let rest = checker.fresh_row();
         let t = s.extend([("x", checker.fresh())], Some(rest));
@@ -53,7 +53,7 @@ fn sneakily_recursive() {
         let then = s.record([("x", s.num(2))], Some(s.var("r")));
         let elze = s.record([("y", s.num(2))], Some(s.var("r")));
         let cond = s.if_then(s.bool(true), then, elze);
-        let expr = s.lambda("r", cond);
+        let expr = s.lambda(s.bind("r"), cond);
 
         let _actual = checker.infer(expr);
         assert_eq!(checker.errors.num_errors(), 1);
@@ -66,7 +66,7 @@ fn record_literal() {
     // --> { x: int, y: (bool -> '1) -> '1 }
     Store::with(|s, mut checker| {
         let lit = s.num(1);
-        let lambda = s.lambda("f", s.apply(s.var("f"), s.bool(true)));
+        let lambda = s.lambda(s.bind("f"), s.apply(s.var("f"), s.bool(true)));
         let expr = s.record([("x", lit), ("y", lambda)], None);
 
         let a = checker.fresh();
@@ -84,7 +84,7 @@ fn single_variant() {
     // x => Test x
     // --> '1 -> Test '1 | '2
     Store::with(|s, mut checker| {
-        let expr = s.lambda("x", s.apply(s.variant("Test"), s.var("x")));
+        let expr = s.lambda(s.bind("x"), s.apply(s.variant("Test"), s.var("x")));
 
         let xt = checker.fresh();
         let expected = s.sum([("Test", xt)], Some(checker.fresh_row()));
@@ -120,7 +120,7 @@ fn wildcard_case() {
         let case1 = (s.deconstruct("A", s.bind("y")), s.var("y"));
         let case2 = (s.wildcard(), s.num(5));
         let case = s.case(s.var("x"), [case1, case2]);
-        let expr = s.lambda("x", case);
+        let expr = s.lambda(s.bind("x"), case);
 
         let rt = checker.fresh_row();
         let ret = s.int();
@@ -147,7 +147,7 @@ fn wildcard_in_exhaustive_case() {
         let case2 = (s.deconstruct("A", s.wildcard()), s.num(5));
         let case3 = (s.deconstruct("B", s.bind("z")), s.var("z"));
         let case = s.case(s.var("x"), [case1, case2, case3]);
-        let expr = s.lambda("x", case);
+        let expr = s.lambda(s.bind("x"), case);
 
         let rest = checker.fresh_row();
         let ret = s.int();

@@ -8,9 +8,9 @@ mod vars;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use bumpalo::Bump;
 use log::trace;
 
-use super::memory::Alloc;
 use super::pretty::Prettifier;
 use super::types::{Generic, Row};
 use super::{Reporting, Scheme, Type};
@@ -31,14 +31,14 @@ impl<'a> Solver<'a> {
         Self { subst: BTreeMap::new(), row_subst: BTreeMap::new(), counter: 0, level: 0 }
     }
 
-    pub fn fresh(&mut self, alloc: &'a Alloc<'a>) -> &'a Type<'a> {
+    pub fn fresh(&mut self, alloc: &'a Bump) -> &'a Type<'a> {
         let (var, level) = self.new_var();
-        alloc.ty(Type::Var(var, level))
+        alloc.alloc(Type::Var(var, level))
     }
 
-    pub fn fresh_record(&mut self, alloc: &'a Alloc<'a>) -> &'a Row<'a> {
+    pub fn fresh_record(&mut self, alloc: &'a Bump) -> &'a Row<'a> {
         let (var, level) = self.new_var();
-        alloc.row(Row::Var(var, level))
+        alloc.alloc(Row::Var(var, level))
     }
 
     pub fn enter(&mut self) {
@@ -58,11 +58,14 @@ impl<'a> Solver<'a> {
 /// Apply
 impl<'a> Solver<'a> {
     /// Apply the current substitution to the given type.
-    pub fn apply(&self, alloc: &'a Alloc<'a>, ty: &'a Type<'a>) -> &'a Type<'a> {
+    pub fn apply(&self, alloc: &'a Bump, ty: &'a Type<'a>) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {
-                ty
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => ty,
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -75,22 +78,22 @@ impl<'a> Solver<'a> {
             Type::Fun(t, u) => {
                 let t = self.apply(alloc, t);
                 let u = self.apply(alloc, u);
-                alloc.ty(Type::Fun(t, u))
+                alloc.alloc(Type::Fun(t, u))
             }
 
             Type::Record(row) => {
                 let row = self.apply_row(alloc, row);
-                alloc.ty(Type::Record(row))
+                alloc.alloc(Type::Record(row))
             }
 
             Type::Variant(row) => {
                 let row = self.apply_row(alloc, row);
-                alloc.ty(Type::Variant(row))
+                alloc.alloc(Type::Variant(row))
             }
         }
     }
 
-    fn apply_row(&self, alloc: &'a Alloc<'a>, row: &'a Row<'a>) -> &'a Row<'a> {
+    fn apply_row(&self, alloc: &'a Bump, row: &'a Row<'a>) -> &'a Row<'a> {
         match row {
             Row::Invalid(_) | Row::Empty | Row::Param(_) => row,
 
@@ -105,7 +108,7 @@ impl<'a> Solver<'a> {
             Row::Extend(label, ty, rest) => {
                 let ty = self.apply(alloc, ty);
                 let rest = self.apply_row(alloc, rest);
-                alloc.row(Row::Extend(*label, ty, rest))
+                alloc.alloc(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -116,7 +119,7 @@ impl<'a> Solver<'a> {
     pub fn instantiate(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         scheme: &Scheme<'a>,
     ) -> &'a Type<'a> {
         trace!(
@@ -134,12 +137,12 @@ impl<'a> Solver<'a> {
 
     fn inst_ty(
         &self,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         subst: &BTreeMap<&Generic, (TypeVar, Level)>,
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Named(_) => ty,
+            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Named(_) => ty,
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -151,30 +154,30 @@ impl<'a> Solver<'a> {
 
             Type::Param(n) => subst
                 .get(n)
-                .map(|(var, level)| alloc.ty(Type::Var(*var, level.clone())))
+                .map(|(var, level)| &*alloc.alloc(Type::Var(*var, level.clone())))
                 .unwrap_or(ty),
 
             Type::Fun(t, u) => {
                 let t = self.inst_ty(alloc, subst, t);
                 let u = self.inst_ty(alloc, subst, u);
-                alloc.ty(Type::Fun(t, u))
+                alloc.alloc(Type::Fun(t, u))
             }
 
             Type::Record(row) => {
                 let row = self.inst_row(alloc, subst, row);
-                alloc.ty(Type::Record(row))
+                alloc.alloc(Type::Record(row))
             }
 
             Type::Variant(row) => {
                 let row = self.inst_row(alloc, subst, row);
-                alloc.ty(Type::Variant(row))
+                alloc.alloc(Type::Variant(row))
             }
         }
     }
 
     fn inst_row(
         &self,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         subst: &BTreeMap<&Generic, (TypeVar, Level)>,
         row: &'a Row<'a>,
     ) -> &'a Row<'a> {
@@ -191,13 +194,13 @@ impl<'a> Solver<'a> {
 
             Row::Param(n) => subst
                 .get(n)
-                .map(|(var, level)| alloc.row(Row::Var(*var, level.clone())))
+                .map(|(var, level)| &*alloc.alloc(Row::Var(*var, level.clone())))
                 .unwrap_or(row),
 
             Row::Extend(label, ty, rest) => {
                 let ty = self.inst_ty(alloc, subst, ty);
                 let rest = self.inst_row(alloc, subst, rest);
-                alloc.row(Row::Extend(*label, ty, rest))
+                alloc.alloc(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -208,7 +211,7 @@ impl<'a> Solver<'a> {
     pub fn generalize(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         ty: &'a Type<'a>,
     ) -> Scheme<'a> {
         trace!("gen {}", pretty.ty(self.apply(alloc, ty)));
@@ -221,14 +224,17 @@ impl<'a> Solver<'a> {
 
     fn gen_ty(
         &mut self,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         subst: &mut BTreeSet<Generic>,
         ty: &'a Type<'a>,
     ) -> &'a Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Param(_) | Type::Boolean | Type::Integer | Type::Named(_) => {
-                ty
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Param(_)
+            | Type::Boolean
+            | Type::Integer
+            | Type::Named(_) => ty,
 
             Type::Var(v, level) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -236,7 +242,7 @@ impl<'a> Solver<'a> {
                 } else if level.can_generalize(self.level) {
                     let name = Generic(*v);
                     subst.insert(name);
-                    let ty = alloc.ty(Type::Param(name));
+                    let ty = alloc.alloc(Type::Param(name));
                     let prev = self.subst.insert(*v, ty);
                     debug_assert!(prev.is_none());
                     ty
@@ -248,24 +254,24 @@ impl<'a> Solver<'a> {
             Type::Fun(t, u) => {
                 let t = self.gen_ty(alloc, subst, t);
                 let u = self.gen_ty(alloc, subst, u);
-                alloc.ty(Type::Fun(t, u))
+                alloc.alloc(Type::Fun(t, u))
             }
 
             Type::Record(row) => {
                 let row = self.gen_row(alloc, subst, row);
-                alloc.ty(Type::Record(row))
+                alloc.alloc(Type::Record(row))
             }
 
             Type::Variant(row) => {
                 let row = self.gen_row(alloc, subst, row);
-                alloc.ty(Type::Variant(row))
+                alloc.alloc(Type::Variant(row))
             }
         }
     }
 
     fn gen_row(
         &mut self,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         subst: &mut BTreeSet<Generic>,
         row: &'a Row<'a>,
     ) -> &'a Row<'a> {
@@ -278,7 +284,7 @@ impl<'a> Solver<'a> {
                 } else if level.can_generalize(self.level) {
                     let name = Generic(*v);
                     subst.insert(name);
-                    let row = alloc.row(Row::Param(name));
+                    let row = alloc.alloc(Row::Param(name));
                     let prev = self.row_subst.insert(*v, row);
                     debug_assert!(prev.is_none());
                     row
@@ -290,7 +296,7 @@ impl<'a> Solver<'a> {
             Row::Extend(label, ty, rest) => {
                 let ty = self.gen_ty(alloc, subst, ty);
                 let rest = self.gen_row(alloc, subst, rest);
-                alloc.row(Row::Extend(*label, ty, rest))
+                alloc.alloc(Row::Extend(*label, ty, rest))
             }
         }
     }
@@ -303,7 +309,7 @@ impl<'a> Solver<'a> {
     pub fn minimize(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         keep: &BTreeSet<TypeVar>,
         ty: &'a Type<'a>,
     ) {
@@ -316,9 +322,14 @@ impl<'a> Solver<'a> {
         self.minimize_ty(alloc, keep, ty);
     }
 
-    fn minimize_ty(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
+    fn minimize_ty(&mut self, alloc: &'a Bump, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {}
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => {}
 
             Type::Var(v, _) => {
                 if keep.contains(v) {
@@ -336,7 +347,7 @@ impl<'a> Solver<'a> {
         }
     }
 
-    fn minimize_row(&mut self, alloc: &'a Alloc<'a>, keep: &BTreeSet<TypeVar>, row: &'a Row<'a>) {
+    fn minimize_row(&mut self, alloc: &'a Bump, keep: &BTreeSet<TypeVar>, row: &'a Row<'a>) {
         match row {
             Row::Invalid(_) | Row::Empty | Row::Param(_) => {}
 
@@ -345,7 +356,7 @@ impl<'a> Solver<'a> {
                 } else if let Some(row) = self.row_subst.get(v) {
                     self.minimize_row(alloc, keep, row)
                 } else {
-                    let row = alloc.row(Row::Empty);
+                    let row = alloc.alloc(Row::Empty);
                     let prev = self.row_subst.insert(*v, row);
                     debug_assert!(prev.is_none());
                 }
@@ -364,7 +375,7 @@ impl<'a> Solver<'a> {
     pub fn unify(
         &mut self,
         pretty: &mut Prettifier,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         errors: &mut Errors,
         at: Span,
         lhs: &'a Type<'a>,
@@ -381,11 +392,14 @@ impl<'a> Solver<'a> {
     fn unify_ty(
         &mut self,
         reporting: &mut Reporting,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         lhs: &'a Type<'a>,
         rhs: &'a Type<'a>,
     ) {
         match (lhs, rhs) {
+            (Type::Unit, Type::Unit) => {}
+            (Type::Unit, Type::Invalid(_)) | (Type::Invalid(_), Type::Unit) => {}
+
             (Type::Boolean, Type::Boolean) => {}
             (Type::Boolean, Type::Invalid(_)) | (Type::Invalid(_), Type::Boolean) => {}
 
@@ -416,7 +430,7 @@ impl<'a> Solver<'a> {
             | (Type::Invalid(e), Type::Record(row))
             | (Type::Variant(row), Type::Invalid(e))
             | (Type::Invalid(e), Type::Variant(row)) => {
-                let e = alloc.row(Row::Invalid(*e));
+                let e = alloc.alloc(Row::Invalid(*e));
                 self.unify_row(reporting, alloc, row, e)
             }
 
@@ -433,14 +447,16 @@ impl<'a> Solver<'a> {
             // Use the exhaustiveness check to ensure termination when unifying
             // with error types
             (
-                Type::Boolean
+                Type::Unit
+                | Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(_)
                 | Type::Fun(..)
                 | Type::Record(_)
                 | Type::Variant(_),
-                Type::Boolean
+                Type::Unit
+                | Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(_)
@@ -452,7 +468,7 @@ impl<'a> Solver<'a> {
                     let lhs = reporting.pretty.ty(lhs);
                     let rhs = reporting.pretty.ty(rhs);
                     let e = reporting.errors.type_error(reporting.at).inequal_types(lhs, rhs);
-                    alloc.ty(Type::Invalid(e))
+                    alloc.alloc(Type::Invalid(e))
                 };
 
                 self.unify_ty(reporting, alloc, lhs, e);
@@ -464,7 +480,7 @@ impl<'a> Solver<'a> {
     fn unify_row(
         &mut self,
         reporting: &mut Reporting,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         lhs: &'a Row<'a>,
         rhs: &'a Row<'a>,
     ) {
@@ -481,7 +497,7 @@ impl<'a> Solver<'a> {
 
             (Row::Extend(_, ty, rest), e @ Row::Invalid(id))
             | (e @ Row::Invalid(id), Row::Extend(_, ty, rest)) => {
-                let et = alloc.ty(Type::Invalid(*id));
+                let et = alloc.alloc(Type::Invalid(*id));
                 self.unify_ty(reporting, alloc, ty, et);
                 self.unify_row(reporting, alloc, rest, e);
             }
@@ -507,7 +523,7 @@ impl<'a> Solver<'a> {
                     let lhs = reporting.pretty.record(lhs);
                     let rhs = reporting.pretty.record(rhs);
                     let e = reporting.errors.type_error(reporting.at).inequal_types(lhs, rhs);
-                    alloc.row(Row::Invalid(e))
+                    alloc.alloc(Row::Invalid(e))
                 };
 
                 self.unify_row(reporting, alloc, lhs, e);
@@ -519,7 +535,7 @@ impl<'a> Solver<'a> {
     fn set(
         &mut self,
         reporting: &mut Reporting,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         var: &TypeVar,
         level: &Level,
         ty: &'a Type<'a>,
@@ -537,7 +553,7 @@ impl<'a> Solver<'a> {
                 let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.ty(ty);
                 let e = reporting.errors.type_error(reporting.at).recursive_type(var, ty);
-                alloc.ty(Type::Invalid(e))
+                alloc.alloc(Type::Invalid(e))
             };
 
             return self.set(reporting, alloc, var, level, ty);
@@ -550,7 +566,7 @@ impl<'a> Solver<'a> {
     fn set_record(
         &mut self,
         reporting: &mut Reporting,
-        alloc: &'a Alloc<'a>,
+        alloc: &'a Bump,
         var: &TypeVar,
         level: &Level,
         record: &'a Row<'a>,
@@ -567,7 +583,7 @@ impl<'a> Solver<'a> {
                 let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.record(record);
                 let e = reporting.errors.type_error(reporting.at).recursive_type(var, ty);
-                alloc.row(Row::Invalid(e))
+                alloc.alloc(Row::Invalid(e))
             };
 
             return self.set_record(reporting, alloc, var, level, record);
@@ -579,9 +595,12 @@ impl<'a> Solver<'a> {
 
     fn occurs(&self, var: &TypeVar, l1: &Level, ty: &Type) -> bool {
         match ty {
-            Type::Invalid(_) | Type::Boolean | Type::Integer | Type::Param(_) | Type::Named(_) => {
-                false
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => false,
 
             Type::Var(war, l2) => {
                 if let Some(ty) = self.subst.get(war) {
