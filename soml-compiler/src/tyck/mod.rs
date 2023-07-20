@@ -59,6 +59,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             let mut typed_items = Vec::with_capacity(items.len());
             for item in items {
                 let ty = match &item.node {
+                    ItemNode::Invalid(e) => self.types.alloc(Type::Invalid(*e)),
                     ItemNode::Let(name, _) => {
                         let ty = this.fresh();
                         if let Ok(name) = name {
@@ -74,6 +75,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             // Infer the type of each item and unify with bound type
             for (item, ty) in typed_items {
                 let inferred = match &item.node {
+                    ItemNode::Invalid(_) => ty,
                     ItemNode::Let(_, body) => this.infer(body),
                 };
 
@@ -88,6 +90,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         let mut pretty = self.pretty.build();
         for item in inferred_items {
             match &item.node {
+                ItemNode::Invalid(_) => {}
+
                 ItemNode::Let(name, _) => {
                     let Ok(name) = name else { continue; };
                     let scheme = self.env.lookup(name);

@@ -37,5 +37,5 @@ pub fn parse<'a>(
         abstractifier.program(concrete)
     };
 
-    parsed::Program { items: abstracted, errors, unattached }
+    parsed::Program { items: abstracted, errors, unattached, source: id }
 }

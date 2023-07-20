@@ -11,14 +11,19 @@ pub struct Program<'a> {
     pub unattached: Vec<(ErrorId, Span)>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ItemId(pub(crate) usize);
+
 #[derive(Clone, Debug)]
 pub struct Item<'a> {
+    pub id: ItemId,
     pub node: ItemNode<'a>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug)]
 pub enum ItemNode<'a> {
+    Invalid(ErrorId),
     Let(Result<Name, ErrorId>, &'a Expr<'a>),
 }
 
@@ -53,10 +58,10 @@ pub enum ExprNode<'a> {
 
     /* Records -------------------------------------------------------------- */
     /// `x.a`
-    Field(&'a Expr<'a>, Result<Label, ErrorId>),
+    Field(&'a Expr<'a>, Result<Label, ErrorId>, Span),
 
     /// `{ a = x, b = y | r }`
-    Record(Vec<(Result<Label, ErrorId>, Span, &'a Expr<'a>)>, Option<&'a Expr<'a>>),
+    Record(&'a [(Result<Label, ErrorId>, Span, &'a Expr<'a>)], Option<&'a Expr<'a>>),
 
     /// `x \ a`
     Restrict(&'a Expr<'a>, Label),
@@ -66,7 +71,7 @@ pub enum ExprNode<'a> {
     Variant(Label),
 
     /// `case x | p => y | q => z end`
-    Case { scrutinee: &'a Expr<'a>, cases: Vec<(&'a Pattern<'a>, &'a Expr<'a>)> },
+    Case { scrutinee: &'a Expr<'a>, cases: &'a [(&'a Pattern<'a>, &'a Expr<'a>)] },
 
     /* Functions ------------------------------------------------------------ */
     /// `x y`

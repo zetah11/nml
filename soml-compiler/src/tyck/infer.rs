@@ -61,7 +61,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 t2
             }
 
-            ExprNode::Field(record, label) => {
+            ExprNode::Field(record, label, _) => {
                 trace!("infer field");
                 let inferred = self.infer(record);
 

@@ -2,13 +2,14 @@ use malachite::Integer;
 
 use crate::errors::{ErrorId, Errors};
 use crate::names::{Ident, Label};
-use crate::source::Span;
+use crate::source::{SourceId, Span};
 
 #[derive(Debug)]
 pub struct Program<'a> {
     pub items: &'a [Item<'a>],
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
+    pub source: SourceId,
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +63,7 @@ pub struct Pattern<'a> {
 pub enum PatternNode<'a> {
     Invalid(ErrorId),
     Wildcard,
+    Unit,
     Small(Ident),
     Big(Ident),
     Apply(&'a Pattern<'a>, &'a Pattern<'a>),

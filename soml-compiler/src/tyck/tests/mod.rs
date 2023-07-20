@@ -75,18 +75,20 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     pub fn field(&self, of: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
         let label = self.names.label(label);
-        self.expr(ExprNode::Field(of, Ok(label)))
+        self.expr(ExprNode::Field(of, Ok(label), self.source.span(0, 0)))
     }
 
     pub fn record<L, I>(&self, fields: I, rest: Option<&'a Expr<'a>>) -> &'a Expr<'a>
     where
         L: AsRef<str>,
         I: IntoIterator<Item = (L, &'a Expr<'a>)>,
+        I::IntoIter: ExactSizeIterator,
     {
-        let fields = fields
-            .into_iter()
-            .map(|(label, field)| (Ok(self.names.label(label)), self.source.span(0, 0), field))
-            .collect();
+        let fields = self.alloc.alloc_slice_fill_iter(fields.into_iter().map(|(label, field)| {
+            let label = self.names.label(label);
+            let span = self.source.span(0, 0);
+            (Ok(label), span, field)
+        }));
 
         self.expr(ExprNode::Record(fields, rest))
     }
@@ -104,8 +106,9 @@ impl<'a, 'ids> Store<'a, 'ids> {
     pub fn case<I>(&self, scrutinee: &'a Expr<'a>, cases: I) -> &'a Expr<'a>
     where
         I: IntoIterator<Item = (&'a Pattern<'a>, &'a Expr<'a>)>,
+        I::IntoIter: ExactSizeIterator,
     {
-        let cases = cases.into_iter().collect();
+        let cases = self.alloc.alloc_slice_fill_iter(cases);
         self.expr(ExprNode::Case { scrutinee, cases })
     }
 

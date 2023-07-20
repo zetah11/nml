@@ -23,6 +23,7 @@ pub struct Ident(usize);
 /// Globally and uniquely identifies a particular lexical scope.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ScopeName {
+    Anonymous(usize),
     Item(Name),
     TopLevel(SourceId),
 }
