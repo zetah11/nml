@@ -1,0 +1,33 @@
+{
+    "name": "soml",
+    "description": "Language server for soml",
+    "version": "0.0.1",
+    "main": "./out/src/main.js",
+    "activationEvents": [
+        "onLanguage:soml"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "soml",
+                "extensions": [
+                    ".soml"
+                ]
+            }
+        ]
+    },
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "vscode-languageclient": "8.1.0"
+    },
+    "devDependencies": {
+        "@types/node": "20.4.3",
+        "@types/vscode": "^1.80.0",
+        "typescript": "^5.1.6"
+    }
+}

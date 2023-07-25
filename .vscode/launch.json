@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run extension (debug)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--disable-extensions",
+                "--extensionDevelopmentPath=${workspaceFolder}/editor/code"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/editor/code/out/**/*.js"
+            ],
+            "skipFiles": [
+                "<node_internals>/**/*.js"
+            ],
+            "preLaunchTask": "Build extension",
+            "env": {
+                "NML_DEBUG_DIR": "${workspaceFolder}/target/debug/"
+            }
+        }
+    ]
+}

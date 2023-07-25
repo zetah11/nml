@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use malachite::Integer;
 
 use crate::errors::{ErrorId, Errors};
@@ -7,6 +9,8 @@ use crate::source::Span;
 #[derive(Debug)]
 pub struct Program<'a> {
     pub items: &'a [&'a [Item<'a>]],
+    pub defs: BTreeMap<Name, Span>,
+
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
 }

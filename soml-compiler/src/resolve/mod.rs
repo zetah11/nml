@@ -30,7 +30,12 @@ pub fn resolve<'a>(
         )
     }));
 
-    resolved::Program { items, errors, unattached: program.unattached.clone() }
+    resolved::Program {
+        items,
+        defs: resolver.spans,
+        errors,
+        unattached: program.unattached.clone(),
+    }
 }
 
 struct Resolver<'a, 'err> {
