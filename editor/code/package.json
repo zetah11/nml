@@ -1,17 +1,17 @@
 {
-    "name": "soml",
-    "description": "Language server for soml",
+    "name": "nml",
+    "description": "Language server for nml",
     "version": "0.0.1",
     "main": "./out/src/main.js",
     "activationEvents": [
-        "onLanguage:soml"
+        "onLanguage:nml"
     ],
     "contributes": {
         "languages": [
             {
-                "id": "soml",
+                "id": "nml",
                 "extensions": [
-                    ".soml"
+                    ".nml"
                 ]
             }
         ]

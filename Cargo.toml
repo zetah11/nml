@@ -1,15 +1,15 @@
 [workspace]
-members = ["soml-compiler"]
+members = ["nml-compiler"]
 
 [package]
-name = "soml"
+name = "nmlc"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-soml-compiler = { path = "soml-compiler" }
+nml-compiler = { path = "nml-compiler" }
 
 clap = { version = "4.3", features = ["derive"] }
 tokio = { version = "1.29", features = ["full"] }

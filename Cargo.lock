@@ -692,6 +692,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "nml-compiler"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "dashmap",
+ "lasso",
+ "log",
+ "logos",
+ "malachite",
+ "pretty_env_logger",
+]
+
+[[package]]
+name = "nmlc"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "nml-compiler",
+ "tokio",
+ "tower-lsp",
+]
+
+[[package]]
 name = "num_cpus"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1043,29 +1066,6 @@ checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "soml"
-version = "0.1.0"
-dependencies = [
- "clap",
- "soml-compiler",
- "tokio",
- "tower-lsp",
-]
-
-[[package]]
-name = "soml-compiler"
-version = "0.1.0"
-dependencies = [
- "bumpalo",
- "dashmap",
- "lasso",
- "log",
- "logos",
- "malachite",
- "pretty_env_logger",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
-; soml concrete syntax ------------------------------------------------------- ;
+; nml concrete syntax -------------------------------------------------------- ;
 
 ; Note:
-; The parser accepts a (large) superset of all valid soml programs, largely
+; The parser accepts a (large) superset of all valid nml programs, largely
 ; because this makes it smaller (and hence easier to keep correct). It also
 ; helps in keeping the syntax clean and consistent.
 ; This process involves unifying the syntax for items, expressions, types, and

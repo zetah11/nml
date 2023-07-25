@@ -4,9 +4,9 @@ import * as path from 'path';
 import { ExtensionContext } from "vscode";
 import { LanguageClientOptions, LanguageClient, ServerOptions, Executable, TransportKind } from "vscode-languageclient/node";
 
-const exec = "soml";
-const lang = "soml";
-const name = "soml";
+const exec = "nmlc";
+const lang = "nml";
+const name = "nml";
 
 let client: LanguageClient;
 
