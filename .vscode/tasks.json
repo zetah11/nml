@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build extension",
+            "label": "Build extension (debug)",
             "group": "build",
             "type": "npm",
             "script": "build",
@@ -13,6 +13,23 @@
                     "relative",
                     "${workspaceFolder}/editor/code/"
                 ]
+            },
+            "dependsOn": [
+                "Populate debug environment"
+            ],
+        },
+        {
+            "label": "Populate debug environment",
+            "type": "shell",
+            "windows": {
+                "command": "Add-Content \"debug.env\" \"__NML_DEBUG_EXTENSION_DIR=$((cargo metadata --format-version 1 | ConvertFrom-Json).target_directory)/debug/\""
+            }
+        },
+        {
+            "label": "Clear debug environment",
+            "type": "shell",
+            "windows": {
+                "command": "Remove-Item \"debug.env\""
             }
         }
     ]

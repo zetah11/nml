@@ -35,15 +35,14 @@ export async function activate(_context: ExtensionContext) {
 export async function deactivate() { }
 
 function getServerPath(): string {
-    const baseDir = process.env["NML_DEBUG_DIR"];
+    const baseDir = process.env["__NML_DEBUG_EXTENSION_DIR"];
+
     if (baseDir !== undefined) {
-        const exe = path.join(baseDir, exec + ".exe");
-        const bare = path.join(baseDir, exec);
+        const ext = process.platform === "win32" ? ".exe" : "";
+        const exe = path.join(baseDir, exec + ext);
 
         if (fs.existsSync(exe)) {
             return exe;
-        } else if (fs.existsSync(bare)) {
-            return bare;
         }
     }
 
