@@ -15,7 +15,7 @@ export async function activate(_context: ExtensionContext) {
     console.log(server);
     const run: Executable = {
         command: server,
-        args: ["lsp", "--channel=stdio"],
+        args: ["lsp"],
         transport: TransportKind.stdio,
     };
 

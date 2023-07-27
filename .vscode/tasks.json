@@ -15,8 +15,17 @@
                 ]
             },
             "dependsOn": [
+                "Build compiler (debug)",
                 "Populate debug environment"
             ],
+        },
+        {
+            "label": "Build compiler (debug)",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "build"
+            ]
         },
         {
             "label": "Populate debug environment",

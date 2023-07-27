@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 pub struct Args {
@@ -9,19 +9,14 @@ pub struct Args {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Lsp {
-        #[arg(
-            long,
-            value_name = "CHANNEL",
-            num_args = 0..=1,
-            default_value_t = Channel::Stdio,
-            default_missing_value = "stdio",
-            value_enum
-        )]
+        #[command(flatten)]
         channel: Channel,
     },
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, ValueEnum)]
-pub enum Channel {
-    Stdio,
+#[derive(Debug, clap::Args)]
+#[group(required = true, multiple = false)]
+pub struct Channel {
+    #[arg(long)]
+    pub stdio: bool,
 }
