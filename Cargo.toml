@@ -14,3 +14,4 @@ nml-compiler = { path = "nml-compiler" }
 clap = { version = "4.3", features = ["derive"] }
 tokio = { version = "1.29", features = ["full"] }
 tower-lsp = "0.19"
+dashmap = "5.5"

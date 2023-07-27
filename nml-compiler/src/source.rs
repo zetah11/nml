@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::ops::{Add, AddAssign};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Identifies a particular source.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -26,6 +26,12 @@ pub struct Span {
     pub end: usize,
 }
 
+impl Span {
+    pub fn length(&self) -> usize {
+        self.end - self.start
+    }
+}
+
 impl Add for Span {
     type Output = Self;
 
@@ -44,11 +50,16 @@ impl AddAssign for Span {
     }
 }
 
+#[derive(Debug)]
+pub struct Source {
+    pub id: SourceId,
+    pub content: String,
+}
+
 /// Stores individual source files.
 #[derive(Debug, Default)]
 pub struct Sources {
-    sources: HashMap<SourceId, String>,
-    counter: usize,
+    counter: AtomicUsize,
 }
 
 impl Sources {
@@ -56,10 +67,8 @@ impl Sources {
         Self::default()
     }
 
-    pub fn add(&mut self, source: impl Into<String>) -> SourceId {
-        self.counter += 1;
-        let id = SourceId(self.counter);
-        self.sources.insert(id, source.into());
-        id
+    pub fn add(&self, source: impl Into<String>) -> Source {
+        let id = SourceId(self.counter.fetch_add(1, Ordering::SeqCst));
+        Source { id, content: source.into() }
     }
 }

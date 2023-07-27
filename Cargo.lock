@@ -709,6 +709,7 @@ name = "nmlc"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "dashmap",
  "nml-compiler",
  "tokio",
  "tower-lsp",
