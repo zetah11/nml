@@ -1,3 +1,4 @@
+use log::debug;
 pub use tokens::Token;
 
 mod abstractify;
@@ -22,8 +23,10 @@ pub fn tokens(source: &Source) -> impl Iterator<Item = (Result<Token, ()>, Span)
 }
 
 pub fn parse<'a>(alloc: &'a Bump, names: &'a Names, source: &Source) -> parsed::Program<'a> {
+    debug!("lexing");
     let tokens = tokens(source);
 
+    debug!("parsing");
     let mut errors = Errors::new();
     let concrete_alloc = Bump::new();
 
@@ -32,6 +35,7 @@ pub fn parse<'a>(alloc: &'a Bump, names: &'a Names, source: &Source) -> parsed::
         parser.program()
     };
 
+    debug!("abstracting");
     let (abstracted, unattached) = {
         let abstractifier = Abstractifier::new(alloc, names, &mut errors, parse_errors);
         abstractifier.program(concrete)

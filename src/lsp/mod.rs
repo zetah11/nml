@@ -90,8 +90,12 @@ impl LanguageServer for Server {
         let text = params.text_document.text;
         self.insert_document(name.clone(), text);
 
-        let source = self.tracked.get(&name).expect("just inserted");
-        self.check_source(&source).await;
+        let mut errors = {
+            let source = self.tracked.get(&name).expect("just inserted");
+            self.check_source(&source)
+        };
+
+        self.send_diagnostics(&mut errors).await;
     }
 
     async fn did_change(&self, mut params: lsp::DidChangeTextDocumentParams) {
@@ -101,8 +105,12 @@ impl LanguageServer for Server {
         let text = params.content_changes.remove(0).text;
         self.insert_document(name.clone(), text);
 
-        let source = self.tracked.get(&name).expect("just inserted");
-        self.check_source(&source).await;
+        let mut errors = {
+            let source = self.tracked.get(&name).expect("just inserted");
+            self.check_source(&source)
+        };
+
+        self.send_diagnostics(&mut errors).await;
     }
 
     async fn semantic_tokens_full(

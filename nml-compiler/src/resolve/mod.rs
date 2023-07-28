@@ -5,6 +5,7 @@ mod pattern;
 use std::collections::BTreeMap;
 
 use bumpalo::Bump;
+use log::debug;
 
 use crate::errors::{ErrorId, Errors};
 use crate::names::{Ident, Name, Names, ScopeName};
@@ -73,6 +74,7 @@ impl<'a, 'err> Resolver<'a, 'err> {
     }
 
     fn items(&mut self, items: &[parsed::Item]) -> BTreeMap<ItemId, resolved::Item<'a>> {
+        debug!("declaring {} items", items.len());
         let items: Vec<_> = items
             .iter()
             .map(|item| {
@@ -83,6 +85,7 @@ impl<'a, 'err> Resolver<'a, 'err> {
             })
             .collect();
 
+        debug!("resolving {} items", items.len());
         items.into_iter().map(|(id, node)| (id, self.resolve_item(id, node))).collect()
     }
 

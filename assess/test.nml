@@ -1,1 +1,2 @@
-let x = 5
+let f = a => a
+let x = f 5
