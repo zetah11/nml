@@ -1,5 +1,6 @@
 mod check;
 mod diagnostics;
+mod log;
 mod sync;
 mod tokens;
 
@@ -11,13 +12,18 @@ use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::{self as lsp, Url};
 use tower_lsp::{Client, LanguageServer, LspService};
 
+use self::log::Logger;
 use crate::meta;
 
-pub async fn run() {
+pub async fn run(log: ::log::LevelFilter) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = LspService::new(Server::new);
+    let (service, socket) = LspService::new(|client| {
+        Logger::init(log, client.clone());
+        Server::new(client)
+    });
+
     tower_lsp::Server::new(stdin, stdout, socket).serve(service).await;
 }
 

@@ -1,2 +1,1 @@
--- fff
-fun beep x = x
+let x = 5

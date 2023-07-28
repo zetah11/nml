@@ -14,6 +14,7 @@ nml-compiler = { path = "nml-compiler" }
 clap = { version = "4.3", features = ["derive"] }
 dashmap = "5.5"
 futures = "0.3"
+log = "0.4"
 lsp-document = "0.6"
 tokio = { version = "1.29", features = ["full"] }
 tower-lsp = "0.19"
