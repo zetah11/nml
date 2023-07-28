@@ -55,6 +55,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         let mut erred = false;
         for (token, span) in self.tokens.by_ref() {
             if let Ok(token) = token {
+                if let Token::Comment = token {
+                    continue;
+                }
+
                 self.next = Some((token, span));
                 self.current_span = span;
                 break;

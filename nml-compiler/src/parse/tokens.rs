@@ -52,4 +52,7 @@ pub enum Token<'src> {
     LeftBrace,
     #[token("}")]
     RightBrace,
+
+    #[regex(r"--[^\n]*")]
+    Comment,
 }

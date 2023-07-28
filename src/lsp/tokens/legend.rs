@@ -13,6 +13,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
     };
 
     match token {
+        Token::Comment => Some((types::COMMENT, mods::NONE)),
         Token::BigName(_) | Token::SmallName(_) => None,
 
         Token::Number(_) => Some((types::NUMBER, mods::NONE)),
@@ -48,7 +49,7 @@ const TYPES: [SemanticTokenType; 4] = [
 const MODIFIERS: [SemanticTokenModifier; 1] = [SemanticTokenModifier::DOCUMENTATION];
 
 mod types {
-    //pub const COMMENT: u32 = 0;
+    pub const COMMENT: u32 = 0;
     pub const NUMBER: u32 = 1;
     //pub const STRING: u32 = 2;
     pub const KEYWORD: u32 = 3;

@@ -12,6 +12,8 @@ edition = "2021"
 nml-compiler = { path = "nml-compiler" }
 
 clap = { version = "4.3", features = ["derive"] }
+dashmap = "5.5"
+futures = "0.3"
+lsp-document = "0.6"
 tokio = { version = "1.29", features = ["full"] }
 tower-lsp = "0.19"
-dashmap = "5.5"

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::source::Span;
+use crate::source::{SourceId, Span};
 
 /// Identifies a particular reported message.
 #[must_use]
@@ -54,6 +54,12 @@ impl Errors {
         self.num_warnings
     }
 
+    /// Get an iterator over every source id mentioned by any of the errors in this.
+    /// May contain duplicates.
+    pub fn sources(&self) -> impl Iterator<Item = SourceId> + '_ {
+        self.errors.values().flat_map(Error::sources)
+    }
+
     /// Drain this error store of its errors.
     pub fn drain(&mut self) -> impl Iterator<Item = (ErrorId, Error)> + '_ {
         self.num_errors = 0;
@@ -91,6 +97,12 @@ impl Error {
     pub fn with_note(mut self, message: impl Into<String>) -> Self {
         self.notes.push((message.into(), NoteType::Note));
         self
+    }
+
+    /// Get an iterator over every source referenced by this error. May contain
+    /// duplicates.
+    pub fn sources(&self) -> impl Iterator<Item = SourceId> + '_ {
+        std::iter::once(self.at.source).chain(self.labels.iter().map(|(_, span)| span.source))
     }
 }
 
