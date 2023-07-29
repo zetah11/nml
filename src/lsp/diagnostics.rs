@@ -1,20 +1,19 @@
 use std::collections::{BTreeMap, HashMap};
 
 use dashmap::mapref::one::Ref;
-use futures::future::join_all;
 use lsp_document::{IndexedText, Pos, TextAdapter, TextMap};
-use nml_compiler::errors::{Error, ErrorType, Errors, Severity};
-use nml_compiler::source::{Source, SourceId, Span};
-use tower_lsp::lsp_types::{
+use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Location, NumberOrString,
     Position, Range, Url,
 };
+use nml_compiler::errors::{Error, ErrorType, Errors, Severity};
+use nml_compiler::source::{Source, SourceId, Span};
 
 use super::Server;
 use crate::meta;
 
 impl Server {
-    pub async fn send_diagnostics(&self, errors: &mut Errors) {
+    pub fn send_diagnostics(&mut self, errors: &mut Errors) {
         let diagnostics = self.make_diagnostics(errors);
 
         let errors =
@@ -25,12 +24,9 @@ impl Server {
             self.errors.insert(url);
         }
 
-        join_all(
-            diagnostics
-                .into_iter()
-                .map(|(uri, diags)| self.client.publish_diagnostics(uri, diags, None)),
-        )
-        .await;
+        for (uri, diagnostics) in diagnostics {
+            self.client.publish_diagnostics(uri, diagnostics, None);
+        }
     }
 
     fn make_diagnostics(&self, errors: &mut Errors) -> BTreeMap<Url, Vec<Diagnostic>> {

@@ -1,5 +1,5 @@
+use lsp_types::{SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend};
 use nml_compiler::parse::Token;
-use tower_lsp::lsp_types::{SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend};
 
 pub fn get() -> SemanticTokensLegend {
     SemanticTokensLegend { token_types: TYPES.into(), token_modifiers: MODIFIERS.into() }

@@ -1,8 +1,8 @@
 pub mod legend;
 
+use lsp_types::{SemanticToken, SemanticTokens};
 use nml_compiler::parse::{tokens, Token};
 use nml_compiler::source::{Source, Span};
-use tower_lsp::lsp_types::{SemanticToken, SemanticTokens};
 
 use super::Server;
 

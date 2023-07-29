@@ -1,5 +1,5 @@
+use lsp_types::Url;
 use nml_compiler::source::SourceId;
-use tower_lsp::lsp_types::Url;
 
 use super::Server;
 

@@ -1,30 +1,60 @@
 mod check;
 mod diagnostics;
+mod framework;
 mod log;
 mod sync;
 mod tokens;
 
 use dashmap::{DashMap, DashSet};
+use lsp_types::{self as lsp, Url};
 use nml_compiler::intern::ThreadedRodeo;
 use nml_compiler::names::Ident;
 use nml_compiler::source::{Source, SourceId, Sources};
-use tower_lsp::jsonrpc::{Error, Result};
-use tower_lsp::lsp_types::{self as lsp, Url};
-use tower_lsp::{Client, LanguageServer, LspService};
 
+use self::framework::{Client, Error};
 use self::log::Logger;
 use crate::meta;
 
-pub async fn run(log: ::log::LevelFilter) {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
+pub async fn run() -> anyhow::Result<()> {
+    framework::stdio(Builder::new())
+}
 
-    let (service, socket) = LspService::new(|client| {
-        Logger::init(log, client.clone());
+struct Builder;
+
+impl Builder {
+    fn new() -> Self {
+        Self
+    }
+}
+
+impl framework::Builder for Builder {
+    fn build(self, client: Client) -> Server {
+        Logger::init(client.clone());
         Server::new(client)
-    });
+    }
 
-    tower_lsp::Server::new(stdin, stdout, socket).serve(service).await;
+    fn initialize(&mut self, _: lsp::InitializeParams) -> lsp::InitializeResult {
+        let server_info =
+            Some(lsp::ServerInfo { name: meta::NAME.into(), version: Some(meta::VERSION.into()) });
+
+        let capabilities = lsp::ServerCapabilities {
+            semantic_tokens_provider: Some(
+                lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(
+                    lsp::SemanticTokensOptions {
+                        legend: tokens::legend::get(),
+                        full: Some(lsp::SemanticTokensFullOptions::Bool(true)),
+                        ..Default::default()
+                    },
+                ),
+            ),
+            text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
+                lsp::TextDocumentSyncKind::FULL,
+            )),
+            ..Default::default()
+        };
+
+        lsp::InitializeResult { server_info, capabilities }
+    }
 }
 
 struct Server {
@@ -52,53 +82,10 @@ impl Server {
     }
 }
 
-#[tower_lsp::async_trait]
-impl LanguageServer for Server {
-    async fn initialize(&self, _: lsp::InitializeParams) -> Result<lsp::InitializeResult> {
-        let result = lsp::InitializeResult {
-            server_info: Some(lsp::ServerInfo {
-                name: meta::NAME.into(),
-                version: Some(meta::VERSION.into()),
-            }),
-
-            capabilities: lsp::ServerCapabilities {
-                semantic_tokens_provider: Some(
-                    lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(
-                        lsp::SemanticTokensOptions {
-                            legend: tokens::legend::get(),
-                            full: Some(lsp::SemanticTokensFullOptions::Bool(true)),
-                            ..Default::default()
-                        },
-                    ),
-                ),
-                text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
-                    lsp::TextDocumentSyncKind::FULL,
-                )),
-                ..Default::default()
-            },
-        };
-
-        Ok(result)
-    }
-
-    async fn initialized(&self, _: lsp::InitializedParams) {
-        self.client.log_message(lsp::MessageType::INFO, "nmlc lsp initialized").await;
-    }
-
-    async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
-        let name = params.text_document.uri;
-        let text = params.text_document.text;
-        self.insert_document(name.clone(), text);
-
-        let mut errors = {
-            let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(&source)
-        };
-
-        self.send_diagnostics(&mut errors).await;
-    }
-
-    async fn did_change(&self, mut params: lsp::DidChangeTextDocumentParams) {
+/// Protocol impl
+impl Server {
+    /// `textDocument/didChange`
+    fn did_change_text_document(&mut self, mut params: lsp::DidChangeTextDocumentParams) {
         let name = params.text_document.uri;
         assert_eq!(1, params.content_changes.len(), "full synchronization");
 
@@ -110,22 +97,43 @@ impl LanguageServer for Server {
             self.check_source(&source)
         };
 
-        self.send_diagnostics(&mut errors).await;
+        self.send_diagnostics(&mut errors);
     }
 
-    async fn semantic_tokens_full(
-        &self,
+    /// `textDocument/didOpen`
+    fn did_open_text_document(&mut self, params: lsp::DidOpenTextDocumentParams) {
+        let name = params.text_document.uri;
+        let text = params.text_document.text;
+        self.insert_document(name.clone(), text);
+
+        let mut errors = {
+            let source = self.tracked.get(&name).expect("just inserted");
+            self.check_source(&source)
+        };
+
+        self.send_diagnostics(&mut errors);
+    }
+
+    /// `textDocument/didSave`
+    fn did_save_text_document(&mut self, _: lsp::DidSaveTextDocumentParams) {
+        todo!()
+    }
+
+    /// `textDocument/semanticTokens/full`
+    fn semantic_tokens_full(
+        &mut self,
         params: lsp::SemanticTokensParams,
-    ) -> Result<Option<lsp::SemanticTokensResult>> {
+    ) -> Result<Option<lsp::SemanticTokensResult>, Error> {
         let document = {
             let name = params.text_document.uri;
-            self.tracked.get(&name).ok_or_else(Error::invalid_request)?
+            self.tracked
+                .get(&name)
+                .ok_or_else(|| Error::InvalidRequest(format!("unknown document `{name}`")))?
         };
 
         Ok(Some(lsp::SemanticTokensResult::Tokens(self.compute_tokens(&document))))
     }
 
-    async fn shutdown(&self) -> Result<()> {
-        Ok(())
-    }
+    /// `shutdown`
+    fn shutdown(&mut self) {}
 }
