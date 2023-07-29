@@ -5,35 +5,41 @@ mod log;
 mod sync;
 mod tokens;
 
+use lsp::TraceValue;
 use lsp_types::{self as lsp, Url};
 use nml_compiler::intern::ThreadedRodeo;
 use nml_compiler::names::Ident;
 use nml_compiler::source::{Source, SourceId, Sources};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use self::framework::{Client, Error};
-use self::log::Logger;
+use self::log::{AtomicTraceValue, Logger};
 use crate::meta;
 
 pub fn run() -> anyhow::Result<()> {
     framework::stdio(Builder::new())
 }
 
-struct Builder;
+struct Builder {
+    trace: Option<TraceValue>,
+}
 
 impl Builder {
     fn new() -> Self {
-        Self
+        Self { trace: None }
     }
 }
 
 impl framework::Builder for Builder {
-    fn build(self, client: Client) -> Server {
-        Logger::init(client.clone());
+    fn build(self, trace: Arc<AtomicTraceValue>, client: Client) -> Server {
+        Logger::init(trace.clone(), client.clone());
         Server::new(client)
     }
 
-    fn initialize(&mut self, _: lsp::InitializeParams) -> lsp::InitializeResult {
+    fn initialize(&mut self, params: lsp::InitializeParams) -> lsp::InitializeResult {
+        self.trace = params.trace;
+
         let server_info =
             Some(lsp::ServerInfo { name: meta::NAME.into(), version: Some(meta::VERSION.into()) });
 
@@ -76,6 +82,7 @@ impl Server {
             tracked: HashMap::new(),
             names: HashMap::new(),
             sources: Sources::new(),
+
             idents: ThreadedRodeo::new(),
             errors: HashSet::new(),
         }

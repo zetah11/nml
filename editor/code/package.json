@@ -14,7 +14,28 @@
                     ".nml"
                 ]
             }
-        ]
+        ],
+        "configuration": {
+            "title": "nml",
+            "properties": {
+                "nml.trace.server": {
+                    "type": "string",
+                    "scope": "window",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "enumDescriptions": [
+                        "No traces",
+                        "Debug messages only",
+                        "Full log"
+                    ],
+                    "default": "off",
+                    "description": "Trace events of the compiler"
+                }
+            }
+        }
     },
     "engines": {
         "vscode": "^1.80.0"

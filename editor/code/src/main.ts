@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, window } from "vscode";
 import { LanguageClientOptions, LanguageClient, ServerOptions, Executable, TransportKind } from "vscode-languageclient/node";
 
 const exec = "nmlc";
@@ -26,6 +26,7 @@ export async function activate(_context: ExtensionContext) {
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ "scheme": "file", "language": lang }],
+        traceOutputChannel: window.createOutputChannel(`${name} trace`, lang),
     };
 
     client = new LanguageClient(name, serverOptions, clientOptions);

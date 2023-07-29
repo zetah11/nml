@@ -1,32 +1,32 @@
+use std::sync::Arc;
+
 pub use self::client::Client;
 
 mod client;
 
-use crossbeam::channel::{Receiver, Sender};
-use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
+use crossbeam::channel::Receiver;
+use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types as lsp;
 use lsp_types::notification::{self, Notification as _};
 use lsp_types::request::{self, Request as _};
-use serde::Serialize;
 
+use super::log::AtomicTraceValue;
 use super::Server;
 
 /// Initialize and run the given server on standard IO.
 pub(super) fn stdio(mut builder: impl Builder) -> anyhow::Result<()> {
     let (connection, _) = Connection::stdio();
     let (id, params) = connection.initialize_start()?;
-    let params = serde_json::from_value(params)?;
+    let params: lsp::InitializeParams = serde_json::from_value(params)?;
+    let trace = params.trace;
     let result = builder.initialize(params);
     connection.initialize_finish(id, serde_json::to_value(result)?)?;
 
+    let trace = Arc::new(trace.map(AtomicTraceValue::new).unwrap_or_default());
+
     let client = Client::new(connection.sender.clone());
-    let server = builder.build(client);
-    let main = Loop {
-        server,
-        requests: connection.receiver,
-        response: connection.sender,
-        state: State::Ready,
-    };
+    let server = builder.build(trace.clone(), client.clone());
+    let main = Loop { server, requests: connection.receiver, client, state: State::Ready, trace };
 
     match main.run() {
         Final::Exit { properly: true } => Ok(()),
@@ -36,13 +36,14 @@ pub(super) fn stdio(mut builder: impl Builder) -> anyhow::Result<()> {
 }
 
 pub(super) trait Builder {
-    fn build(self, client: Client) -> Server;
+    fn build(self, trace: Arc<AtomicTraceValue>, client: Client) -> Server;
     fn initialize(&mut self, params: lsp::InitializeParams) -> lsp::InitializeResult {
         let _ = params;
         Default::default()
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub enum Error {
     InvalidRequest(String),
@@ -69,9 +70,10 @@ impl<E: Into<anyhow::Error>> From<E> for Final {
 struct Loop {
     server: Server,
     requests: Receiver<Message>,
-    response: Sender<Message>,
+    client: Client,
 
     state: State,
+    trace: Arc<AtomicTraceValue>,
 }
 
 impl Loop {
@@ -99,6 +101,20 @@ impl Loop {
 
             (State::ShuttingDown, _) => return Err(Final::Exit { properly: false }),
 
+            (_, m) if m == notification::SetTrace::METHOD => {
+                let params: lsp::SetTraceParams =
+                    notification.extract(notification::SetTrace::METHOD)?;
+                self.trace.store(params.value);
+
+                let word = match params.value {
+                    lsp::TraceValue::Off => "off",
+                    lsp::TraceValue::Messages => "messages",
+                    lsp::TraceValue::Verbose => "verbose",
+                };
+
+                self.client.log(lsp::MessageType::INFO, format!("set trace amount to `{word}`",));
+            }
+
             (_, m) if m == notification::DidChangeTextDocument::METHOD => {
                 let params = notification.extract(notification::DidChangeTextDocument::METHOD)?;
                 self.server.did_change_text_document(params);
@@ -120,15 +136,8 @@ impl Loop {
             }
 
             (_, m) => {
-                self.response
-                    .send(Message::Notification(Notification::new(
-                        notification::LogMessage::METHOD.into(),
-                        lsp::LogMessageParams {
-                            typ: lsp::MessageType::ERROR,
-                            message: format!("unexpected notification type `{m}`"),
-                        },
-                    )))
-                    .expect("received unexpected notification");
+                self.client
+                    .log(lsp::MessageType::ERROR, format!("unexpected notification type `{m}`"));
             }
         }
 
@@ -140,11 +149,11 @@ impl Loop {
             (State::Ready, m) if m == request::Shutdown::METHOD => {
                 self.state = State::ShuttingDown;
                 self.server.shutdown();
-                self.send_response(request.id, Ok(()));
+                self.client.respond(request.id, Ok(()));
             }
 
             (State::ShuttingDown, _) => {
-                self.send_response(
+                self.client.respond(
                     request.id,
                     Err::<(), _>(Error::InvalidRequest("unexpected request after shutdown".into())),
                 );
@@ -153,11 +162,11 @@ impl Loop {
             (_, m) if m == request::SemanticTokensFullRequest::METHOD => {
                 let (id, params) = request.extract(request::SemanticTokensFullRequest::METHOD)?;
                 let result = self.server.semantic_tokens_full(params);
-                self.send_response(id, result);
+                self.client.respond(id, result);
             }
 
             (_, m) => {
-                self.send_response(
+                self.client.respond(
                     request.id,
                     Err::<(), _>(Error::InvalidRequest(format!("unknown request `{m}`"))),
                 );
@@ -165,22 +174,5 @@ impl Loop {
         }
 
         Ok(())
-    }
-
-    fn send_response(&mut self, id: RequestId, result: Result<impl Serialize, Error>) {
-        let e = match result {
-            Ok(data) => self.response.send(Message::Response(Response::new_ok(id, data))),
-
-            Err(e) => {
-                let (code, message) = match e {
-                    Error::InvalidRequest(message) => (ErrorCode::InvalidRequest, message),
-                    Error::InternalError(message) => (ErrorCode::InternalError, message),
-                };
-
-                self.response.send(Message::Response(Response::new_err(id, code as i32, message)))
-            }
-        };
-
-        e.expect("attempted to send response over closed channel");
     }
 }
