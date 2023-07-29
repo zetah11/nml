@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
 
-use dashmap::mapref::one::Ref;
 use lsp_document::{IndexedText, Pos, TextAdapter, TextMap};
 use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Location, NumberOrString,
@@ -16,13 +15,11 @@ impl Server {
     pub fn send_diagnostics(&mut self, errors: &mut Errors) {
         let diagnostics = self.make_diagnostics(errors);
 
-        let errors =
-            diagnostics.iter().filter(|(_, errs)| !errs.is_empty()).map(|(url, _)| url.clone());
-
-        self.errors.clear();
-        for url in errors {
-            self.errors.insert(url);
-        }
+        self.errors = diagnostics
+            .iter()
+            .filter(|(_, errs)| !errs.is_empty())
+            .map(|(url, _)| url.clone())
+            .collect();
 
         for (uri, diagnostics) in diagnostics {
             self.client.publish_diagnostics(uri, diagnostics, None);
@@ -39,7 +36,7 @@ impl Server {
             }
 
             for url in self.errors.iter() {
-                if !diagnostics.contains_key(&url) {
+                if !diagnostics.contains_key(url) {
                     diagnostics.insert(url.clone(), Vec::new());
                 }
             }
@@ -50,7 +47,7 @@ impl Server {
 }
 
 struct DiagnosticBuilder<'a> {
-    refs: &'a HashMap<SourceId, Ref<'a, Url, Source>>,
+    refs: &'a HashMap<SourceId, (&'a Url, &'a Source)>,
     indicies: HashMap<SourceId, IndexedText<&'a str>>,
 }
 
@@ -72,15 +69,15 @@ impl<'a> DiagnosticBuilder<'a> {
                     .expect("all known source ids correspond to known names");
                 let rf = server
                     .tracked
-                    .get(&name)
+                    .get(name)
                     .expect("all known names correspond to tracked sources");
-                (source, rf)
+                (source, (name, rf))
             })
             .collect();
 
         let indicies = refs
             .iter()
-            .map(|(source, rf)| (*source, IndexedText::new(rf.content.as_str())))
+            .map(|(source, rf)| (*source, IndexedText::new(rf.1.content.as_str())))
             .collect();
 
         f(DiagnosticBuilder { refs: &refs, indicies })
@@ -148,6 +145,6 @@ impl<'a> DiagnosticBuilder<'a> {
             end: Position { line: range.end.line, character: range.end.character },
         };
 
-        (source.key(), range)
+        (source.0, range)
     }
 }

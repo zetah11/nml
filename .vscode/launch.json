@@ -17,7 +17,7 @@
             "skipFiles": [
                 "<node_internals>/**/*.js"
             ],
-            "preLaunchTask": "Build extension (debug)",
+            "preLaunchTask": "Build compiler & extension (debug)",
             "postDebugTask": "Clear debug environment",
             "envFile": "${workspaceFolder}/debug.env",
         }

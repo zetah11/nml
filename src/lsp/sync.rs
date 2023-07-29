@@ -4,8 +4,8 @@ use nml_compiler::source::SourceId;
 use super::Server;
 
 impl Server {
-    pub fn insert_document(&self, name: Url, text: String) -> SourceId {
-        if let Some(mut source) = self.tracked.get_mut(&name) {
+    pub fn insert_document(&mut self, name: Url, text: String) -> SourceId {
+        if let Some(source) = self.tracked.get_mut(&name) {
             source.content = text;
             source.id
         } else {

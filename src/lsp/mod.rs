@@ -5,17 +5,17 @@ mod log;
 mod sync;
 mod tokens;
 
-use dashmap::{DashMap, DashSet};
 use lsp_types::{self as lsp, Url};
 use nml_compiler::intern::ThreadedRodeo;
 use nml_compiler::names::Ident;
 use nml_compiler::source::{Source, SourceId, Sources};
+use std::collections::{HashMap, HashSet};
 
 use self::framework::{Client, Error};
 use self::log::Logger;
 use crate::meta;
 
-pub async fn run() -> anyhow::Result<()> {
+pub fn run() -> anyhow::Result<()> {
     framework::stdio(Builder::new())
 }
 
@@ -61,23 +61,23 @@ struct Server {
     #[allow(unused)]
     client: Client,
 
-    tracked: DashMap<Url, Source>,
-    names: DashMap<SourceId, Url>,
+    tracked: HashMap<Url, Source>,
+    names: HashMap<SourceId, Url>,
     sources: Sources,
 
     idents: ThreadedRodeo<Ident>,
-    errors: DashSet<Url>,
+    errors: HashSet<Url>,
 }
 
 impl Server {
     fn new(client: Client) -> Self {
         Self {
             client,
-            tracked: DashMap::new(),
-            names: DashMap::new(),
+            tracked: HashMap::new(),
+            names: HashMap::new(),
             sources: Sources::new(),
             idents: ThreadedRodeo::new(),
-            errors: DashSet::new(),
+            errors: HashSet::new(),
         }
     }
 }
@@ -94,7 +94,7 @@ impl Server {
 
         let mut errors = {
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(&source)
+            self.check_source(source)
         };
 
         self.send_diagnostics(&mut errors);
@@ -108,7 +108,7 @@ impl Server {
 
         let mut errors = {
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(&source)
+            self.check_source(source)
         };
 
         self.send_diagnostics(&mut errors);
@@ -131,7 +131,7 @@ impl Server {
                 .ok_or_else(|| Error::InvalidRequest(format!("unknown document `{name}`")))?
         };
 
-        Ok(Some(lsp::SemanticTokensResult::Tokens(self.compute_tokens(&document))))
+        Ok(Some(lsp::SemanticTokensResult::Tokens(self.compute_tokens(document))))
     }
 
     /// `shutdown`

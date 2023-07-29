@@ -2,6 +2,15 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build compiler & extension (debug)",
+            "group": "build",
+            "dependsOn": [
+                "Build extension (debug)",
+                "Build compiler (debug)",
+                "Populate debug environment"
+            ]
+        },
+        {
             "label": "Build extension (debug)",
             "group": "build",
             "type": "npm",
@@ -13,11 +22,7 @@
                     "relative",
                     "${workspaceFolder}/editor/code/"
                 ]
-            },
-            "dependsOn": [
-                "Build compiler (debug)",
-                "Populate debug environment"
-            ],
+            }
         },
         {
             "label": "Build compiler (debug)",
