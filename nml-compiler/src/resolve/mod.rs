@@ -1,3 +1,6 @@
+pub use declare::declare;
+
+mod declare;
 mod dependencies;
 mod expr;
 mod pattern;
@@ -11,16 +14,21 @@ use crate::errors::{ErrorId, Errors};
 use crate::names::{Ident, Name, Names, ScopeName};
 use crate::source::{SourceId, Span};
 use crate::topology;
-use crate::trees::parsed;
-use crate::trees::resolved::{self, ItemId};
+use crate::trees::declared;
+use crate::trees::resolved;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ItemId(usize);
 
 pub fn resolve<'a>(
     names: &'a Names<'a>,
     alloc: &'a Bump,
-    program: &parsed::Program,
+    program: &declared::Source,
 ) -> resolved::Program<'a> {
     let mut errors = program.errors.clone();
-    let mut resolver = Resolver::new(names, alloc, &mut errors, program.source);
+    let mut resolver =
+        Resolver::new(names, alloc, &mut errors, program.names.clone(), program.source);
+
     let mut items = resolver.items(program.items);
     let graph = items.iter().map(|(id, item)| (*id, resolver.dependencies(item))).collect();
     let order = topology::find(&graph);
@@ -56,9 +64,10 @@ impl<'a, 'err> Resolver<'a, 'err> {
         names: &'a Names<'a>,
         alloc: &'a Bump,
         errors: &'err mut Errors,
+        values: BTreeMap<Ident, Name>,
         source: SourceId,
     ) -> Self {
-        let scope = Scope::new(ScopeName::TopLevel(source));
+        let scope = Scope::top_level(source, values);
 
         Self {
             names,
@@ -73,46 +82,23 @@ impl<'a, 'err> Resolver<'a, 'err> {
         }
     }
 
-    fn items(&mut self, items: &[parsed::Item]) -> BTreeMap<ItemId, resolved::Item<'a>> {
-        debug!("declaring {} items", items.len());
-        let items: Vec<_> = items
-            .iter()
-            .map(|item| {
-                self.counter += 1;
-                let id = ItemId(self.counter);
-                let item = self.declare_item(id, item);
-                (id, item)
-            })
-            .collect();
-
+    pub fn items(&mut self, items: &[declared::Item]) -> BTreeMap<ItemId, resolved::Item<'a>> {
         debug!("resolving {} items", items.len());
-        items.into_iter().map(|(id, node)| (id, self.resolve_item(id, node))).collect()
+        items.iter().map(|node| (node.id, self.resolve_item(node))).collect()
     }
 
-    fn resolve_item(&mut self, id: ItemId, item: DeclaredItem) -> resolved::Item<'a> {
+    fn resolve_item(&mut self, item: &declared::Item) -> resolved::Item<'a> {
+        let id = item.id;
         let span = item.span;
         let node = match item.node {
-            DeclaredItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
-            DeclaredItemNode::Let(name, expr) => {
+            declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
+            declared::ItemNode::Let(name, expr) => {
                 let expr = self.expr(id, expr);
                 resolved::ItemNode::Let(name, expr)
             }
         };
 
         resolved::Item { id, node, span }
-    }
-
-    fn declare_item<'b>(&mut self, item: ItemId, node: &parsed::Item<'b>) -> DeclaredItem<'b> {
-        let span = node.span;
-        let node = match &node.node {
-            parsed::ItemNode::Invalid(e) => DeclaredItemNode::Invalid(*e),
-            parsed::ItemNode::Let(name, name_span, expr) => {
-                let name = name.and_then(|name| self.define_value(item, *name_span, name));
-                DeclaredItemNode::Let(name, expr)
-            }
-        };
-
-        DeclaredItem { node, span }
     }
 
     fn define_value(&mut self, item: ItemId, at: Span, ident: Ident) -> Result<Name, ErrorId> {
@@ -167,14 +153,8 @@ impl Scope {
     pub fn new(name: ScopeName) -> Self {
         Self { name, values: BTreeMap::new() }
     }
-}
 
-struct DeclaredItem<'a> {
-    node: DeclaredItemNode<'a>,
-    span: Span,
-}
-
-enum DeclaredItemNode<'a> {
-    Invalid(ErrorId),
-    Let(Result<Name, ErrorId>, &'a parsed::Expr<'a>),
+    pub fn top_level(source: SourceId, values: BTreeMap<Ident, Name>) -> Self {
+        Self { name: ScopeName::TopLevel(source), values }
+    }
 }

@@ -1,19 +1,18 @@
 use crate::names::Label;
-use crate::trees::resolved::ItemId;
-use crate::trees::{parsed, resolved};
+use crate::trees::{declared, resolved};
 
-use super::Resolver;
+use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn expr(&mut self, item: ItemId, expr: &parsed::Expr) -> &'a resolved::Expr<'a> {
+    pub fn expr(&mut self, item: ItemId, expr: &declared::Expr) -> &'a resolved::Expr<'a> {
         let span = expr.span;
         let node = match &expr.node {
-            parsed::ExprNode::Invalid(e) => resolved::ExprNode::Invalid(*e),
+            declared::ExprNode::Invalid(e) => resolved::ExprNode::Invalid(*e),
 
-            parsed::ExprNode::Hole => resolved::ExprNode::Hole,
-            parsed::ExprNode::Unit => resolved::ExprNode::Unit,
+            declared::ExprNode::Hole => resolved::ExprNode::Hole,
+            declared::ExprNode::Unit => resolved::ExprNode::Unit,
 
-            parsed::ExprNode::Small(name) => {
+            declared::ExprNode::Small(name) => {
                 if let Some(name) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
                 } else {
@@ -22,7 +21,7 @@ impl<'a> Resolver<'a, '_> {
                 }
             }
 
-            parsed::ExprNode::Big(name) => {
+            declared::ExprNode::Big(name) => {
                 if self.lookup_value(name).is_some() {
                     todo!("non-anonymous variant")
                 } else {
@@ -30,21 +29,21 @@ impl<'a> Resolver<'a, '_> {
                 }
             }
 
-            parsed::ExprNode::Number(num) => resolved::ExprNode::Number(num.clone()),
+            declared::ExprNode::Number(num) => resolved::ExprNode::Number(num.clone()),
 
-            parsed::ExprNode::If(cond, then, elze) => {
+            declared::ExprNode::If(cond, then, elze) => {
                 let cond = self.expr(item, cond);
                 let then = self.expr(item, then);
                 let elze = self.expr(item, elze);
                 resolved::ExprNode::If(cond, then, elze)
             }
 
-            parsed::ExprNode::Field(of, field, field_span) => {
+            declared::ExprNode::Field(of, field, field_span) => {
                 let of = self.expr(item, of);
                 resolved::ExprNode::Field(of, *field, *field_span)
             }
 
-            parsed::ExprNode::Record(fields, extend) => {
+            declared::ExprNode::Record(fields, extend) => {
                 let fields = self.alloc.alloc_slice_fill_iter(fields.iter().map(
                     |(label, label_span, def)| {
                         let def = self.expr(item, def);
@@ -57,7 +56,7 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Record(fields, extend)
             }
 
-            parsed::ExprNode::Case(scrutinee, arms) => {
+            declared::ExprNode::Case(scrutinee, arms) => {
                 let scrutinee = self.expr(item, scrutinee);
                 let cases = self.alloc.alloc_slice_fill_iter(arms.iter().map(|(pattern, expr)| {
                     self.scope(None, |this| {
@@ -70,19 +69,19 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Case { scrutinee, cases }
             }
 
-            parsed::ExprNode::Apply(fun, arg) => {
+            declared::ExprNode::Apply(fun, arg) => {
                 let fun = self.expr(item, fun);
                 let arg = self.expr(item, arg);
                 resolved::ExprNode::Apply(fun, arg)
             }
 
-            parsed::ExprNode::Lambda(pattern, body) => self.scope(None, |this| {
+            declared::ExprNode::Lambda(pattern, body) => self.scope(None, |this| {
                 let pattern = this.pattern(item, pattern);
                 let body = this.expr(item, body);
                 resolved::ExprNode::Lambda(pattern, body)
             }),
 
-            parsed::ExprNode::Let(name, name_span, bound, body) => {
+            declared::ExprNode::Let(name, name_span, bound, body) => {
                 let bound = self.expr(item, bound);
                 let name = name.and_then(|name| self.define_value(item, *name_span, name));
                 self.scope(name.ok(), |this| {

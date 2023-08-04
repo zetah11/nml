@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use malachite::Integer;
 
 use crate::errors::{ErrorId, Errors};
-use crate::names::{Ident, Label};
+use crate::names::{Ident, Label, Name};
+use crate::resolve::ItemId;
 use crate::source::{SourceId, Span};
 
 #[derive(Debug)]
@@ -10,10 +13,14 @@ pub struct Source<'a> {
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
     pub source: SourceId,
+
+    pub names: BTreeMap<Ident, Name>,
+    pub defines: BTreeMap<Name, Span>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Item<'a> {
+    pub id: ItemId,
     pub node: ItemNode<'a>,
     pub span: Span,
 }
@@ -21,7 +28,7 @@ pub struct Item<'a> {
 #[derive(Clone, Debug)]
 pub enum ItemNode<'a> {
     Invalid(ErrorId),
-    Let(Result<Ident, ErrorId>, Span, &'a Expr<'a>),
+    Let(Result<Name, ErrorId>, &'a Expr<'a>),
 }
 
 #[derive(Clone, Debug)]

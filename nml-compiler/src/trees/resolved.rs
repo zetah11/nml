@@ -4,6 +4,7 @@ use malachite::Integer;
 
 use crate::errors::{ErrorId, Errors};
 use crate::names::{Label, Name};
+use crate::resolve::ItemId;
 use crate::source::Span;
 
 #[derive(Debug)]
@@ -14,9 +15,6 @@ pub struct Program<'a> {
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
 }
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ItemId(pub(crate) usize);
 
 #[derive(Clone, Debug)]
 pub struct Item<'a> {

@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
 use crate::names::Name;
-use crate::trees::resolved::{Expr, ExprNode, Item, ItemId, ItemNode, Pattern, PatternNode};
+use crate::trees::resolved::{Expr, ExprNode, Item, ItemNode, Pattern, PatternNode};
 
-use super::Resolver;
+use super::{ItemId, Resolver};
 
 impl Resolver<'_, '_> {
     pub fn dependencies(&self, item: &Item) -> BTreeSet<ItemId> {

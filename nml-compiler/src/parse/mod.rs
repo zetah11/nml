@@ -22,7 +22,7 @@ pub fn tokens(source: &Source) -> impl Iterator<Item = (Result<Token, ()>, Span)
         .map(|(result, span)| (result, source.id.span(span.start, span.end)))
 }
 
-pub fn parse<'a>(alloc: &'a Bump, names: &'a Names, source: &Source) -> parsed::Program<'a> {
+pub fn parse<'a>(alloc: &'a Bump, names: &'a Names, source: &Source) -> parsed::Source<'a> {
     debug!("lexing");
     let tokens = tokens(source);
 
@@ -41,5 +41,5 @@ pub fn parse<'a>(alloc: &'a Bump, names: &'a Names, source: &Source) -> parsed::
         abstractifier.program(concrete)
     };
 
-    parsed::Program { items: abstracted, errors, unattached, source: source.id }
+    parsed::Source { items: abstracted, errors, unattached, source: source.id }
 }
