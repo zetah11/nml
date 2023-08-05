@@ -34,7 +34,7 @@ struct Declarer<'a> {
     store: &'a Names<'a>,
     errors: Errors,
     names: BTreeMap<Ident, Name>,
-    spans: BTreeMap<Name, Span>,
+    spans: BTreeMap<Name, (Span, ItemId)>,
 
     scope: ScopeName,
     count: usize,
@@ -55,18 +55,20 @@ impl<'a> Declarer<'a> {
     }
 
     pub fn declare_item(&mut self, item: &parsed::Item) -> declared::Item<'a> {
+        let id = ItemId(self.count);
+        self.count += 1;
+
         let span = item.span;
         let node = match &item.node {
             parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
             parsed::ItemNode::Let(name, span, body) => {
-                let name = name.and_then(|ident| self.declare(ident, *span));
+                let name = name.and_then(|ident| self.declare(id, ident, *span));
                 let body = self.declare_expr(body);
                 declared::ItemNode::Let(name, body)
             }
         };
 
-        self.count += 1;
-        declared::Item { id: ItemId(self.count), node, span }
+        declared::Item { id, node, span }
     }
 
     fn declare_expr(&mut self, expr: &parsed::Expr) -> &'a declared::Expr<'a> {
@@ -156,11 +158,11 @@ impl<'a> Declarer<'a> {
         self.alloc.alloc(declared::Pattern { node, span })
     }
 
-    fn declare(&mut self, ident: Ident, span: Span) -> Result<Name, ErrorId> {
+    fn declare(&mut self, id: ItemId, ident: Ident, span: Span) -> Result<Name, ErrorId> {
         let name = self.store.name(self.scope, ident);
         self.names.insert(ident, name);
 
-        if let Some(prev) = self.spans.insert(name, span) {
+        if let Some((prev, _)) = self.spans.insert(name, (span, id)) {
             let name = self.store.get_ident(&ident);
             Err(self.errors.name_error(span).redefined_value(prev, name))
         } else {

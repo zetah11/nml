@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
@@ -14,6 +16,10 @@ pub enum Command {
 
         #[arg(long, value_enum, default_value_t = LogLevel::Off)]
         log: LogLevel,
+    },
+
+    Check {
+        path: PathBuf,
     },
 }
 

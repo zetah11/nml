@@ -1,2 +1,9 @@
-let f = a => a
+let f = Hi
 let x = f 5
+let y = f { x = x }
+
+let z =
+  case y
+  | Hi z => z
+  | Bye y => y
+  end

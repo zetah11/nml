@@ -11,5 +11,10 @@ fn main() -> anyhow::Result<()> {
         }
 
         Command::Lsp { .. } => unreachable!(),
+
+        Command::Check { path } => {
+            pretty_env_logger::init();
+            nmlc::batch::run(&path)
+        }
     }
 }

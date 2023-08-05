@@ -1,3 +1,5 @@
+use log::trace;
+
 use crate::parse::cst::{Name, Node, Thing, ValueDef, ValueDefKw};
 use crate::parse::tokens::Token;
 use crate::source::Span;
@@ -13,7 +15,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         while self.next.is_some() {
             let mut err = None;
 
-            while self.peek(Self::THING_STARTS).is_none() {
+            while self.peek(Self::THING_STARTS).is_none() && self.next.is_some() {
+                trace!("skipping token");
                 err.get_or_insert(self.current_span);
                 self.advance();
             }
@@ -70,6 +73,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// let = ("let" / "fun") def *("and" def) ["in" thing]
     /// ```
     fn let_fun(&mut self, kw: ValueDefKw, opener: Span) -> &'a Thing<'a> {
+        trace!("parse let/fun");
+
         let primary = self.def(Some(opener));
         let mut others = Vec::new();
 
@@ -78,6 +83,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         }
 
         let within = self.consume(Token::In).map(|_| self.thing());
+
+        trace!("done let/fun");
 
         let span = opener + self.closest_span();
         let node = Node::Let { keyword: (kw, opener), defs: (primary, others), within };
@@ -97,8 +104,12 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// def = apply "=" thing
     /// ```
     fn def(&mut self, opener: Option<Span>) -> ValueDef<'a> {
+        trace!("parse def");
+
         let pattern = self.apply();
         let definition = self.consume(Token::Equal).map(|_| self.thing());
+
+        trace!("done def");
 
         let span = opener.unwrap_or(pattern.span) + self.closest_span();
         ValueDef { span, pattern, definition }
@@ -108,6 +119,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// if = "if" thing "do" thing ("else" thing / "end")
     /// ```
     fn if_do(&mut self, opener: Span) -> &'a Thing<'a> {
+        trace!("parse `if`");
+
         let conditional = self.thing();
         let Some(_do_kw) = self.consume(Token::Do) else {
             let span = self.current_span;
@@ -118,7 +131,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
         let consequence = self.thing();
 
-        if let Some(_else_kw) = self.consume(Token::Else) {
+        let thing = if let Some(_else_kw) = self.consume(Token::Else) {
             let alternative = self.thing();
             let span = opener + alternative.span;
             let node = Node::If { conditional, consequence, alternative: Some(alternative) };
@@ -134,7 +147,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             let span = opener + end;
             let node = Node::If { conditional, consequence, alternative: None };
             self.alloc.alloc(Thing { node, span })
-        }
+        };
+
+        trace!("done `if`");
+        thing
     }
 
     /// ```abnf
@@ -142,6 +158,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// arm  = "|" lambda
     /// ```
     fn case(&mut self, opener: Span) -> &'a Thing<'a> {
+        trace!("parse `case`");
+
         let scrutinee = self.thing();
         let mut arms = Vec::new();
 
@@ -156,6 +174,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             span
         });
 
+        trace!("done case");
+
         let span = opener + end;
         let node = Node::Case { scrutinee, arms };
         self.alloc.alloc(Thing { node, span })
@@ -165,27 +185,35 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// lambda = apply ["=>" lambda]
     /// ```
     fn lambda(&mut self) -> &'a Thing<'a> {
+        trace!("parse lambda");
         let thing = self.apply();
-        self.consume(Token::EqualArrow)
+        let thing = self
+            .consume(Token::EqualArrow)
             .map(|_| {
                 let body = self.lambda();
                 let span = thing.span + body.span;
                 let node = Node::Lambda(thing, body);
                 &*self.alloc.alloc(Thing { node, span })
             })
-            .unwrap_or(thing)
+            .unwrap_or(thing);
+        trace!("done lambda");
+        thing
     }
 
     /// ```abnf
     /// apply = 1*field
     /// ```
     fn apply(&mut self) -> &'a Thing<'a> {
+        trace!("parsing apply");
+
         let expr = self.field();
         let mut args = Vec::new();
 
         while self.peek(Self::FIELD_STARTS).is_some() {
             args.push(self.field());
         }
+
+        trace!("done apply");
 
         if let Some(last_arg) = args.last() {
             let span = expr.span + last_arg.span;
@@ -209,6 +237,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// field = base *("." name)
     /// ```
     fn field(&mut self) -> &'a Thing<'a> {
+        trace!("parse field");
+
         let thing = self.base();
         let mut fields = Vec::new();
 
@@ -222,6 +252,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
                 return self.alloc.alloc(Thing { node, span });
             }
         }
+
+        trace!("done field");
 
         if let Some((_, end)) = fields.last() {
             let span = thing.span + *end;
@@ -239,16 +271,21 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```
     fn base(&mut self) -> &'a Thing<'a> {
         let (node, span) = if let Some((name, span)) = self.name() {
+            trace!("name");
             let node = Node::Name(name);
             (node, span)
         } else if let Some((number, span)) = self.number() {
+            trace!("number");
             let node = Node::Number(number);
             (node, span)
         } else if let Some(span) = self.consume(Token::Underscore) {
+            trace!("wildcard");
             let node = Node::Wildcard;
             (node, span)
         } else if let Some(opener) = self.consume(Token::LeftParen) {
+            trace!("parse group");
             let thing = self.thing();
+            trace!("done group");
             if self.consume(Token::RightParen).is_none() {
                 let e = self.errors.parse_error(opener).unclosed_paren(self.current_span);
                 let span = self.closest_span();
@@ -258,6 +295,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
                 return thing;
             }
         } else if let Some(opener) = self.consume(Token::LeftBrace) {
+            trace!("parse record");
             let mut defs = Vec::new();
             let mut extends = Vec::new();
 
@@ -283,6 +321,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
                 expected_comma = self.consume(Token::Comma).is_none().then_some(self.current_span);
             }
+
+            trace!("done record");
 
             if let Some(end) = self.consume(Token::RightBrace) {
                 let span = opener + end;

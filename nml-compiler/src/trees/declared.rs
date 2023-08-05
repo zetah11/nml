@@ -15,7 +15,7 @@ pub struct Source<'a> {
     pub source: SourceId,
 
     pub names: BTreeMap<Ident, Name>,
-    pub defines: BTreeMap<Name, Span>,
+    pub defines: BTreeMap<Name, (Span, ItemId)>,
 }
 
 #[derive(Clone, Debug)]

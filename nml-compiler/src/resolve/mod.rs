@@ -26,8 +26,14 @@ pub fn resolve<'a>(
     program: &declared::Source,
 ) -> resolved::Program<'a> {
     let mut errors = program.errors.clone();
-    let mut resolver =
-        Resolver::new(names, alloc, &mut errors, program.names.clone(), program.source);
+    let mut resolver = Resolver::new(
+        names,
+        alloc,
+        &mut errors,
+        program.names.clone(),
+        &program.defines,
+        program.source,
+    );
 
     let mut items = resolver.items(program.items);
     let graph = items.iter().map(|(id, item)| (*id, resolver.dependencies(item))).collect();
@@ -65,21 +71,14 @@ impl<'a, 'err> Resolver<'a, 'err> {
         alloc: &'a Bump,
         errors: &'err mut Errors,
         values: BTreeMap<Ident, Name>,
+        spans: &BTreeMap<Name, (Span, ItemId)>,
         source: SourceId,
     ) -> Self {
         let scope = Scope::top_level(source, values);
+        let (spans, items) =
+            spans.iter().map(|(name, (span, id))| ((*name, *span), (*name, *id))).unzip();
 
-        Self {
-            names,
-            alloc,
-            errors,
-
-            items: BTreeMap::new(),
-            spans: BTreeMap::new(),
-
-            scopes: (Vec::new(), scope),
-            counter: 0,
-        }
+        Self { names, alloc, errors, items, spans, scopes: (Vec::new(), scope), counter: 0 }
     }
 
     pub fn items(&mut self, items: &[declared::Item]) -> BTreeMap<ItemId, resolved::Item<'a>> {

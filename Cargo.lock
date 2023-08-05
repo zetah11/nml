@@ -655,6 +655,7 @@ dependencies = [
  "lsp-server",
  "lsp-types 0.94.0",
  "nml-compiler",
+ "pretty_env_logger",
  "serde",
  "serde_json",
 ]
