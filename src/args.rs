@@ -1,36 +1,43 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use argh::FromArgs;
 
-#[derive(Debug, Parser)]
+/// test message 123
+#[derive(FromArgs, Debug)]
 pub struct Args {
-    #[command(subcommand)]
+    #[argh(subcommand)]
     pub command: Command,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(FromArgs, Debug)]
+#[argh(subcommand)]
 pub enum Command {
-    Lsp {
-        #[command(flatten)]
-        channel: Channel,
-
-        #[arg(long, value_enum, default_value_t = LogLevel::Off)]
-        log: LogLevel,
-    },
-
-    Check {
-        path: PathBuf,
-    },
+    Lsp(Lsp),
+    Check(Check),
 }
 
-#[derive(Debug, clap::Args)]
-#[group(required = true, multiple = false)]
-pub struct Channel {
-    #[arg(long)]
+/// Check the package for static errors.
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "check")]
+pub struct Check {
+    #[argh(positional)]
+    pub path: PathBuf,
+}
+/// Run the compiler as a language server.
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "lsp")]
+pub struct Lsp {
+    /// the amount of logging to perform.
+    #[argh(option, default = "LogLevel::Off")]
+    pub log: LogLevel,
+
+    /// use stdio as the communication channel
+    #[argh(switch)]
     pub stdio: bool,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug)]
 pub enum LogLevel {
     Off,
     Trace,
@@ -49,6 +56,23 @@ impl LogLevel {
             LogLevel::Info => log::LevelFilter::Info,
             LogLevel::Warning => log::LevelFilter::Warn,
             LogLevel::Error => log::LevelFilter::Error,
+        }
+    }
+}
+
+impl FromStr for LogLevel {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "off" => Ok(Self::Off),
+            "trace" => Ok(Self::Trace),
+            "debug" => Ok(Self::Debug),
+            "info" => Ok(Self::Info),
+            "warning" => Ok(Self::Warning),
+            "error" => Ok(Self::Error),
+
+            _ => Err("expected one of `off`, `trace`, `debug`, `info`, `warning`, or `error`"),
         }
     }
 }

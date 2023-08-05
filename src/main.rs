@@ -1,19 +1,19 @@
-use clap::Parser;
-use nmlc::args::{Args, Channel, Command};
+use anyhow::anyhow;
+use nmlc::args::{Args, Check, Command, Lsp};
 
 fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    let args: Args = argh::from_env();
 
     match args.command {
-        Command::Lsp { channel: Channel { stdio: true }, log } => {
+        Command::Lsp(Lsp { log, stdio: true }) => {
             log::set_max_level(log.to_level_filter());
             nmlc::lsp::run()
         }
 
-        Command::Lsp { .. } => unreachable!(),
+        Command::Lsp(_) => Err(anyhow!("no communication channel specified")),
 
-        Command::Check { path } => {
-            pretty_env_logger::init();
+        Command::Check(Check { path }) => {
+            simple_logger::init_with_env()?;
             nmlc::batch::run(&path)
         }
     }
