@@ -51,7 +51,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     }
 
     /// Check a set of mutually recursive items.
-    pub fn check_items(&mut self, items: &[Item<'a>]) {
+    pub fn check_items(&mut self, items: &[Item]) {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {
@@ -60,7 +60,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             for item in items {
                 let ty = match &item.node {
                     ItemNode::Invalid(e) => self.types.alloc(Type::Invalid(*e)),
-                    ItemNode::Let(name, _) => {
+                    ItemNode::Let(name, (), _) => {
                         let ty = this.fresh();
                         if let Ok(name) = name {
                             this.env.insert(*name, Scheme::mono(ty));
@@ -76,7 +76,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             for (item, ty) in typed_items {
                 let inferred = match &item.node {
                     ItemNode::Invalid(_) => ty,
-                    ItemNode::Let(_, body) => this.infer(body),
+                    ItemNode::Let(_, (), body) => this.infer(body),
                 };
 
                 let mut pretty = this.pretty.build();
@@ -92,7 +92,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             match &item.node {
                 ItemNode::Invalid(_) => {}
 
-                ItemNode::Let(name, _) => {
+                ItemNode::Let(name, (), _) => {
                     let Ok(name) = name else { continue; };
                     let scheme = self.env.lookup(name);
                     debug_assert!(scheme.is_mono());

@@ -36,7 +36,7 @@ impl<'a> Abstractifier<'a, '_> {
             let span = name_span;
             let e = self.errors.parse_error(span).missing_definition();
             let node = ast::ExprNode::Invalid(e);
-            self.alloc.alloc(ast::Expr { node, span })
+            ast::Expr { node, span }
         });
 
         let span = def.span;

@@ -89,11 +89,11 @@ impl<'a, 'err> Resolver<'a, 'err> {
     fn resolve_item(&mut self, item: &declared::Item) -> resolved::Item<'a> {
         let id = item.id;
         let span = item.span;
-        let node = match item.node {
-            declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
-            declared::ItemNode::Let(name, expr) => {
+        let node = match &item.node {
+            declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(*e),
+            declared::ItemNode::Let(name, (), expr) => {
                 let expr = self.expr(id, expr);
-                resolved::ItemNode::Let(name, expr)
+                resolved::ItemNode::Let(*name, (), expr)
             }
         };
 

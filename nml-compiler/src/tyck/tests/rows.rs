@@ -16,7 +16,7 @@ fn fields() {
         let expected = s.extend([("x", xt), ("y", checker.fresh())], Some(checker.fresh_row()));
         let expected = s.arrow(expected, xt);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -35,7 +35,7 @@ fn overwrite() {
         let u = s.extend([("x", s.int())], Some(rest));
         let expected = s.arrow(t, u);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -55,7 +55,7 @@ fn sneakily_recursive() {
         let cond = s.if_then(s.bool(true), then, elze);
         let expr = s.lambda(s.bind("r"), cond);
 
-        let _actual = checker.infer(expr);
+        let _actual = checker.infer(&expr);
         assert_eq!(checker.errors.num_errors(), 1);
     });
 }
@@ -74,7 +74,7 @@ fn record_literal() {
         let lambda_ty = s.arrow(s.arrow(s.boolean(), a), a);
         let expected = s.extend([("x", lit_ty), ("y", lambda_ty)], None);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     })
 }
@@ -90,7 +90,7 @@ fn single_variant() {
         let expected = s.sum([("Test", xt)], Some(checker.fresh_row()));
         let expected = s.arrow(xt, expected);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -107,7 +107,7 @@ fn exhaustive_case() {
 
         let expected = s.int();
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -127,7 +127,7 @@ fn wildcard_case() {
         let arg = s.sum([("A", ret)], Some(rt));
         let expected = s.arrow(arg, ret);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
 
         checker.assert_alpha_equal(expected, actual);
     });
@@ -155,7 +155,7 @@ fn wildcard_in_exhaustive_case() {
         let arg = s.sum([("A", nested), ("B", ret)], None);
         let expected = s.arrow(arg, ret);
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
 
         checker.assert_alpha_equal(expected, actual);
     });

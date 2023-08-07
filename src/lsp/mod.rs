@@ -122,8 +122,18 @@ impl Server {
     }
 
     /// `textDocument/didSave`
-    fn did_save_text_document(&mut self, _: lsp::DidSaveTextDocumentParams) {
-        todo!()
+    fn did_save_text_document(&mut self, params: lsp::DidSaveTextDocumentParams) {
+        if let Some(text) = params.text {
+            let name = params.text_document.uri;
+            self.insert_document(name.clone(), text);
+
+            let mut errors = {
+                let source = self.tracked.get(&name).expect("just inserted");
+                self.check_source(source)
+            };
+
+            self.send_diagnostics(&mut errors);
+        }
     }
 
     /// `textDocument/semanticTokens/full`

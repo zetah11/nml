@@ -51,39 +51,39 @@ impl<'a, 'ids> Store<'a, 'ids> {
         f(this, checker)
     }
 
-    pub fn bool(&self, value: bool) -> &'a Expr<'a> {
+    pub fn bool(&self, value: bool) -> Expr<'a> {
         self.expr(ExprNode::Bool(value))
     }
 
-    pub fn num(&self, value: impl Into<Integer>) -> &'a Expr<'a> {
+    pub fn num(&self, value: impl Into<Integer>) -> Expr<'a> {
         self.expr(ExprNode::Number(value.into()))
     }
 
-    pub fn var(&self, name: impl Into<String>) -> &'a Expr<'a> {
+    pub fn var(&self, name: impl Into<String>) -> Expr<'a> {
         let name = self.name(name);
         self.expr(ExprNode::Var(name))
     }
 
-    pub fn if_then(
-        &self,
-        cond: &'a Expr<'a>,
-        then: &'a Expr<'a>,
-        elze: &'a Expr<'a>,
-    ) -> &'a Expr<'a> {
+    pub fn if_then(&self, cond: Expr<'a>, then: Expr<'a>, elze: Expr<'a>) -> Expr<'a> {
+        let cond = self.alloc.alloc(cond);
+        let then = self.alloc.alloc(then);
+        let elze = self.alloc.alloc(elze);
         self.expr(ExprNode::If(cond, then, elze))
     }
 
-    pub fn field(&self, of: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
+    pub fn field(&self, of: Expr<'a>, label: impl AsRef<str>) -> Expr<'a> {
+        let of = self.alloc.alloc(of);
         let label = self.names.label(label);
         self.expr(ExprNode::Field(of, Ok(label), self.source.span(0, 0)))
     }
 
-    pub fn record<L, I>(&self, fields: I, rest: Option<&'a Expr<'a>>) -> &'a Expr<'a>
+    pub fn record<L, I>(&self, fields: I, rest: Option<Expr<'a>>) -> Expr<'a>
     where
         L: AsRef<str>,
-        I: IntoIterator<Item = (L, &'a Expr<'a>)>,
+        I: IntoIterator<Item = (L, Expr<'a>)>,
         I::IntoIter: ExactSizeIterator,
     {
+        let rest = rest.map(|rest| &*self.alloc.alloc(rest));
         let fields = self.alloc.alloc_slice_fill_iter(fields.into_iter().map(|(label, field)| {
             let label = self.names.label(label);
             let span = self.source.span(0, 0);
@@ -93,63 +93,68 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Record(fields, rest))
     }
 
-    pub fn restrict(&self, expr: &'a Expr<'a>, label: impl AsRef<str>) -> &'a Expr<'a> {
+    pub fn restrict(&self, expr: Expr<'a>, label: impl AsRef<str>) -> Expr<'a> {
+        let expr = self.alloc.alloc(expr);
         let label = self.names.label(label);
         self.expr(ExprNode::Restrict(expr, label))
     }
 
-    pub fn variant(&self, label: impl AsRef<str>) -> &'a Expr<'a> {
+    pub fn variant(&self, label: impl AsRef<str>) -> Expr<'a> {
         let label = self.names.label(label);
         self.expr(ExprNode::Variant(label))
     }
 
-    pub fn case<I>(&self, scrutinee: &'a Expr<'a>, cases: I) -> &'a Expr<'a>
+    pub fn case<I>(&self, scrutinee: Expr<'a>, cases: I) -> Expr<'a>
     where
-        I: IntoIterator<Item = (&'a Pattern<'a>, &'a Expr<'a>)>,
+        I: IntoIterator<Item = (Pattern<'a>, Expr<'a>)>,
         I::IntoIter: ExactSizeIterator,
     {
+        let scrutinee = self.alloc.alloc(scrutinee);
         let cases = self.alloc.alloc_slice_fill_iter(cases);
         self.expr(ExprNode::Case { scrutinee, cases })
     }
 
-    pub fn apply(&self, fun: &'a Expr<'a>, arg: &'a Expr<'a>) -> &'a Expr<'a> {
+    pub fn apply(&self, fun: Expr<'a>, arg: Expr<'a>) -> Expr<'a> {
+        let fun = self.alloc.alloc(fun);
+        let arg = self.alloc.alloc(arg);
         self.expr(ExprNode::Apply(fun, arg))
     }
 
-    pub fn lambda(&self, arg: &'a Pattern<'a>, body: &'a Expr<'a>) -> &'a Expr<'a> {
+    pub fn lambda(&self, arg: Pattern<'a>, body: Expr<'a>) -> Expr<'a> {
+        let body = self.alloc.alloc(body);
         self.expr(ExprNode::Lambda(arg, body))
     }
 
-    pub fn let_in(
-        &self,
-        name: impl Into<String>,
-        bound: &'a Expr<'a>,
-        body: &'a Expr<'a>,
-    ) -> &'a Expr<'a> {
+    pub fn let_in(&self, name: impl Into<String>, bound: Expr<'a>, body: Expr<'a>) -> Expr<'a> {
+        let bound = self.alloc.alloc(bound);
+        let body = self.alloc.alloc(body);
         let name = self.name(name);
-        self.expr(ExprNode::Let(Ok(name), bound, body))
+        self.expr(ExprNode::Let(Ok(name), (), bound, body))
     }
 
-    pub fn wildcard(&self) -> &'a Pattern<'a> {
+    pub fn wildcard(&self) -> Pattern<'a> {
         self.pattern(PatternNode::Wildcard)
     }
 
-    pub fn bind(&self, name: impl Into<String>) -> &'a Pattern<'a> {
+    pub fn bind(&self, name: impl Into<String>) -> Pattern<'a> {
         let name = self.name(name);
         self.pattern(PatternNode::Bind(name))
     }
 
-    pub fn named(&self, name: impl Into<String>) -> &'a Pattern<'a> {
+    pub fn named(&self, name: impl Into<String>) -> Pattern<'a> {
         let name = self.name(name);
         self.pattern(PatternNode::Named(name))
     }
 
-    pub fn deconstruct(&self, label: impl AsRef<str>, pattern: &'a Pattern<'a>) -> &'a Pattern<'a> {
+    pub fn deconstruct(&self, label: impl AsRef<str>, pattern: Pattern<'a>) -> Pattern<'a> {
         let label = self.names.label(label);
+        let pattern = self.alloc.alloc(pattern);
         self.pattern(PatternNode::Deconstruct(label, pattern))
     }
 
-    pub fn apply_pat(&self, ctr: &'a Pattern<'a>, arg: &'a Pattern<'a>) -> &'a Pattern<'a> {
+    pub fn apply_pat(&self, ctr: Pattern<'a>, arg: Pattern<'a>) -> Pattern<'a> {
+        let ctr = self.alloc.alloc(ctr);
+        let arg = self.alloc.alloc(arg);
         self.pattern(PatternNode::Apply(ctr, arg))
     }
 
@@ -203,14 +208,14 @@ impl<'a, 'ids> Store<'a, 'ids> {
         }
     }
 
-    fn expr(&self, node: ExprNode<'a>) -> &'a Expr<'a> {
+    fn expr(&self, node: ExprNode<'a>) -> Expr<'a> {
         let span = self.source.span(0, 0);
-        self.alloc.alloc(Expr { node, span })
+        Expr { node, span }
     }
 
-    fn pattern(&self, node: PatternNode<'a>) -> &'a Pattern<'a> {
+    fn pattern(&self, node: PatternNode<'a>) -> Pattern<'a> {
         let span = self.source.span(0, 0);
-        self.alloc.alloc(Pattern { node, span })
+        Pattern { node, span }
     }
 
     fn row<L, I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>

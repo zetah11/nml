@@ -4,11 +4,7 @@ use crate::trees::{declared, resolved};
 use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn pattern(
-        &mut self,
-        item: ItemId,
-        pattern: &declared::Pattern,
-    ) -> &'a resolved::Pattern<'a> {
+    pub fn pattern(&mut self, item: ItemId, pattern: &declared::Pattern) -> resolved::Pattern<'a> {
         let span = pattern.span;
         let node = match &pattern.node {
             declared::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
@@ -37,16 +33,23 @@ impl<'a> Resolver<'a, '_> {
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);
                 let arg = self.pattern(item, arg);
+                let arg = self.alloc.alloc(arg);
                 resolved::PatternNode::Deconstruct(label, arg)
             }
 
             declared::PatternNode::Apply(fun, arg) => {
                 let fun = self.pattern(item, fun);
+                let fun = self.alloc.alloc(fun);
                 let arg = self.pattern(item, arg);
+                let arg = self.alloc.alloc(arg);
                 resolved::PatternNode::Apply(fun, arg)
             }
+
+            declared::PatternNode::Bind(x) => match *x {},
+            declared::PatternNode::Named(x) => match *x {},
+            declared::PatternNode::Deconstruct(x, _) => match *x {},
         };
 
-        self.alloc.alloc(resolved::Pattern { node, span })
+        resolved::Pattern { node, span }
     }
 }

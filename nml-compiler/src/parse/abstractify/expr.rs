@@ -4,7 +4,7 @@ use crate::parse::cst;
 use crate::trees::parsed as ast;
 
 impl<'a> Abstractifier<'a, '_> {
-    pub fn expr(&mut self, node: &cst::Thing) -> &'a ast::Expr<'a> {
+    pub fn expr(&mut self, node: &cst::Thing) -> ast::Expr<'a> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ExprNode::Invalid(*e),
@@ -27,13 +27,16 @@ impl<'a> Abstractifier<'a, '_> {
             }
 
             cst::Node::If { conditional, consequence, alternative } => {
-                let conditional = self.expr(conditional);
-                let consequence = self.expr(consequence);
-                let alternative = alternative.map(|node| self.expr(node)).unwrap_or_else(|| {
+                let cond = self.expr(conditional);
+                let cond = self.alloc.alloc(cond);
+                let then = self.expr(consequence);
+                let then = self.alloc.alloc(then);
+                let elze = alternative.map(|node| self.expr(node)).unwrap_or_else(|| {
                     let node = ast::ExprNode::Unit;
-                    self.alloc.alloc(ast::Expr { node, span })
+                    ast::Expr { node, span }
                 });
-                ast::ExprNode::If(conditional, consequence, alternative)
+                let elze = self.alloc.alloc(elze);
+                ast::ExprNode::If(cond, then, elze)
             }
 
             cst::Node::Field(of, fields) => {
@@ -49,8 +52,8 @@ impl<'a> Abstractifier<'a, '_> {
                     };
 
                     let span = expr.span + field_span;
-                    let node = ast::ExprNode::Field(expr, name, field_span);
-                    expr = self.alloc.alloc(ast::Expr { node, span });
+                    let node = ast::ExprNode::Field(self.alloc.alloc(expr), name, field_span);
+                    expr = ast::Expr { node, span };
                 }
 
                 return expr;
@@ -64,7 +67,7 @@ impl<'a> Abstractifier<'a, '_> {
                     let node = ast::ExprNode::Invalid(e);
                     Some(&*self.alloc.alloc(ast::Expr { node, span }))
                 } else {
-                    extends.first().map(|node| self.expr(node))
+                    extends.first().map(|node| &*self.alloc.alloc(self.expr(node)))
                 };
 
                 let fields = self.alloc.alloc_slice_fill_with(defs.len(), |idx| {
@@ -86,12 +89,14 @@ impl<'a> Abstractifier<'a, '_> {
 
             cst::Node::Case { scrutinee, arms } => {
                 let scrutinee = self.expr(scrutinee);
-                let arms = self.alloc.alloc_slice_fill_with(arms.len(), |idx| {
+                let scrutinee = self.alloc.alloc(scrutinee);
+
+                let cases = self.alloc.alloc_slice_fill_with(arms.len(), |idx| {
                     let arm = &arms[idx];
                     self.arrow(arm)
                 });
 
-                ast::ExprNode::Case(scrutinee, arms)
+                ast::ExprNode::Case { scrutinee, cases }
             }
 
             cst::Node::Apply(fun, args) => {
@@ -99,9 +104,10 @@ impl<'a> Abstractifier<'a, '_> {
 
                 for arg in args {
                     let arg = self.expr(arg);
+                    let arg = self.alloc.alloc(arg);
                     let span = fun.span + arg.span;
-                    let node = ast::ExprNode::Apply(fun, arg);
-                    fun = self.alloc.alloc(ast::Expr { node, span });
+                    let node = ast::ExprNode::Apply(self.alloc.alloc(fun), arg);
+                    fun = ast::Expr { node, span };
                 }
 
                 return fun;
@@ -110,6 +116,7 @@ impl<'a> Abstractifier<'a, '_> {
             cst::Node::Lambda(pattern, body) => {
                 let pattern = self.pattern(pattern);
                 let body = self.expr(body);
+                let body = self.alloc.alloc(body);
                 ast::ExprNode::Lambda(pattern, body)
             }
 
@@ -119,7 +126,7 @@ impl<'a> Abstractifier<'a, '_> {
                 } else {
                     let e = self.errors.parse_error(span).value_definition_without_body();
                     let node = ast::ExprNode::Invalid(e);
-                    self.alloc.alloc(ast::Expr { node, span })
+                    ast::Expr { node, span }
                 };
 
                 for def in defs.1.iter().rev().chain(std::iter::once(&defs.0)) {
@@ -130,22 +137,24 @@ impl<'a> Abstractifier<'a, '_> {
                         let span = name_span;
                         let e = self.errors.parse_error(span).missing_definition();
                         let node = ast::ExprNode::Invalid(e);
-                        self.alloc.alloc(ast::Expr { node, span })
+                        ast::Expr { node, span }
                     };
 
+                    let bound = self.alloc.alloc(bound);
+
                     let span = def.span;
-                    let node = ast::ExprNode::Let(name, name_span, bound, body);
-                    body = self.alloc.alloc(ast::Expr { node, span });
+                    let node = ast::ExprNode::Let(name, name_span, bound, self.alloc.alloc(body));
+                    body = ast::Expr { node, span };
                 }
 
                 return body;
             }
         };
 
-        self.alloc.alloc(ast::Expr { node, span })
+        ast::Expr { node, span }
     }
 
-    fn arrow(&mut self, node: &cst::Thing) -> (&'a ast::Pattern<'a>, &'a ast::Expr<'a>) {
+    fn arrow(&mut self, node: &cst::Thing) -> (ast::Pattern<'a>, ast::Expr<'a>) {
         match &node.node {
             cst::Node::Invalid(_) => {
                 let pattern = self.pattern(node);
@@ -163,10 +172,10 @@ impl<'a> Abstractifier<'a, '_> {
                 let span = node.span;
                 let e = self.errors.parse_error(span).expected_case_arm();
                 let node = ast::PatternNode::Invalid(e);
-                let pattern = self.alloc.alloc(ast::Pattern { node, span });
+                let pattern = ast::Pattern { node, span };
 
                 let node = ast::ExprNode::Invalid(e);
-                let body = self.alloc.alloc(ast::Expr { node, span });
+                let body = ast::Expr { node, span };
 
                 (pattern, body)
             }

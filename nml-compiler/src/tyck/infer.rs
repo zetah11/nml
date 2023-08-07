@@ -249,7 +249,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 self.types.alloc(Type::Fun(pattern_ty, u))
             }
 
-            ExprNode::Let(name, bound, body) => {
+            ExprNode::Let(name, (), bound, body) => {
                 trace!("infer let");
                 let bound = self.enter(|this| this.infer(bound));
                 let mut pretty = self.pretty.build();
@@ -260,6 +260,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 trace!("done let");
                 self.infer(body)
             }
+
+            ExprNode::Small(v) | ExprNode::Big(v) => match *v {},
         }
     }
 }
@@ -309,6 +311,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 res_ty
             }
+
+            PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
         }
     }
 

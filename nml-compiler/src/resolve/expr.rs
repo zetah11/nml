@@ -4,13 +4,15 @@ use crate::trees::{declared, resolved};
 use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn expr(&mut self, item: ItemId, expr: &declared::Expr) -> &'a resolved::Expr<'a> {
+    pub fn expr(&mut self, item: ItemId, expr: &declared::Expr) -> resolved::Expr<'a> {
         let span = expr.span;
         let node = match &expr.node {
             declared::ExprNode::Invalid(e) => resolved::ExprNode::Invalid(*e),
 
             declared::ExprNode::Hole => resolved::ExprNode::Hole,
             declared::ExprNode::Unit => resolved::ExprNode::Unit,
+
+            declared::ExprNode::Bool(v) => resolved::ExprNode::Bool(*v),
 
             declared::ExprNode::Small(name) => {
                 if let Some(name) = self.lookup_value(name) {
@@ -33,13 +35,17 @@ impl<'a> Resolver<'a, '_> {
 
             declared::ExprNode::If(cond, then, elze) => {
                 let cond = self.expr(item, cond);
+                let cond = self.alloc.alloc(cond);
                 let then = self.expr(item, then);
+                let then = self.alloc.alloc(then);
                 let elze = self.expr(item, elze);
+                let elze = self.alloc.alloc(elze);
                 resolved::ExprNode::If(cond, then, elze)
             }
 
             declared::ExprNode::Field(of, field, field_span) => {
                 let of = self.expr(item, of);
+                let of = self.alloc.alloc(of);
                 resolved::ExprNode::Field(of, *field, *field_span)
             }
 
@@ -51,46 +57,63 @@ impl<'a> Resolver<'a, '_> {
                     },
                 ));
 
-                let extend = extend.map(|expr| self.expr(item, expr));
+                let extend = extend.map(|expr| &*self.alloc.alloc(self.expr(item, expr)));
 
                 resolved::ExprNode::Record(fields, extend)
             }
 
-            declared::ExprNode::Case(scrutinee, arms) => {
+            declared::ExprNode::Restrict(of, label) => {
+                let of = self.expr(item, of);
+                let of = self.alloc.alloc(of);
+                resolved::ExprNode::Restrict(of, *label)
+            }
+
+            declared::ExprNode::Case { scrutinee, cases } => {
                 let scrutinee = self.expr(item, scrutinee);
-                let cases = self.alloc.alloc_slice_fill_iter(arms.iter().map(|(pattern, expr)| {
-                    self.scope(None, |this| {
-                        let pattern = this.pattern(item, pattern);
-                        let expr = this.expr(item, expr);
-                        (pattern, expr)
-                    })
-                }));
+                let scrutinee = self.alloc.alloc(scrutinee);
+
+                let cases =
+                    self.alloc.alloc_slice_fill_iter(cases.iter().map(|(pattern, expr)| {
+                        self.scope(None, |this| {
+                            let pattern = this.pattern(item, pattern);
+                            let expr = this.expr(item, expr);
+                            (pattern, expr)
+                        })
+                    }));
 
                 resolved::ExprNode::Case { scrutinee, cases }
             }
 
             declared::ExprNode::Apply(fun, arg) => {
                 let fun = self.expr(item, fun);
+                let fun = self.alloc.alloc(fun);
                 let arg = self.expr(item, arg);
+                let arg = self.alloc.alloc(arg);
                 resolved::ExprNode::Apply(fun, arg)
             }
 
             declared::ExprNode::Lambda(pattern, body) => self.scope(None, |this| {
                 let pattern = this.pattern(item, pattern);
                 let body = this.expr(item, body);
+                let body = self.alloc.alloc(body);
                 resolved::ExprNode::Lambda(pattern, body)
             }),
 
             declared::ExprNode::Let(name, name_span, bound, body) => {
                 let bound = self.expr(item, bound);
+                let bound = self.alloc.alloc(bound);
                 let name = name.and_then(|name| self.define_value(item, *name_span, name));
                 self.scope(name.ok(), |this| {
                     let body = this.expr(item, body);
-                    resolved::ExprNode::Let(name, bound, body)
+                    let body = self.alloc.alloc(body);
+                    resolved::ExprNode::Let(name, (), bound, body)
                 })
             }
+
+            declared::ExprNode::Variant(v) => match *v {},
+            declared::ExprNode::Var(v) => match *v {},
         };
 
-        self.alloc.alloc(resolved::Expr { node, span })
+        resolved::Expr { node, span }
     }
 }

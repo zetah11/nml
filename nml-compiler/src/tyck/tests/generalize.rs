@@ -13,7 +13,7 @@ fn identity() {
 
         let expected = s.boolean();
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
@@ -30,7 +30,7 @@ fn nested() {
 
         let expected = s.arrow(checker.fresh(), s.int());
 
-        let actual = checker.infer(expr);
+        let actual = checker.infer(&expr);
         checker.assert_alpha_equal(expected, actual);
     });
 }
