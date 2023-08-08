@@ -1,12 +1,14 @@
 mod check;
 mod diagnostics;
 mod framework;
+mod inlay_hints;
 mod log;
 mod sync;
 mod tokens;
 
 use lsp::TraceValue;
 use lsp_types::{self as lsp, Url};
+use nml_compiler::alloc::Bump;
 use nml_compiler::intern::ThreadedRodeo;
 use nml_compiler::names::Ident;
 use nml_compiler::source::{Source, SourceId, Sources};
@@ -44,6 +46,12 @@ impl framework::Builder for Builder {
             Some(lsp::ServerInfo { name: meta::NAME.into(), version: Some(meta::VERSION.into()) });
 
         let capabilities = lsp::ServerCapabilities {
+            inlay_hint_provider: Some(lsp::OneOf::Right(
+                lsp::InlayHintServerCapabilities::RegistrationOptions(
+                    lsp::InlayHintRegistrationOptions { ..Default::default() },
+                ),
+            )),
+
             semantic_tokens_provider: Some(
                 lsp::SemanticTokensServerCapabilities::SemanticTokensOptions(
                     lsp::SemanticTokensOptions {
@@ -100,8 +108,9 @@ impl Server {
         self.insert_document(name.clone(), text);
 
         let mut errors = {
+            let alloc = Bump::new();
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(source)
+            self.check_source(&alloc, source).1.errors
         };
 
         self.send_diagnostics(&mut errors);
@@ -114,8 +123,9 @@ impl Server {
         self.insert_document(name.clone(), text);
 
         let mut errors = {
+            let alloc = Bump::new();
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(source)
+            self.check_source(&alloc, source).1.errors
         };
 
         self.send_diagnostics(&mut errors);
@@ -128,8 +138,9 @@ impl Server {
             self.insert_document(name.clone(), text);
 
             let mut errors = {
+                let alloc = Bump::new();
                 let source = self.tracked.get(&name).expect("just inserted");
-                self.check_source(source)
+                self.check_source(&alloc, source).1.errors
             };
 
             self.send_diagnostics(&mut errors);
@@ -149,6 +160,21 @@ impl Server {
         };
 
         Ok(Some(lsp::SemanticTokensResult::Tokens(self.compute_tokens(document))))
+    }
+
+    /// `textDocument/inlayHints`
+    fn inlay_hints(
+        &mut self,
+        params: lsp::InlayHintParams,
+    ) -> Result<Option<Vec<lsp::InlayHint>>, Error> {
+        let name = params.text_document.uri;
+
+        let source = self
+            .tracked
+            .get(&name)
+            .ok_or_else(|| Error::InvalidRequest(format!("unknown document `{name}")))?;
+
+        Ok(Some(self.make_hints(source)))
     }
 
     /// `shutdown`

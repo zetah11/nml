@@ -159,6 +159,12 @@ impl Loop {
                 );
             }
 
+            (_, m) if m == request::InlayHintRequest::METHOD => {
+                let (id, params) = request.extract(request::InlayHintRequest::METHOD)?;
+                let result = self.server.inlay_hints(params);
+                self.client.respond(id, result);
+            }
+
             (_, m) if m == request::SemanticTokensFullRequest::METHOD => {
                 let (id, params) = request.extract(request::SemanticTokensFullRequest::METHOD)?;
                 let result = self.server.semantic_tokens_full(params);

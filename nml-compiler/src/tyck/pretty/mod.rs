@@ -38,7 +38,7 @@ impl<'a> Pretty<'a> {
         self.vars.entry(var).or_insert_with(|| {
             let name = to_name(self.counter);
             self.counter += 1;
-            format!("'{}", name)
+            format!("${}", name)
         })
     }
 }
@@ -56,12 +56,12 @@ impl Prettifier<'_, '_> {
                 .params
                 .iter()
                 .enumerate()
-                .map(|(idx, generic)| (*generic, to_name(idx)))
+                .map(|(idx, generic)| (*generic, format!("'{}", to_name(idx))))
                 .collect();
 
-            let params: Vec<_> = subst.values().cloned().collect();
+            //let params: Vec<_> = subst.values().cloned().collect();
 
-            format!("for {}. {}", params.join(" "), self.ty_with_subst(scheme.ty, &subst))
+            self.ty_with_subst(scheme.ty, &subst)
         }
     }
 

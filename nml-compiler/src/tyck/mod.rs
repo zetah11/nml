@@ -1,3 +1,4 @@
+pub use self::pretty::{Prettifier, Pretty};
 pub use self::types::{Env, Row, Scheme, Type};
 
 mod infer;
@@ -11,7 +12,6 @@ mod tests;
 
 use bumpalo::Bump;
 
-use self::pretty::{Prettifier, Pretty};
 use self::solve::Solver;
 use crate::errors::Errors;
 use crate::names::Names;
