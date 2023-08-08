@@ -1,11 +1,10 @@
 use std::convert::Infallible;
 
+use super::nodes;
 use crate::names::{Label, Name};
 use crate::resolve::ItemId;
 use crate::source::Span;
 use crate::tyck::{Scheme, Type};
-
-use super::nodes;
 
 pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
 
@@ -16,12 +15,8 @@ impl<'a> nodes::Data for Data<'a> {
     type Expr = Expr<'a>;
     type Pattern = PolyPattern<'a>;
 
-    type ItemName = Name;
     type ExprName = Infallible;
     type PatternName = Infallible;
-    type ItemLet = ();
-    type LetName = Name;
-    type LetExtra = ();
     type Var = Name;
     type Variant = Label;
 }
@@ -31,12 +26,8 @@ impl<'a> nodes::Data for MonoData<'a> {
     type Expr = Infallible;
     type Pattern = MonoPattern<'a>;
 
-    type ItemName = Infallible;
     type ExprName = Infallible;
     type PatternName = Infallible;
-    type ItemLet = Infallible;
-    type LetName = Infallible;
-    type LetExtra = Infallible;
     type Var = Name;
     type Variant = Label;
 }
@@ -69,3 +60,24 @@ pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
 pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
 pub type PolyPatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;
 pub type MonoPatternNode<'a> = nodes::PatternNode<'a, MonoData<'a>>;
+
+pub(crate) struct BoundItem<'a, T> {
+    pub node: BoundItemNode<'a, T>,
+    pub span: Span,
+    pub id: ItemId,
+}
+
+pub(crate) type BoundItemNode<'a, T> = nodes::ItemNode<BoundData<'a, T>>;
+
+pub(crate) struct BoundData<'a, T>(std::marker::PhantomData<&'a T>);
+
+impl<'a, T> nodes::Data for BoundData<'a, T> {
+    type Item = BoundItem<'a, T>;
+    type Expr = T;
+    type Pattern = MonoPattern<'a>;
+
+    type ExprName = Infallible;
+    type PatternName = Infallible;
+    type Var = Name;
+    type Variant = Name;
+}

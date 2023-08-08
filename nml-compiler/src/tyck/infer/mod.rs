@@ -285,7 +285,11 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     let mut wildcards = Vec::new();
                     let pattern = this.infer_pattern(&mut wildcards, pattern);
 
+                    let keep =
+                        wildcards.into_iter().flat_map(|ty| this.solver.vars_in_ty(ty)).collect();
+
                     let mut pretty = this.pretty.build();
+                    this.solver.minimize(&mut pretty, this.alloc, &keep, pattern.ty);
                     this.solver.unify(
                         &mut pretty,
                         this.alloc,

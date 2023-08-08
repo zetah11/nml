@@ -1,6 +1,3 @@
-pub use declare::declare;
-
-mod declare;
 mod dependencies;
 mod expr;
 mod pattern;
@@ -14,8 +11,7 @@ use crate::errors::{ErrorId, Errors};
 use crate::names::{Ident, Name, Names, ScopeName};
 use crate::source::{SourceId, Span};
 use crate::topology;
-use crate::trees::declared;
-use crate::trees::resolved;
+use crate::trees::{declared, parsed, resolved};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ItemId(usize);
@@ -23,17 +19,10 @@ pub struct ItemId(usize);
 pub fn resolve<'a>(
     names: &'a Names<'a>,
     alloc: &'a Bump,
-    program: &declared::Source,
+    program: &parsed::Source<'a>,
 ) -> resolved::Program<'a> {
     let mut errors = program.errors.clone();
-    let mut resolver = Resolver::new(
-        names,
-        alloc,
-        &mut errors,
-        program.names.clone(),
-        &program.defines,
-        program.source,
-    );
+    let mut resolver = Resolver::new(names, alloc, &mut errors, program.source);
 
     let mut items = resolver.items(program.items);
     let graph = items.iter().map(|(id, item)| (*id, resolver.dependencies(item))).collect();
@@ -63,6 +52,7 @@ struct Resolver<'a, 'err> {
 
     scopes: (Vec<Scope>, Scope),
     counter: usize,
+    item_ids: usize,
 }
 
 impl<'a, 'err> Resolver<'a, 'err> {
@@ -70,30 +60,55 @@ impl<'a, 'err> Resolver<'a, 'err> {
         names: &'a Names<'a>,
         alloc: &'a Bump,
         errors: &'err mut Errors,
-        values: BTreeMap<Ident, Name>,
-        spans: &BTreeMap<Name, (Span, ItemId)>,
         source: SourceId,
     ) -> Self {
-        let scope = Scope::top_level(source, values);
-        let (spans, items) =
-            spans.iter().map(|(name, (span, id))| ((*name, *span), (*name, *id))).unzip();
+        let scope = Scope::top_level(source);
 
-        Self { names, alloc, errors, items, spans, scopes: (Vec::new(), scope), counter: 0 }
+        Self {
+            names,
+            alloc,
+            errors,
+
+            items: BTreeMap::new(),
+            spans: BTreeMap::new(),
+
+            scopes: (Vec::new(), scope),
+            counter: 0,
+            item_ids: 0,
+        }
     }
 
-    pub fn items(&mut self, items: &[declared::Item]) -> BTreeMap<ItemId, resolved::Item<'a>> {
+    pub fn items(&mut self, items: &'a [parsed::Item<'a>]) -> BTreeMap<ItemId, resolved::Item<'a>> {
+        debug!("declaring {} items", items.len());
+        let items: Vec<_> = items.iter().map(|item| self.declare_item(item)).collect();
+
         debug!("resolving {} items", items.len());
-        items.iter().map(|node| (node.id, self.resolve_item(node))).collect()
+        items.into_iter().map(|node| (node.id, self.resolve_item(node))).collect()
     }
 
-    fn resolve_item(&mut self, item: &declared::Item) -> resolved::Item<'a> {
-        let id = item.id;
+    fn declare_item(&mut self, item: &'a parsed::Item<'a>) -> declared::Item<'a> {
+        let id = ItemId(self.item_ids);
+        self.item_ids += 1;
         let span = item.span;
         let node = match &item.node {
-            declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(*e),
-            declared::ItemNode::Let(name, (), expr) => {
+            parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
+            parsed::ItemNode::Let(pattern, expr) => {
+                let pattern = self.pattern(id, pattern);
+                declared::ItemNode::Let(pattern, expr)
+            }
+        };
+
+        declared::Item { node, span, id }
+    }
+
+    fn resolve_item(&mut self, item: declared::Item<'a>) -> resolved::Item<'a> {
+        let id = item.id;
+        let span = item.span;
+        let node = match item.node {
+            declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
+            declared::ItemNode::Let(pattern, expr) => {
                 let expr = self.expr(id, expr);
-                resolved::ItemNode::Let(*name, (), expr)
+                resolved::ItemNode::Let(pattern, expr)
             }
         };
 
@@ -153,7 +168,7 @@ impl Scope {
         Self { name, values: BTreeMap::new() }
     }
 
-    pub fn top_level(source: SourceId, values: BTreeMap<Ident, Name>) -> Self {
-        Self { name: ScopeName::TopLevel(source), values }
+    pub fn top_level(source: SourceId) -> Self {
+        Self { name: ScopeName::TopLevel(source), values: BTreeMap::new() }
     }
 }

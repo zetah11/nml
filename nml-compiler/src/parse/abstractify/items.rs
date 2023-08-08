@@ -31,16 +31,16 @@ impl<'a> Abstractifier<'a, '_> {
     }
 
     fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a> {
-        let (name, name_span) = self.small_name(def.pattern);
+        let pattern = self.pattern(def.pattern);
         let body = def.definition.map(|node| self.expr(node)).unwrap_or_else(|| {
-            let span = name_span;
+            let span = pattern.span;
             let e = self.errors.parse_error(span).missing_definition();
             let node = ast::ExprNode::Invalid(e);
             ast::Expr { node, span }
         });
 
         let span = def.span;
-        let node = ast::ItemNode::Let(name, name_span, body);
+        let node = ast::ItemNode::Let(pattern, body);
         ast::Item { node, span }
     }
 }

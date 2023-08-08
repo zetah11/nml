@@ -1,22 +1,22 @@
 use crate::names::{Label, Name};
-use crate::trees::{declared, resolved};
+use crate::trees::{parsed, resolved};
 
 use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn pattern(&mut self, item: ItemId, pattern: &declared::Pattern) -> resolved::Pattern<'a> {
+    pub fn pattern(&mut self, item: ItemId, pattern: &parsed::Pattern) -> resolved::Pattern<'a> {
         let span = pattern.span;
         let node = match &pattern.node {
-            declared::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
-            declared::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
-            declared::PatternNode::Unit => resolved::PatternNode::Unit,
+            parsed::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
+            parsed::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
+            parsed::PatternNode::Unit => resolved::PatternNode::Unit,
 
-            declared::PatternNode::Small(name) => match self.define_value(item, span, *name) {
+            parsed::PatternNode::Small(name) => match self.define_value(item, span, *name) {
                 Ok(name) => resolved::PatternNode::Bind(name),
                 Err(e) => resolved::PatternNode::Invalid(e),
             },
 
-            declared::PatternNode::Big(name) => {
+            parsed::PatternNode::Big(name) => {
                 if self.lookup_value(name).is_some() {
                     todo!("non-anonymous variant")
                 } else {
@@ -27,8 +27,8 @@ impl<'a> Resolver<'a, '_> {
                 }
             }
 
-            declared::PatternNode::Apply(
-                declared::Pattern { node: declared::PatternNode::Big(name), .. },
+            parsed::PatternNode::Apply(
+                parsed::Pattern { node: parsed::PatternNode::Big(name), .. },
                 arg,
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);
@@ -37,7 +37,7 @@ impl<'a> Resolver<'a, '_> {
                 resolved::PatternNode::Deconstruct(label, arg)
             }
 
-            declared::PatternNode::Apply(fun, arg) => {
+            parsed::PatternNode::Apply(fun, arg) => {
                 let fun = self.pattern(item, fun);
                 let fun = self.alloc.alloc(fun);
                 let arg = self.pattern(item, arg);
@@ -45,9 +45,9 @@ impl<'a> Resolver<'a, '_> {
                 resolved::PatternNode::Apply(fun, arg)
             }
 
-            declared::PatternNode::Bind(x) => match *x {},
-            declared::PatternNode::Named(x) => match *x {},
-            declared::PatternNode::Deconstruct(x, _) => match *x {},
+            parsed::PatternNode::Bind(x) => match *x {},
+            parsed::PatternNode::Named(x) => match *x {},
+            parsed::PatternNode::Deconstruct(x, _) => match *x {},
         };
 
         resolved::Pattern { node, span }

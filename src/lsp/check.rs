@@ -2,7 +2,7 @@ use nml_compiler::alloc::Bump;
 use nml_compiler::errors::Errors;
 use nml_compiler::names::Names;
 use nml_compiler::parse::parse;
-use nml_compiler::resolve::{declare, resolve};
+use nml_compiler::resolve::resolve;
 use nml_compiler::source::Source;
 use nml_compiler::tyck;
 
@@ -14,8 +14,7 @@ impl Server {
         let names = Names::new(&self.idents);
 
         let parsed = parse(&alloc, &names, source);
-        let declared = declare(&alloc, &names, &parsed);
-        let resolved = resolve(&names, &alloc, &declared);
+        let resolved = resolve(&names, &alloc, &parsed);
         tyck::infer(&names, &resolved)
     }
 }

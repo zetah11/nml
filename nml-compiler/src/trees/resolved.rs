@@ -21,24 +21,16 @@ impl<'a> nodes::Data for Data<'a> {
     type Expr = Expr<'a>;
     type Pattern = Pattern<'a>;
 
-    type ItemName = Name;
     type ExprName = Infallible;
     type PatternName = Infallible;
-    type ItemLet = ();
-    type LetName = Name;
-    type LetExtra = ();
     type Var = Name;
     type Variant = Label;
 }
 
-pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
-pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
-pub type PatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;
-
 pub struct Item<'a> {
-    pub id: ItemId,
     pub node: ItemNode<'a>,
     pub span: Span,
+    pub id: ItemId,
 }
 
 pub struct Expr<'a> {
@@ -50,3 +42,7 @@ pub struct Pattern<'a> {
     pub node: PatternNode<'a>,
     pub span: Span,
 }
+
+pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
+pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
+pub type PatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;

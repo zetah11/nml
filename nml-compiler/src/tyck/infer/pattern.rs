@@ -2,7 +2,7 @@ use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
 impl<'a> Checker<'a, '_, '_, '_> {
-    pub(super) fn infer_pattern(
+    pub fn infer_pattern(
         &mut self,
         wildcards: &mut Vec<&'a Type<'a>>,
         pattern: &i::Pattern,

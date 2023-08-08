@@ -52,57 +52,65 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     }
 
     /// Check a set of mutually recursive items.
-    pub fn check_items(&mut self, items: &[resolved::Item]) {
+    pub fn check_items(&mut self, items: &'a [resolved::Item]) {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {
             // Bind each item to a fresh var
             let mut typed_items = Vec::with_capacity(items.len());
             for item in items {
-                let ty = match &item.node {
-                    resolved::ItemNode::Invalid(e) => self.alloc.alloc(Type::Invalid(*e)),
-                    resolved::ItemNode::Let(name, (), _) => {
-                        let ty = this.fresh();
-                        if let Ok(name) = name {
-                            this.env.insert(*name, Scheme::mono(ty));
-                        }
-                        ty
+                let node = match &item.node {
+                    resolved::ItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(*e),
+                    resolved::ItemNode::Let(pattern, expr) => {
+                        let mut wildcards = Vec::new();
+                        let pattern = this.infer_pattern(&mut wildcards, pattern);
+
+                        let keep = wildcards
+                            .into_iter()
+                            .flat_map(|ty| this.solver.vars_in_ty(ty))
+                            .collect();
+                        let mut pretty = this.pretty.build();
+                        this.solver.minimize(&mut pretty, this.alloc, &keep, pattern.ty);
+
+                        inferred::BoundItemNode::Let(pattern, expr)
                     }
                 };
 
-                typed_items.push((item, ty));
+                let item = inferred::BoundItem { node, span: item.span, id: item.id };
+                typed_items.push(item);
             }
 
             // Infer the type of each item and unify with bound type
-            for (item, ty) in typed_items {
-                let (node, inferred) = match &item.node {
-                    resolved::ItemNode::Invalid(e) => (inferred::ItemNode::Invalid(*e), ty),
-                    resolved::ItemNode::Let(name, (), body) => {
+            for item in typed_items {
+                let node = match item.node {
+                    inferred::BoundItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(e),
+                    inferred::BoundItemNode::Let(pattern, body) => {
                         let body = this.infer(body);
-                        let ty = body.ty;
-                        (inferred::ItemNode::Let(*name, (), body), ty)
+
+                        let mut pretty = this.pretty.build();
+                        this.solver.unify(
+                            &mut pretty,
+                            this.alloc,
+                            this.errors,
+                            item.span,
+                            pattern.ty,
+                            body.ty,
+                        );
+
+                        inferred::BoundItemNode::Let(pattern, body)
                     }
                 };
 
-                let mut pretty = this.pretty.build();
-                this.solver.unify(&mut pretty, this.alloc, this.errors, item.span, ty, inferred);
-
-                inferred_items.push(inferred::Item { node, span: item.span, id: item.id });
+                inferred_items.push(inferred::BoundItem { node, span: item.span, id: item.id });
             }
         });
 
         // Generalize!
-        let mut pretty = self.pretty.build();
         for item in inferred_items {
-            match &item.node {
-                inferred::ItemNode::Invalid(_) => {}
-
-                inferred::ItemNode::Let(name, (), _) => {
-                    let Ok(name) = name else { continue; };
-                    let scheme = self.env.lookup(name);
-                    debug_assert!(scheme.is_mono());
-                    let scheme = self.solver.generalize(&mut pretty, self.alloc, scheme.ty);
-                    self.env.overwrite(*name, scheme);
+            match item.node {
+                inferred::BoundItemNode::Invalid(_) => {}
+                inferred::BoundItemNode::Let(pattern, _) => {
+                    let _pattern = self.generalize(&pattern);
                 }
             }
         }

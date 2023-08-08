@@ -9,12 +9,8 @@ pub trait Data {
     type Expr;
     type Pattern;
 
-    type ItemName;
     type ExprName;
     type PatternName;
-    type ItemLet;
-    type LetName;
-    type LetExtra;
     type Var;
     type Variant;
 }
@@ -24,7 +20,7 @@ pub enum ItemNode<D: Data> {
     Invalid(ErrorId),
 
     /// `let a = x`
-    Let(Result<D::ItemName, ErrorId>, D::ItemLet, D::Expr),
+    Let(D::Pattern, D::Expr),
 }
 
 pub enum ExprNode<'a, D: Data> {

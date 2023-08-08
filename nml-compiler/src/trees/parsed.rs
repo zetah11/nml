@@ -20,12 +20,8 @@ impl<'a> nodes::Data for Data<'a> {
     type Expr = Expr<'a>;
     type Pattern = Pattern<'a>;
 
-    type ItemName = Ident;
     type ExprName = Ident;
     type PatternName = Ident;
-    type ItemLet = Span;
-    type LetName = Ident;
-    type LetExtra = Span;
     type Var = Infallible;
     type Variant = Infallible;
 }

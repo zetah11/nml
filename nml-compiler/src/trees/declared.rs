@@ -6,7 +6,7 @@ use crate::names::{Ident, Name};
 use crate::resolve::ItemId;
 use crate::source::{SourceId, Span};
 
-use super::{nodes, parsed};
+use super::{nodes, parsed, resolved};
 
 pub struct Source<'a> {
     pub items: &'a [Item<'a>],
@@ -22,28 +22,19 @@ pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
 
 impl<'a> nodes::Data for Data<'a> {
     type Item = Item<'a>;
-    type Expr = parsed::Expr<'a>;
-    type Pattern = parsed::Pattern<'a>;
+    type Expr = &'a parsed::Expr<'a>;
+    type Pattern = resolved::Pattern<'a>;
 
-    type ItemName = Name;
     type ExprName = Infallible;
     type PatternName = Infallible;
-    type ItemLet = ();
-    type LetName = Infallible;
-    type LetExtra = Infallible;
     type Var = Infallible;
     type Variant = Infallible;
 }
 
 pub struct Item<'a> {
-    pub id: ItemId,
     pub node: ItemNode<'a>,
     pub span: Span,
+    pub id: ItemId,
 }
 
 pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
-
-pub type Expr<'a> = parsed::Expr<'a>;
-pub type ExprNode<'a> = parsed::ExprNode<'a>;
-pub type Pattern<'a> = parsed::Pattern<'a>;
-pub type PatternNode<'a> = parsed::PatternNode<'a>;
