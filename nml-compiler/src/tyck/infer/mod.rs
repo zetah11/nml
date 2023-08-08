@@ -175,19 +175,24 @@ impl<'a> Checker<'a, '_, '_, '_> {
             }
 
             i::ExprNode::Variant(name) => {
+                trace!("infer variant");
                 let arg_ty = self.fresh();
                 let row_ty = self.fresh_row();
                 let row_ty = self.alloc.alloc(Row::Extend(*name, arg_ty, row_ty));
                 let row_ty = self.alloc.alloc(Type::Variant(row_ty));
+                trace!("done variant");
 
                 (o::ExprNode::Variant(*name), &*self.alloc.alloc(Type::Fun(arg_ty, row_ty)))
             }
 
             i::ExprNode::Case { scrutinee, cases } => {
+                trace!("infer case");
                 let scrutinee = self.infer(scrutinee);
                 let scrutinee = self.alloc.alloc(scrutinee);
                 let result_ty = self.fresh();
-                let case_ty = self.fresh();
+
+                let case_ty = self.fresh_row();
+                let case_ty = self.alloc.alloc(Type::Variant(case_ty));
 
                 let mut wildcards = Vec::new();
 
@@ -223,8 +228,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     wildcards.into_iter().flat_map(|ty| self.solver.vars_in_ty(ty)).collect();
 
                 let mut pretty = self.pretty.build();
+                trace!("case: minimizing pattern types");
                 self.solver.minimize(&mut pretty, self.alloc, &keep, case_ty);
-
+                trace!("case: unifying scrutinee with case types");
                 self.solver.unify(
                     &mut pretty,
                     self.alloc,
@@ -233,6 +239,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     scrutinee.ty,
                     case_ty,
                 );
+
+                trace!("done case");
 
                 (o::ExprNode::Case { scrutinee, cases }, result_ty)
             }

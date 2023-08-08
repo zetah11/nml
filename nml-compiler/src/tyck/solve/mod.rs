@@ -12,11 +12,11 @@ use bumpalo::Bump;
 use log::trace;
 
 use super::pretty::Prettifier;
-use super::types::{Generic, Row};
+use super::types::{Generic, Row, VarKind};
 use super::{Reporting, Scheme, Type};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct TypeVar(usize);
+pub struct TypeVar(usize, pub(super) VarKind);
 
 pub struct Solver<'a> {
     subst: BTreeMap<TypeVar, &'a Type<'a>>,
@@ -32,12 +32,12 @@ impl<'a> Solver<'a> {
     }
 
     pub fn fresh(&mut self, alloc: &'a Bump) -> &'a Type<'a> {
-        let (var, level) = self.new_var();
+        let (var, level) = self.new_var(VarKind::Type);
         alloc.alloc(Type::Var(var, level))
     }
 
     pub fn fresh_record(&mut self, alloc: &'a Bump) -> &'a Row<'a> {
-        let (var, level) = self.new_var();
+        let (var, level) = self.new_var(VarKind::Row);
         alloc.alloc(Row::Var(var, level))
     }
 
@@ -49,9 +49,9 @@ impl<'a> Solver<'a> {
         self.level -= 1;
     }
 
-    fn new_var(&mut self) -> (TypeVar, Level) {
+    fn new_var(&mut self, kind: VarKind) -> (TypeVar, Level) {
         self.counter += 1;
-        (TypeVar(self.counter), Level::new(self.level))
+        (TypeVar(self.counter, kind), Level::new(self.level))
     }
 }
 
@@ -130,7 +130,7 @@ impl<'a> Solver<'a> {
             })
         );
 
-        let subst = scheme.params.iter().map(|name| (name, self.new_var())).collect();
+        let subst = scheme.params.iter().map(|name| (name, self.new_var(VarKind::Type))).collect();
 
         self.inst_ty(alloc, &subst, scheme.ty)
     }

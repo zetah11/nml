@@ -22,7 +22,7 @@ if     = "if" thing "do" thing ("else" thing / "end")
 case   = "case" thing *arm "end"
 arm    = "|" lambda
 
-lambda = apply ["=>" lambda]
+lambda = apply ["=>" thing]
 apply  = 1*field
 field  = base *("." name)
 base   = name / NUMBER / "_"

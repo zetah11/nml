@@ -190,7 +190,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         let thing = self
             .consume(Token::EqualArrow)
             .map(|_| {
-                let body = self.lambda();
+                let body = self.thing();
                 let span = thing.span + body.span;
                 let node = Node::Lambda(thing, body);
                 &*self.alloc.alloc(Thing { node, span })

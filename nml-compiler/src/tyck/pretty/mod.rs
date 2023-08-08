@@ -4,7 +4,7 @@ use crate::errors::ErrorId;
 use crate::names::{Label, Name, Names};
 
 use super::solve::{Level, TypeVar};
-use super::types::{Generic, Row};
+use super::types::{Generic, Row, VarKind};
 use super::{to_name, Scheme, Type};
 
 #[derive(Debug)]
@@ -38,7 +38,13 @@ impl<'a> Pretty<'a> {
         self.vars.entry(var).or_insert_with(|| {
             let name = to_name(self.counter);
             self.counter += 1;
-            format!("${}", name)
+            format!(
+                "{}{name}",
+                match var.1 {
+                    VarKind::Type => "$",
+                    VarKind::Row => "@",
+                }
+            )
         })
     }
 }
@@ -137,12 +143,14 @@ impl Prettifier<'_, '_> {
 
     fn variant_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
         let (fields, rest) = self.row(row, None, subst);
-
-        let rest = if fields.is_empty() { rest } else { rest.map(|rest| format!(" | {rest}")) }
-            .unwrap_or_default();
         let fields = fields.join(" | ");
 
-        format!("{fields}{rest}")
+        match (fields.is_empty(), rest) {
+            (true, None) => "case end".into(),
+            (false, None) => format!("case | {fields} end"),
+            (true, Some(rest)) => format!("case | {rest} end"),
+            (false, Some(rest)) => format!("case {fields} | {rest} end"),
+        }
     }
 
     fn row(

@@ -13,6 +13,12 @@
                 "configuration": "./language-configuration.json"
             }
         ],
+        "snippets": [
+            {
+                "language": "nml",
+                "path": "./snippets.json"
+            }
+        ],
         "configuration": {
             "title": "nml",
             "properties": {

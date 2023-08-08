@@ -33,6 +33,12 @@ pub enum Row<'a> {
     Extend(Label, &'a Type<'a>, &'a Row<'a>),
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum VarKind {
+    Type,
+    Row,
+}
+
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 pub struct Generic(pub TypeVar);
 

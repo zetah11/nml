@@ -1,0 +1,10 @@
+{
+    "`case` expression": {
+        "prefix": "case",
+        "body": [
+            "case $1",
+            "\t$0",
+            "end"
+        ]
+    }
+}
