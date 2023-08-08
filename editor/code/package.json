@@ -3,16 +3,14 @@
     "description": "Language server for nml",
     "version": "0.0.1",
     "main": "./out/src/main.js",
-    "activationEvents": [
-        "onLanguage:nml"
-    ],
     "contributes": {
         "languages": [
             {
                 "id": "nml",
                 "extensions": [
                     ".nml"
-                ]
+                ],
+                "configuration": "./language-configuration.json"
             }
         ],
         "configuration": {
@@ -34,6 +32,11 @@
                     "default": "off",
                     "description": "Trace events of the compiler"
                 }
+            }
+        },
+        "configurationDefaults": {
+            "[nml]": {
+                "editor.tabSize": 2
             }
         }
     },
