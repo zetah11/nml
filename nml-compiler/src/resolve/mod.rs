@@ -134,7 +134,17 @@ impl<'a, 'err> Resolver<'a, 'err> {
     }
 
     fn lookup_value(&mut self, name: &Ident) -> Option<Name> {
-        self.scopes.1.values.get(name).copied()
+        if let Some(name) = self.scopes.1.values.get(name) {
+            return Some(*name);
+        }
+
+        for scope in self.scopes.0.iter().rev() {
+            if let Some(name) = scope.values.get(name) {
+                return Some(*name);
+            }
+        }
+
+        None
     }
 
     fn scope<F, T>(&mut self, name: Option<Name>, f: F) -> T

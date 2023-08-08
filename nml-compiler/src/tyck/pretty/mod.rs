@@ -59,8 +59,6 @@ impl Prettifier<'_, '_> {
                 .map(|(idx, generic)| (*generic, format!("'{}", to_name(idx))))
                 .collect();
 
-            //let params: Vec<_> = subst.values().cloned().collect();
-
             self.ty_with_subst(scheme.ty, &subst)
         }
     }
@@ -128,8 +126,13 @@ impl Prettifier<'_, '_> {
     fn record_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
         let (fields, rest) = self.row(row, Some(":"), subst);
         let fields = fields.join(", ");
-        let rest = rest.map(|rest| format!(" | {rest}")).unwrap_or_default();
-        format!("{{ {fields}{rest} }}")
+
+        match (fields.is_empty(), rest) {
+            (true, None) => "{}".into(),
+            (false, None) => format!("{{ {fields} }}"),
+            (true, Some(rest)) => format!("{{ | {rest} }}"),
+            (false, Some(rest)) => format!("{{ {fields} | {rest} }}"),
+        }
     }
 
     fn variant_with_subst(&mut self, row: &Row, subst: &BTreeMap<Generic, String>) -> String {
