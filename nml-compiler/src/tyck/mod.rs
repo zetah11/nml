@@ -18,17 +18,24 @@ use crate::names::Names;
 use crate::source::Span;
 use crate::trees::{inferred, resolved};
 
-pub fn infer(names: &Names, program: &resolved::Program) -> Errors {
-    let types = Bump::new();
+pub fn infer<'a>(
+    alloc: &'a Bump,
+    names: &Names,
+    program: &resolved::Program,
+) -> inferred::Program<'a> {
     let mut errors = program.errors.clone();
     let mut pretty = Pretty::new(names).with_show_levels(false).with_show_error_id(false);
-    let mut checker = Checker::new(&types, &mut errors, &mut pretty);
+    let mut checker = Checker::new(alloc, &mut errors, &mut pretty);
 
-    for items in program.items {
-        checker.check_items(items);
+    let items =
+        alloc.alloc_slice_fill_iter(program.items.iter().map(|items| checker.check_items(items)));
+
+    inferred::Program {
+        items,
+        defs: program.defs.clone(),
+        errors,
+        unattached: program.unattached.clone(),
     }
-
-    errors
 }
 
 struct Reporting<'a, 'b, 'c> {
@@ -52,12 +59,13 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     }
 
     /// Check a set of mutually recursive items.
-    pub fn check_items(&mut self, items: &'a [resolved::Item]) {
+    pub fn check_items<'b>(&mut self, items: &'b [resolved::Item]) -> &'a [inferred::Item<'a>] {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {
-            // Bind each item to a fresh var
             let mut typed_items = Vec::with_capacity(items.len());
+
+            // Bind each item to a fresh var
             for item in items {
                 let node = match &item.node {
                     resolved::ItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(*e),
@@ -106,14 +114,19 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         });
 
         // Generalize!
-        for item in inferred_items {
-            match item.node {
-                inferred::BoundItemNode::Invalid(_) => {}
-                inferred::BoundItemNode::Let(pattern, _) => {
-                    let _pattern = self.generalize(&pattern);
+        self.alloc.alloc_slice_fill_iter(inferred_items.into_iter().map(|item| {
+            let id = item.id;
+            let span = item.span;
+            let node = match item.node {
+                inferred::BoundItemNode::Invalid(e) => inferred::ItemNode::Invalid(e),
+                inferred::BoundItemNode::Let(pattern, expr) => {
+                    let pattern = self.generalize(&pattern);
+                    inferred::ItemNode::Let(pattern, expr)
                 }
-            }
-        }
+            };
+
+            inferred::Item { node, span, id }
+        }))
     }
 
     fn fresh(&mut self) -> &'a Type<'a> {

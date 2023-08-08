@@ -1,10 +1,19 @@
+use std::collections::BTreeMap;
 use std::convert::Infallible;
 
 use super::nodes;
+use crate::errors::{ErrorId, Errors};
 use crate::names::{Label, Name};
 use crate::resolve::ItemId;
 use crate::source::Span;
 use crate::tyck::{Scheme, Type};
+
+pub struct Program<'a> {
+    pub items: &'a [&'a [Item<'a>]],
+    pub defs: BTreeMap<Name, Span>,
+    pub errors: Errors,
+    pub unattached: Vec<(ErrorId, Span)>,
+}
 
 pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
 
@@ -69,7 +78,7 @@ pub(crate) struct BoundItem<'a, T> {
 
 pub(crate) type BoundItemNode<'a, T> = nodes::ItemNode<BoundData<'a, T>>;
 
-pub(crate) struct BoundData<'a, T>(std::marker::PhantomData<&'a T>);
+pub(crate) struct BoundData<'a, T>(std::marker::PhantomData<(&'a (), T)>);
 
 impl<'a, T> nodes::Data for BoundData<'a, T> {
     type Item = BoundItem<'a, T>;

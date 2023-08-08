@@ -15,6 +15,7 @@ impl Server {
 
         let parsed = parse(&alloc, &names, source);
         let resolved = resolve(&names, &alloc, &parsed);
-        tyck::infer(&names, &resolved)
+        let result = tyck::infer(&alloc, &names, &resolved);
+        result.errors
     }
 }

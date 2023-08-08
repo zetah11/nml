@@ -23,7 +23,8 @@ pub fn run(path: &Path) -> anyhow::Result<()> {
 
     let parsed = parse(&alloc, &names, &source);
     let resolved = resolve(&names, &alloc, &parsed);
-    let result = infer(&names, &resolved);
+    let result = infer(&alloc, &names, &resolved);
+    let result = result.errors;
 
     if result.is_perfect() {
         Ok(())
