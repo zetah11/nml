@@ -36,7 +36,7 @@ pub enum Row<'a> {
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 pub struct Generic(pub TypeVar);
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scheme<'a> {
     pub params: Vec<Generic>,
     pub ty: &'a Type<'a>,

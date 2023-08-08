@@ -8,13 +8,13 @@ fn identity() {
         let lam = s.lambda(s.bind("x"), s.var("x"));
         let body = s.apply(s.var("id"), s.bool(true));
         let bound = s.apply(s.var("id"), s.num(5));
-        let body = s.let_in("y", bound, body);
-        let expr = s.let_in("id", lam, body);
+        let body = s.let_in(s.bind("y"), bound, body);
+        let expr = s.let_in(s.bind("id"), lam, body);
 
         let expected = s.boolean();
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -24,13 +24,13 @@ fn nested() {
     // --> '1 -> int
     Store::with(|s, mut checker| {
         let inner = s.lambda(s.bind("z"), s.var("x"));
-        let inner = s.let_in("y", inner, s.var("y"));
+        let inner = s.let_in(s.bind("y"), inner, s.var("y"));
         let lambda = s.lambda(s.bind("x"), inner);
-        let expr = s.let_in("f", lambda, s.apply(s.var("f"), s.num(5)));
+        let expr = s.let_in(s.bind("f"), lambda, s.apply(s.var("f"), s.num(5)));
 
         let expected = s.arrow(checker.fresh(), s.int());
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }

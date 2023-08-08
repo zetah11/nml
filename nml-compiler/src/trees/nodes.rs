@@ -80,7 +80,7 @@ pub enum ExprNode<'a, D: Data> {
     Lambda(D::Pattern, &'a D::Expr),
 
     /// `let a = x in y`
-    Let(Result<D::LetName, ErrorId>, D::LetExtra, &'a D::Expr, &'a D::Expr),
+    Let(D::Pattern, &'a D::Expr, &'a D::Expr),
 }
 
 pub enum PatternNode<'a, D: Data> {

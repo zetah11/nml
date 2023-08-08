@@ -1,4 +1,4 @@
-use crate::names::Label;
+use crate::names::{Label, Name};
 use crate::trees::{declared, resolved};
 
 use super::{ItemId, Resolver};
@@ -51,5 +51,13 @@ impl<'a> Resolver<'a, '_> {
         };
 
         resolved::Pattern { node, span }
+    }
+
+    pub fn name_of(pattern: &resolved::Pattern) -> Option<Name> {
+        if let resolved::PatternNode::Bind(name) = &pattern.node {
+            Some(*name)
+        } else {
+            None
+        }
     }
 }

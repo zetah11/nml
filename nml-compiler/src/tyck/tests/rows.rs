@@ -7,9 +7,9 @@ fn fields() {
     Store::with(|s, mut checker| {
         let body = s.var("a");
         let bound = s.field(s.var("r"), "y");
-        let body = s.let_in("b", bound, body);
+        let body = s.let_in(s.bind("b"), bound, body);
         let bound = s.field(s.var("r"), "x");
-        let inner = s.let_in("a", bound, body);
+        let inner = s.let_in(s.bind("a"), bound, body);
         let expr = s.lambda(s.bind("r"), inner);
 
         let xt = checker.fresh();
@@ -17,7 +17,7 @@ fn fields() {
         let expected = s.arrow(expected, xt);
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -36,7 +36,7 @@ fn overwrite() {
         let expected = s.arrow(t, u);
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -75,7 +75,7 @@ fn record_literal() {
         let expected = s.extend([("x", lit_ty), ("y", lambda_ty)], None);
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     })
 }
 
@@ -91,7 +91,7 @@ fn single_variant() {
         let expected = s.arrow(xt, expected);
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -108,7 +108,7 @@ fn exhaustive_case() {
         let expected = s.int();
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -129,7 +129,7 @@ fn wildcard_case() {
 
         let actual = checker.infer(&expr);
 
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }
 
@@ -157,6 +157,6 @@ fn wildcard_in_exhaustive_case() {
 
         let actual = checker.infer(&expr);
 
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }

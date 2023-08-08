@@ -130,11 +130,11 @@ impl<'a> Abstractifier<'a, '_> {
                 };
 
                 for def in defs.1.iter().rev().chain(std::iter::once(&defs.0)) {
-                    let (name, name_span) = self.small_name(def.pattern);
+                    let binding = self.pattern(def.pattern);
                     let bound = if let Some(bound) = def.definition {
                         self.expr(bound)
                     } else {
-                        let span = name_span;
+                        let span = binding.span;
                         let e = self.errors.parse_error(span).missing_definition();
                         let node = ast::ExprNode::Invalid(e);
                         ast::Expr { node, span }
@@ -143,7 +143,7 @@ impl<'a> Abstractifier<'a, '_> {
                     let bound = self.alloc.alloc(bound);
 
                     let span = def.span;
-                    let node = ast::ExprNode::Let(name, name_span, bound, self.alloc.alloc(body));
+                    let node = ast::ExprNode::Let(binding, bound, self.alloc.alloc(body));
                     body = ast::Expr { node, span };
                 }
 

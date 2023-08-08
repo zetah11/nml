@@ -6,7 +6,7 @@ use crate::names::{Ident, Name};
 use crate::resolve::ItemId;
 use crate::source::{SourceId, Span};
 
-use super::nodes;
+use super::{nodes, parsed};
 
 pub struct Source<'a> {
     pub items: &'a [Item<'a>],
@@ -22,15 +22,15 @@ pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
 
 impl<'a> nodes::Data for Data<'a> {
     type Item = Item<'a>;
-    type Expr = Expr<'a>;
-    type Pattern = Pattern<'a>;
+    type Expr = parsed::Expr<'a>;
+    type Pattern = parsed::Pattern<'a>;
 
     type ItemName = Name;
-    type ExprName = Ident;
-    type PatternName = Ident;
+    type ExprName = Infallible;
+    type PatternName = Infallible;
     type ItemLet = ();
-    type LetName = Ident;
-    type LetExtra = Span;
+    type LetName = Infallible;
+    type LetExtra = Infallible;
     type Var = Infallible;
     type Variant = Infallible;
 }
@@ -41,16 +41,9 @@ pub struct Item<'a> {
     pub span: Span,
 }
 
-pub struct Expr<'a> {
-    pub node: ExprNode<'a>,
-    pub span: Span,
-}
-
-pub struct Pattern<'a> {
-    pub node: PatternNode<'a>,
-    pub span: Span,
-}
-
 pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
-pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
-pub type PatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;
+
+pub type Expr<'a> = parsed::Expr<'a>;
+pub type ExprNode<'a> = parsed::ExprNode<'a>;
+pub type Pattern<'a> = parsed::Pattern<'a>;
+pub type PatternNode<'a> = parsed::PatternNode<'a>;

@@ -125,11 +125,10 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Lambda(arg, body))
     }
 
-    pub fn let_in(&self, name: impl Into<String>, bound: Expr<'a>, body: Expr<'a>) -> Expr<'a> {
+    pub fn let_in(&self, pattern: Pattern<'a>, bound: Expr<'a>, body: Expr<'a>) -> Expr<'a> {
         let bound = self.alloc.alloc(bound);
         let body = self.alloc.alloc(body);
-        let name = self.name(name);
-        self.expr(ExprNode::Let(Ok(name), (), bound, body))
+        self.expr(ExprNode::Let(pattern, bound, body))
     }
 
     pub fn wildcard(&self) -> Pattern<'a> {

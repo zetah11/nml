@@ -148,12 +148,13 @@ impl<'a> Declarer<'a> {
                 declared::ExprNode::Lambda(pattern, expr)
             }
 
-            parsed::ExprNode::Let(name, name_span, bound, body) => {
+            parsed::ExprNode::Let(binding, bound, body) => {
+                let binding = self.declare_pattern(binding);
                 let bound = self.declare_expr(bound);
                 let bound = self.alloc.alloc(bound);
                 let body = self.declare_expr(body);
                 let body = self.alloc.alloc(body);
-                declared::ExprNode::Let(*name, *name_span, bound, body)
+                declared::ExprNode::Let(binding, bound, body)
             }
 
             parsed::ExprNode::Var(v) => match *v {},

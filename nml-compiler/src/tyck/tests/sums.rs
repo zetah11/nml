@@ -24,6 +24,6 @@ fn two_sum() {
         let expected = s.arrow(option, s.int());
 
         let actual = checker.infer(&expr);
-        checker.assert_alpha_equal(expected, actual);
+        checker.assert_alpha_equal(expected, actual.ty);
     });
 }

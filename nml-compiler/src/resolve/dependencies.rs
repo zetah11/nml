@@ -71,13 +71,9 @@ impl Resolver<'_, '_> {
                 self.in_expr(ignore, out, expr);
             }
 
-            ExprNode::Let(name, (), bound, body) => {
+            ExprNode::Let(binding, bound, body) => {
+                self.in_pattern(ignore, out, binding);
                 self.in_expr(ignore, out, bound);
-
-                if let Ok(name) = name {
-                    ignore.insert(*name);
-                }
-
                 self.in_expr(ignore, out, body);
             }
 

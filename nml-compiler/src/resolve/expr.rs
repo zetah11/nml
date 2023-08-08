@@ -99,14 +99,14 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Lambda(pattern, body)
             }),
 
-            declared::ExprNode::Let(name, name_span, bound, body) => {
+            declared::ExprNode::Let(binding, bound, body) => {
+                let binding = self.pattern(item, binding);
                 let bound = self.expr(item, bound);
                 let bound = self.alloc.alloc(bound);
-                let name = name.and_then(|name| self.define_value(item, *name_span, name));
-                self.scope(name.ok(), |this| {
+                self.scope(Self::name_of(&binding), |this| {
                     let body = this.expr(item, body);
                     let body = self.alloc.alloc(body);
-                    resolved::ExprNode::Let(name, (), bound, body)
+                    resolved::ExprNode::Let(binding, bound, body)
                 })
             }
 
