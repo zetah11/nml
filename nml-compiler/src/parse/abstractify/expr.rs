@@ -87,14 +87,15 @@ impl<'a> Abstractifier<'a, '_> {
                 ast::ExprNode::Record(fields, extend)
             }
 
-            cst::Node::Case { scrutinee, arms } => {
-                let scrutinee = self.expr(scrutinee);
-                let scrutinee = self.alloc.alloc(scrutinee);
-
-                let cases = self.alloc.alloc_slice_fill_with(arms.len(), |idx| {
-                    let arm = &arms[idx];
-                    self.arrow(arm)
+            cst::Node::Case(opener, scrutinee, terms) => {
+                let cases = self.cases(terms);
+                let scrutinee = scrutinee.map(|node| self.expr(node)).unwrap_or_else(|| {
+                    let span = *opener;
+                    let e = self.errors.parse_error(span).missing_scrutinee();
+                    let node = ast::ExprNode::Invalid(e);
+                    ast::Expr { node, span }
                 });
+                let scrutinee = self.alloc.alloc(scrutinee);
 
                 ast::ExprNode::Case { scrutinee, cases }
             }
@@ -113,11 +114,16 @@ impl<'a> Abstractifier<'a, '_> {
                 return fun;
             }
 
-            cst::Node::Lambda(pattern, body) => {
+            cst::Node::Arrow(pattern, body) => {
                 let pattern = self.pattern(pattern);
                 let body = self.expr(body);
                 let body = self.alloc.alloc(body);
                 ast::ExprNode::Lambda(pattern, body)
+            }
+
+            cst::Node::Alt(_) => {
+                let e = self.errors.parse_error(span).multiple_lambda_arms();
+                ast::ExprNode::Invalid(e)
             }
 
             cst::Node::Let { keyword: _, defs, within } => {
@@ -152,33 +158,5 @@ impl<'a> Abstractifier<'a, '_> {
         };
 
         ast::Expr { node, span }
-    }
-
-    fn arrow(&mut self, node: &cst::Thing) -> (ast::Pattern<'a>, ast::Expr<'a>) {
-        match &node.node {
-            cst::Node::Invalid(_) => {
-                let pattern = self.pattern(node);
-                let body = self.expr(node);
-                (pattern, body)
-            }
-
-            cst::Node::Lambda(pattern, body) => {
-                let pattern = self.pattern(pattern);
-                let body = self.expr(body);
-                (pattern, body)
-            }
-
-            _ => {
-                let span = node.span;
-                let e = self.errors.parse_error(span).expected_case_arm();
-                let node = ast::PatternNode::Invalid(e);
-                let pattern = ast::Pattern { node, span };
-
-                let node = ast::ExprNode::Invalid(e);
-                let body = ast::Expr { node, span };
-
-                (pattern, body)
-            }
-        }
     }
 }

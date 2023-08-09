@@ -53,9 +53,23 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     ];
 
     /// ```abnf
-    /// thing = let / if / case / lambda
+    /// thing = item{lambda}
     /// ```
     pub fn thing(&mut self) -> &'a Thing<'a> {
+        self.item(Self::lambda)
+    }
+
+    /// ```abnf
+    /// simple = item{apply}
+    /// ```
+    fn simple(&mut self) -> &'a Thing<'a> {
+        self.item(Self::apply)
+    }
+
+    /// ```abnf
+    /// item{default} = let / if / case / default
+    /// ```
+    fn item(&mut self, default: impl FnOnce(&mut Self) -> &'a Thing<'a>) -> &'a Thing<'a> {
         if let Some(opener) = self.consume(Token::Let) {
             self.let_fun(ValueDefKw::Let, opener)
         } else if let Some(opener) = self.consume(Token::Fun) {
@@ -65,7 +79,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         } else if let Some(opener) = self.consume(Token::Case) {
             self.case(opener)
         } else {
-            self.lambda()
+            default(self)
         }
     }
 
@@ -154,18 +168,19 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// case = "case" thing *arm "end"
-    /// arm  = "|" lambda
+    /// case = "case" [arrow] [lambda] "end"
     /// ```
     fn case(&mut self, opener: Span) -> &'a Thing<'a> {
         trace!("parse `case`");
 
-        let scrutinee = self.thing();
-        let mut arms = Vec::new();
-
-        while let Some(_pipe) = self.consume(Token::Pipe) {
-            arms.push(self.lambda());
-        }
+        let scrutinee = self.peek(Token::Pipe).is_none().then(|| self.arrow());
+        let thing = if self.peek(Self::LAMBDA_STARTS).is_some() {
+            self.lambda()
+        } else {
+            let span = self.closest_span();
+            let node = Node::Alt(Vec::new());
+            self.alloc.alloc(Thing { node, span })
+        };
 
         let end = self.consume(Token::End).unwrap_or_else(|| {
             let e = self.errors.parse_error(opener).missing_end("case", self.current_span);
@@ -177,27 +192,56 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         trace!("done case");
 
         let span = opener + end;
-        let node = Node::Case { scrutinee, arms };
+        let node = Node::Case(opener, scrutinee, thing);
         self.alloc.alloc(Thing { node, span })
     }
 
+    const LAMBDA_STARTS: &[Token<'static>] = &[
+        Token::SmallName(""),
+        Token::BigName(""),
+        Token::Number(""),
+        Token::Underscore,
+        Token::LeftParen,
+        Token::LeftBrace,
+        Token::Pipe,
+    ];
+
     /// ```abnf
-    /// lambda = apply ["=>" lambda]
+    /// lambda = ["|"] arrow *("|" arrow)
     /// ```
     fn lambda(&mut self) -> &'a Thing<'a> {
-        trace!("parse lambda");
-        let thing = self.apply();
-        let thing = self
-            .consume(Token::EqualArrow)
-            .map(|_| {
-                let body = self.thing();
-                let span = thing.span + body.span;
-                let node = Node::Lambda(thing, body);
-                &*self.alloc.alloc(Thing { node, span })
-            })
-            .unwrap_or(thing);
-        trace!("done lambda");
-        thing
+        let opener = self.consume(Token::Pipe);
+        let expr = self.arrow();
+        let mut span = opener.unwrap_or(expr.span);
+        let mut alts = vec![expr];
+
+        while self.consume(Token::Pipe).is_some() {
+            let expr = self.arrow();
+            span += expr.span;
+            alts.push(expr);
+        }
+
+        if alts.len() == 1 {
+            alts.remove(0)
+        } else {
+            let node = Node::Alt(alts);
+            &*self.alloc.alloc(Thing { node, span })
+        }
+    }
+
+    /// ```abnf
+    /// arrow = simple ["=>" arrow]
+    /// ```
+    fn arrow(&mut self) -> &'a Thing<'a> {
+        let expr = self.simple();
+        if let Some(arrow) = self.consume(Token::EqualArrow) {
+            let result = self.arrow();
+            let span = expr.span + arrow + result.span;
+            let node = Node::Arrow(expr, result);
+            self.alloc.alloc(Thing { node, span })
+        } else {
+            expr
+        }
     }
 
     /// ```abnf

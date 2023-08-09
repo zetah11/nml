@@ -2,12 +2,12 @@ use crate::errors::{Error, ErrorId, ErrorType, Errors, Severity};
 use crate::source::Span;
 
 impl Errors {
-    pub fn type_error(&mut self, at: Span) -> TypeErrors {
+    pub(crate) fn type_error(&mut self, at: Span) -> TypeErrors {
         TypeErrors { errors: self, primary: at }
     }
 }
 
-pub struct TypeErrors<'a> {
+pub(crate) struct TypeErrors<'a> {
     errors: &'a mut Errors,
     primary: Span,
 }

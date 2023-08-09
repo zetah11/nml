@@ -1,3 +1,5 @@
-let zonk = bap =>
-  case bap
+let frunk = zap =>
+  case zap
+    | Hi y => y
+    | Bye z => z
   end

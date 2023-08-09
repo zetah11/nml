@@ -2,12 +2,12 @@ use crate::errors::{Error, ErrorId, ErrorType, Errors, Severity};
 use crate::source::Span;
 
 impl Errors {
-    pub fn parse_error(&mut self, at: Span) -> ParseErrors {
+    pub(crate) fn parse_error(&mut self, at: Span) -> ParseErrors {
         ParseErrors { errors: self, primary: at }
     }
 }
 
-pub struct ParseErrors<'a> {
+pub(crate) struct ParseErrors<'a> {
     errors: &'a mut Errors,
     primary: Span,
 }
@@ -87,6 +87,16 @@ impl ParseErrors<'_> {
         let error = self
             .error(format!("`{kw}` has no matching `end`"))
             .with_label(possible_placement, "expected an `end` keyword here");
+        self.errors.add(error)
+    }
+
+    pub fn missing_scrutinee(&mut self) -> ErrorId {
+        let error = self.error("missing `case` scrutinee");
+        self.errors.add(error)
+    }
+
+    pub fn multiple_lambda_arms(&mut self) -> ErrorId {
+        let error = self.error("multiple lambda arms are unsupported");
         self.errors.add(error)
     }
 

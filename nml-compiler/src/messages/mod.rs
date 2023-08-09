@@ -1,3 +1,3 @@
-pub mod names;
-pub mod parse;
-pub mod tyck;
+pub(crate) mod names;
+pub(crate) mod parse;
+pub(crate) mod tyck;

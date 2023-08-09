@@ -5,6 +5,7 @@
 
 mod expr;
 mod items;
+mod lambda;
 mod pattern;
 
 use bumpalo::Bump;

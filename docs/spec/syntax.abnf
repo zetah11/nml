@@ -10,27 +10,30 @@
 ; A "thing" might be an item, a pattern, an expression, or a type. The actual
 ; distinction is not made until later in the compiler.
 
-start  = things
-things = *thing
-thing  = let / if / case / lambda
+start         = things
+things        = *thing
 
-let    = ("let" / "fun") def *("and" def) ["in" thing]
-def    = apply "=" thing
+thing         = item{lambda}
+simple        = item{apply}
+item{default} = let / if / case / default
 
-if     = "if" thing "do" thing ("else" thing / "end")
+let           = ("let" / "fun") def *("and" def) ["in" thing]
+def           = apply "=" thing
 
-case   = "case" thing *arm "end"
-arm    = "|" lambda
+if            = "if" thing "do" thing ("else" thing / "end")
+case          = "case" [arrow] [lambda] "end"
 
-lambda = apply ["=>" thing]
-apply  = 1*field
-field  = base *("." name)
-base   = name / NUMBER / "_"
-base  =/ "(" thing ")"
-base  =/ "{" *(def ",") [def] ["|" thing] "}"
+lambda        = ["|"] arrow *("|" arrow)
+arrow         = simple ["=>" arrow]
 
-name   = SMALL / BIG
+apply         = 1*field
+field         = base *("." name)
+base          = name / NUMBER / "_"
+base         =/ "(" thing ")"
+base         =/ "{" *(def ",") [def] ["|" thing] "}"
 
-SMALL  = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
-BIG    = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
-NUMBER = DIGIT *(DIGIT / "'" / "_")
+name          = SMALL / BIG
+
+SMALL         = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
+BIG           = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
+NUMBER        = DIGIT *(DIGIT / "'" / "_")

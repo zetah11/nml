@@ -30,12 +30,11 @@ pub enum Node<'a> {
         alternative: Option<&'a Thing<'a>>,
     },
 
-    Case {
-        scrutinee: &'a Thing<'a>,
-        arms: Vec<&'a Thing<'a>>,
-    },
+    Case(Span, Option<&'a Thing<'a>>, &'a Thing<'a>),
 
-    Lambda(&'a Thing<'a>, &'a Thing<'a>),
+    Alt(Vec<&'a Thing<'a>>),
+    Arrow(&'a Thing<'a>, &'a Thing<'a>),
+
     Apply(&'a Thing<'a>, Vec<&'a Thing<'a>>),
     Field(&'a Thing<'a>, Vec<(Name<'a>, Span)>),
 
