@@ -68,22 +68,6 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Restrict(of, *label)
             }
 
-            parsed::ExprNode::Case { scrutinee, cases } => {
-                let scrutinee = self.expr(item, scrutinee);
-                let scrutinee = self.alloc.alloc(scrutinee);
-
-                let cases =
-                    self.alloc.alloc_slice_fill_iter(cases.iter().map(|(pattern, expr)| {
-                        self.scope(None, |this| {
-                            let pattern = this.pattern(item, pattern);
-                            let expr = this.expr(item, expr);
-                            (pattern, expr)
-                        })
-                    }));
-
-                resolved::ExprNode::Case { scrutinee, cases }
-            }
-
             parsed::ExprNode::Apply(fun, arg) => {
                 let fun = self.expr(item, fun);
                 let fun = self.alloc.alloc(fun);
@@ -92,12 +76,18 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Apply(fun, arg)
             }
 
-            parsed::ExprNode::Lambda(pattern, body) => self.scope(None, |this| {
-                let pattern = this.pattern(item, pattern);
-                let body = this.expr(item, body);
-                let body = self.alloc.alloc(body);
-                resolved::ExprNode::Lambda(pattern, body)
-            }),
+            parsed::ExprNode::Lambda(arrows) => {
+                let arrows =
+                    self.alloc.alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
+                        self.scope(None, |this| {
+                            let pattern = this.pattern(item, pattern);
+                            let body = this.expr(item, body);
+                            (pattern, body)
+                        })
+                    }));
+
+                resolved::ExprNode::Lambda(arrows)
+            }
 
             parsed::ExprNode::Let(binding, bound, body) => {
                 let binding = self.pattern(item, binding);

@@ -90,16 +90,6 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn missing_scrutinee(&mut self) -> ErrorId {
-        let error = self.error("missing `case` scrutinee");
-        self.errors.add(error)
-    }
-
-    pub fn multiple_lambda_arms(&mut self) -> ErrorId {
-        let error = self.error("multiple lambda arms are unsupported");
-        self.errors.add(error)
-    }
-
     pub fn multiple_record_extensions(&mut self) -> ErrorId {
         let error = self.error("cannot extend multiple records");
         self.errors.add(error)

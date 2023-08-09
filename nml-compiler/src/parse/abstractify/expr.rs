@@ -87,17 +87,20 @@ impl<'a> Abstractifier<'a, '_> {
                 ast::ExprNode::Record(fields, extend)
             }
 
-            cst::Node::Case(opener, scrutinee, terms) => {
+            cst::Node::Case(scrutinee, terms) => {
+                let span = terms.span;
                 let cases = self.cases(terms);
-                let scrutinee = scrutinee.map(|node| self.expr(node)).unwrap_or_else(|| {
-                    let span = *opener;
-                    let e = self.errors.parse_error(span).missing_scrutinee();
-                    let node = ast::ExprNode::Invalid(e);
-                    ast::Expr { node, span }
-                });
-                let scrutinee = self.alloc.alloc(scrutinee);
+                let node = ast::ExprNode::Lambda(cases);
 
-                ast::ExprNode::Case { scrutinee, cases }
+                if let Some(scrutinee) = scrutinee {
+                    let case = self.alloc.alloc(ast::Expr { node, span });
+                    let scrutinee = self.expr(scrutinee);
+                    let scrutinee = self.alloc.alloc(scrutinee);
+
+                    ast::ExprNode::Apply(case, scrutinee)
+                } else {
+                    node
+                }
             }
 
             cst::Node::Apply(fun, args) => {
@@ -117,13 +120,15 @@ impl<'a> Abstractifier<'a, '_> {
             cst::Node::Arrow(pattern, body) => {
                 let pattern = self.pattern(pattern);
                 let body = self.expr(body);
-                let body = self.alloc.alloc(body);
-                ast::ExprNode::Lambda(pattern, body)
+                ast::ExprNode::Lambda(
+                    self.alloc.alloc_slice_fill_iter(std::iter::once((pattern, body))),
+                )
             }
 
-            cst::Node::Alt(_) => {
-                let e = self.errors.parse_error(span).multiple_lambda_arms();
-                ast::ExprNode::Invalid(e)
+            cst::Node::Alt(nodes) => {
+                let arrows =
+                    self.alloc.alloc_slice_fill_iter(nodes.iter().map(|node| self.arrow(node)));
+                ast::ExprNode::Lambda(arrows)
             }
 
             cst::Node::Let { keyword: _, defs, within } => {

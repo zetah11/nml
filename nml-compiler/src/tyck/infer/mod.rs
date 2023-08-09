@@ -185,64 +185,45 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 (o::ExprNode::Variant(*name), &*self.alloc.alloc(Type::Fun(arg_ty, row_ty)))
             }
 
-            i::ExprNode::Case { scrutinee, cases } => {
-                trace!("infer case");
-                let scrutinee = self.infer(scrutinee);
-                let scrutinee = self.alloc.alloc(scrutinee);
-                let result_ty = self.fresh();
-
-                let case_ty = self.fresh_row();
-                let case_ty = self.alloc.alloc(Type::Variant(case_ty));
-
+            i::ExprNode::Lambda(arrows) => {
                 let mut wildcards = Vec::new();
+                let input_ty = self.fresh();
+                let output_ty = self.fresh();
 
-                let cases =
-                    self.alloc.alloc_slice_fill_iter(cases.iter().map(|(pattern, then)| {
+                let arrows =
+                    self.alloc.alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
                         let pattern = self.infer_pattern(&mut wildcards, pattern);
-                        let then = self.infer(then);
+                        let body = self.infer(body);
 
                         let mut pretty = self.pretty.build();
                         self.solver.unify(
                             &mut pretty,
                             self.alloc,
                             self.errors,
-                            span,
-                            case_ty,
+                            pattern.span,
+                            input_ty,
                             pattern.ty,
                         );
-
                         self.solver.unify(
                             &mut pretty,
                             self.alloc,
                             self.errors,
-                            span,
-                            result_ty,
-                            then.ty,
+                            body.span,
+                            output_ty,
+                            body.ty,
                         );
 
                         let pattern = self.monomorphic(&pattern);
-                        (pattern, then)
+                        (pattern, body)
                     }));
 
                 let keep =
                     wildcards.into_iter().flat_map(|ty| self.solver.vars_in_ty(ty)).collect();
-
                 let mut pretty = self.pretty.build();
-                trace!("case: minimizing pattern types");
-                self.solver.minimize(&mut pretty, self.alloc, &keep, case_ty);
-                trace!("case: unifying scrutinee with case types");
-                self.solver.unify(
-                    &mut pretty,
-                    self.alloc,
-                    self.errors,
-                    span,
-                    scrutinee.ty,
-                    case_ty,
-                );
+                self.solver.minimize(&mut pretty, self.alloc, &keep, input_ty);
 
-                trace!("done case");
-
-                (o::ExprNode::Case { scrutinee, cases }, result_ty)
+                let ty = &*self.alloc.alloc(Type::Fun(input_ty, output_ty));
+                (o::ExprNode::Lambda(arrows), ty)
             }
 
             i::ExprNode::Apply(fun, arg) => {
@@ -261,27 +242,6 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 trace!("done apply");
                 (o::ExprNode::Apply(fun, arg), u)
-            }
-
-            i::ExprNode::Lambda(pattern, body) => {
-                trace!("infer lambda");
-                let mut wildcards = Vec::new();
-                let pattern = self.infer_pattern(&mut wildcards, pattern);
-                let pattern_ty = pattern.ty;
-                let pattern = self.monomorphic(&pattern);
-
-                let keep =
-                    wildcards.into_iter().flat_map(|ty| self.solver.vars_in_ty(ty)).collect();
-
-                let mut pretty = self.pretty.build();
-                self.solver.minimize(&mut pretty, self.alloc, &keep, pattern_ty);
-
-                let body = self.infer(body);
-                let body = self.alloc.alloc(body);
-                trace!("done lambda");
-
-                let ty = &*self.alloc.alloc(Type::Fun(pattern_ty, body.ty));
-                (o::ExprNode::Lambda(pattern, body), ty)
             }
 
             i::ExprNode::Let(pattern, bound, body) => {

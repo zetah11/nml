@@ -1,5 +1,3 @@
-let frunk = zap =>
-  case zap
-    | Hi y => y
-    | Bye z => z
-  end
+let frunk = 
+  | Hi y => y
+  | Bye z => z

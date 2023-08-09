@@ -54,22 +54,16 @@ impl Resolver<'_, '_> {
 
             ExprNode::Variant(_) => {}
 
-            ExprNode::Case { scrutinee, cases } => {
-                self.in_expr(ignore, out, scrutinee);
-                for (pattern, expr) in cases.iter() {
-                    self.in_pattern(ignore, out, pattern);
-                    self.in_expr(ignore, out, expr);
-                }
-            }
-
             ExprNode::Apply(fun, arg) => {
                 self.in_expr(ignore, out, fun);
                 self.in_expr(ignore, out, arg);
             }
 
-            ExprNode::Lambda(pattern, expr) => {
-                self.in_pattern(ignore, out, pattern);
-                self.in_expr(ignore, out, expr);
+            ExprNode::Lambda(arrows) => {
+                for (pattern, expr) in arrows.iter() {
+                    self.in_pattern(ignore, out, pattern);
+                    self.in_expr(ignore, out, expr);
+                }
             }
 
             ExprNode::Let(binding, bound, body) => {

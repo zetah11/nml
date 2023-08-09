@@ -111,7 +111,9 @@ impl<'a, 'ids> Store<'a, 'ids> {
     {
         let scrutinee = self.alloc.alloc(scrutinee);
         let cases = self.alloc.alloc_slice_fill_iter(cases);
-        self.expr(ExprNode::Case { scrutinee, cases })
+        let lambda = self.expr(ExprNode::Lambda(cases));
+        let lambda = self.alloc.alloc(lambda);
+        self.expr(ExprNode::Apply(lambda, scrutinee))
     }
 
     pub fn apply(&self, fun: Expr<'a>, arg: Expr<'a>) -> Expr<'a> {
@@ -121,8 +123,8 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn lambda(&self, arg: Pattern<'a>, body: Expr<'a>) -> Expr<'a> {
-        let body = self.alloc.alloc(body);
-        self.expr(ExprNode::Lambda(arg, body))
+        let arrows = self.alloc.alloc_slice_fill_iter(std::iter::once((arg, body)));
+        self.expr(ExprNode::Lambda(arrows))
     }
 
     pub fn let_in(&self, pattern: Pattern<'a>, bound: Expr<'a>, body: Expr<'a>) -> Expr<'a> {

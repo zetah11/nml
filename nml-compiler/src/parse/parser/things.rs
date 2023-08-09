@@ -192,7 +192,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         trace!("done case");
 
         let span = opener + end;
-        let node = Node::Case(opener, scrutinee, thing);
+        let node = Node::Case(scrutinee, thing);
         self.alloc.alloc(Thing { node, span })
     }
 

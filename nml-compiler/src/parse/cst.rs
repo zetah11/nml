@@ -30,7 +30,7 @@ pub enum Node<'a> {
         alternative: Option<&'a Thing<'a>>,
     },
 
-    Case(Span, Option<&'a Thing<'a>>, &'a Thing<'a>),
+    Case(Option<&'a Thing<'a>>, &'a Thing<'a>),
 
     Alt(Vec<&'a Thing<'a>>),
     Arrow(&'a Thing<'a>, &'a Thing<'a>),

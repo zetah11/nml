@@ -65,15 +65,12 @@ pub enum ExprNode<'a, D: Data> {
     /// `A`
     Variant(D::Variant),
 
-    /// `case x | p => y | q => z end`
-    Case { scrutinee: &'a D::Expr, cases: &'a [(D::Pattern, D::Expr)] },
-
     /* Functions ------------------------------------------------------------ */
     /// `x y`
     Apply(&'a D::Expr, &'a D::Expr),
 
-    /// `a => x`
-    Lambda(D::Pattern, &'a D::Expr),
+    /// `a => x | b => y`
+    Lambda(&'a [(D::Pattern, D::Expr)]),
 
     /// `let a = x in y`
     Let(D::Pattern, &'a D::Expr, &'a D::Expr),

@@ -5,13 +5,13 @@ use crate::trees::parsed as ast;
 impl<'a> Abstractifier<'a, '_> {
     pub(super) fn cases(&mut self, node: &cst::Thing) -> &'a [(ast::Pattern<'a>, ast::Expr<'a>)] {
         if let cst::Node::Alt(lambdas) = &node.node {
-            self.alloc.alloc_slice_fill_iter(lambdas.iter().map(|node| self.arm(node)))
+            self.alloc.alloc_slice_fill_iter(lambdas.iter().map(|node| self.arrow(node)))
         } else {
-            self.alloc.alloc_slice_fill_iter(std::iter::once(self.arm(node)))
+            self.alloc.alloc_slice_fill_iter(std::iter::once(self.arrow(node)))
         }
     }
 
-    fn arm(&mut self, node: &cst::Thing) -> (ast::Pattern<'a>, ast::Expr<'a>) {
+    pub(super) fn arrow(&mut self, node: &cst::Thing) -> (ast::Pattern<'a>, ast::Expr<'a>) {
         let span = node.span;
         match &node.node {
             cst::Node::Invalid(e) => {
