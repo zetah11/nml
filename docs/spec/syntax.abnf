@@ -28,12 +28,13 @@ arrow         = simple ["=>" arrow]
 
 apply         = 1*field
 field         = base *("." name)
-base          = name / NUMBER / "_"
+base          = ["infix" / "postfix"] name / NUMBER / "_"
 base         =/ "(" thing ")"
 base         =/ "{" *(def ",") [def] ["|" thing] "}"
 
-name          = SMALL / BIG
+name          = SMALL / BIG / OPERATOR
 
 SMALL         = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
 BIG           = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
+OPERATOR      = 1*(PUNCTUATION / SYMBOL)
 NUMBER        = DIGIT *(DIGIT / "'" / "_")

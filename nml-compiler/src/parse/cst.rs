@@ -48,6 +48,7 @@ pub enum Node<'a> {
 pub enum Name<'a> {
     Big(&'a str),
     Small(&'a str),
+    Operator(&'a str),
 }
 
 /// A single definition (i.e. a `pattern = expression` sequence).

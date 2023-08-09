@@ -16,6 +16,11 @@ impl<'a> Abstractifier<'a, '_> {
                 ast::ExprNode::Small(name)
             }
 
+            cst::Node::Name(cst::Name::Operator(name)) => {
+                let name = self.names.intern(name);
+                ast::ExprNode::Small(name)
+            }
+
             cst::Node::Name(cst::Name::Big(name)) => {
                 let name = self.names.intern(name);
                 ast::ExprNode::Big(name)
@@ -46,6 +51,7 @@ impl<'a> Abstractifier<'a, '_> {
                     let field_span = *field_span;
                     let name = match field {
                         cst::Name::Small(name) => Ok(self.names.label(name)),
+                        cst::Name::Operator(name) => Ok(self.names.label(name)),
                         cst::Name::Big(name) => {
                             Err(self.errors.parse_error(field_span).expected_name_small(Some(name)))
                         }

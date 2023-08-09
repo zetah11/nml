@@ -27,8 +27,8 @@ impl NameErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn unknown_variable(&mut self, name: &str) -> ErrorId {
-        let error = self.error(format!("unknown variable `{name}`"));
+    pub fn unknown_name(&mut self, name: &str) -> ErrorId {
+        let error = self.error(format!("unknown name `{name}`"));
         self.errors.add(error)
     }
 

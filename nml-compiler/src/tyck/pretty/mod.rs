@@ -147,9 +147,9 @@ impl Prettifier<'_, '_> {
 
         match (fields.is_empty(), rest) {
             (true, None) => "case end".into(),
-            (false, None) => format!("case | {fields} end"),
-            (true, Some(rest)) => format!("case | {rest} end"),
-            (false, Some(rest)) => format!("case {fields} | {rest} end"),
+            (false, None) => fields,
+            (true, Some(rest)) => format!("| {rest}"),
+            (false, Some(rest)) => format!("{fields} | {rest}"),
         }
     }
 

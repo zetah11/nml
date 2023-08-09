@@ -55,6 +55,7 @@ impl<'a, 'err> Abstractifier<'a, 'err> {
         let ident = match thing.node {
             cst::Node::Invalid(e) => Err(e),
             cst::Node::Name(cst::Name::Small(name)) => Ok(self.names.intern(name)),
+            cst::Node::Name(cst::Name::Operator(name)) => Ok(self.names.intern(name)),
 
             cst::Node::Name(cst::Name::Big(name)) => {
                 Err(self.errors.parse_error(span).expected_name_small(Some(name)))

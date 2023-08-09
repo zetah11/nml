@@ -46,10 +46,12 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Case,
         Token::SmallName(""),
         Token::BigName(""),
+        Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
         Token::LeftParen,
         Token::LeftBrace,
+        Token::Pipe,
     ];
 
     /// ```abnf
@@ -108,6 +110,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     const DEF_STARTS: &[Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
+        Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
         Token::LeftParen,
@@ -173,7 +176,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn case(&mut self, opener: Span) -> &'a Thing<'a> {
         trace!("parse `case`");
 
-        let scrutinee = self.peek(Token::Pipe).is_none().then(|| self.arrow());
+        let scrutinee = self.peek(Self::ARROW_STARTS).map(|_| self.arrow());
         let thing = if self.peek(Self::LAMBDA_STARTS).is_some() {
             self.lambda()
         } else {
@@ -199,6 +202,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     const LAMBDA_STARTS: &[Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
+        Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
         Token::LeftParen,
@@ -228,6 +232,16 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             &*self.alloc.alloc(Thing { node, span })
         }
     }
+
+    const ARROW_STARTS: &[Token<'static>] = &[
+        Token::SmallName(""),
+        Token::BigName(""),
+        Token::Operator(""),
+        Token::Number(""),
+        Token::Underscore,
+        Token::LeftParen,
+        Token::LeftBrace,
+    ];
 
     /// ```abnf
     /// arrow = simple ["=>" arrow]
@@ -271,6 +285,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     const FIELD_STARTS: &[Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
+        Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
         Token::LeftParen,
@@ -389,12 +404,13 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// name = SMALL / BIG
+    /// name = SMALL / BIG / OPERATOR
     /// ```
     fn name(&mut self) -> Option<(Name<'a>, Span)> {
         let (name, span) = match self.next.as_ref()? {
             (Token::SmallName(name), span) => (Name::Small(name), *span),
             (Token::BigName(name), span) => (Name::Big(name), *span),
+            (Token::Operator(name), span) => (Name::Operator(name), *span),
             _ => return None,
         };
 

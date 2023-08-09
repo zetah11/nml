@@ -15,6 +15,11 @@ impl<'a> Abstractifier<'a, '_> {
                 ast::PatternNode::Small(name)
             }
 
+            cst::Node::Name(cst::Name::Operator(name)) => {
+                let name = self.names.intern(name);
+                ast::PatternNode::Small(name)
+            }
+
             cst::Node::Name(cst::Name::Big(name)) => {
                 let name = self.names.intern(name);
                 ast::PatternNode::Big(name)

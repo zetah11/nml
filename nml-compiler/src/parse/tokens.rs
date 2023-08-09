@@ -12,6 +12,9 @@ pub enum Token<'src> {
     #[regex(r"[0-9][0-9_']*", |lexer| lexer.slice())]
     Number(&'src str),
 
+    #[regex(r"[\p{Symbol}\p{Punctuation}--(){}]+", |lexer| lexer.slice())]
+    Operator(&'src str),
+
     #[token("and")]
     And,
     #[token("case")]

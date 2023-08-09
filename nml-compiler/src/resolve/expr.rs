@@ -19,7 +19,7 @@ impl<'a> Resolver<'a, '_> {
                     resolved::ExprNode::Var(name)
                 } else {
                     let name = self.names.get_ident(name);
-                    resolved::ExprNode::Invalid(self.errors.name_error(span).unknown_variable(name))
+                    resolved::ExprNode::Invalid(self.errors.name_error(span).unknown_name(name))
                 }
             }
 
