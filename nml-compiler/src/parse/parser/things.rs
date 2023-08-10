@@ -265,17 +265,19 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         trace!("parsing apply");
 
         let expr = self.field();
-        let mut args = Vec::new();
+        let mut span = expr.span;
+        let mut args = vec![expr];
 
         while self.peek(Self::FIELD_STARTS).is_some() {
-            args.push(self.field());
+            let arg = self.field();
+            span += arg.span;
+            args.push(arg);
         }
 
         trace!("done apply");
 
-        if let Some(last_arg) = args.last() {
-            let span = expr.span + last_arg.span;
-            let node = Node::Apply(expr, args);
+        if args.len() > 1 {
+            let node = Node::Apply(args);
             self.alloc.alloc(Thing { node, span })
         } else {
             expr
@@ -336,6 +338,14 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         } else if let Some((number, span)) = self.number() {
             trace!("number");
             let node = Node::Number(number);
+            (node, span)
+        } else if let Some(span) = self.consume(Token::Infix) {
+            trace!("infix");
+            let node = Node::Infix;
+            (node, span)
+        } else if let Some(span) = self.consume(Token::Postfix) {
+            trace!("postfix");
+            let node = Node::Postfix;
             (node, span)
         } else if let Some(span) = self.consume(Token::Underscore) {
             trace!("wildcard");

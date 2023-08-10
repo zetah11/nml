@@ -99,28 +99,20 @@ impl<'a> Abstractifier<'a, '_> {
                 let node = ast::ExprNode::Lambda(cases);
 
                 if let Some(scrutinee) = scrutinee {
-                    let case = self.alloc.alloc(ast::Expr { node, span });
+                    let case = ast::Expr { node, span };
                     let scrutinee = self.expr(scrutinee);
-                    let scrutinee = self.alloc.alloc(scrutinee);
 
-                    ast::ExprNode::Apply(case, scrutinee)
+                    let exprs = self.alloc.alloc([case, scrutinee]);
+                    ast::ExprNode::Apply(exprs)
                 } else {
                     node
                 }
             }
 
-            cst::Node::Apply(fun, args) => {
-                let mut fun = self.expr(fun);
-
-                for arg in args {
-                    let arg = self.expr(arg);
-                    let arg = self.alloc.alloc(arg);
-                    let span = fun.span + arg.span;
-                    let node = ast::ExprNode::Apply(self.alloc.alloc(fun), arg);
-                    fun = ast::Expr { node, span };
-                }
-
-                return fun;
+            cst::Node::Apply(things) => {
+                let exprs =
+                    self.alloc.alloc_slice_fill_iter(things.iter().map(|node| self.expr(node)));
+                ast::ExprNode::Apply(exprs)
             }
 
             cst::Node::Arrow(pattern, body) => {
@@ -165,6 +157,11 @@ impl<'a> Abstractifier<'a, '_> {
                 }
 
                 return body;
+            }
+
+            _ => {
+                let e = self.errors.parse_error(span).expected_expr();
+                ast::ExprNode::Invalid(e)
             }
         };
 

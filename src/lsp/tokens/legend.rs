@@ -26,7 +26,9 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
         | Token::Fun
         | Token::If
         | Token::In
-        | Token::Let => Some((types::KEYWORD, mods::NONE)),
+        | Token::Infix
+        | Token::Let
+        | Token::Postfix => Some((types::KEYWORD, mods::NONE)),
 
         Token::Comma
         | Token::Dot

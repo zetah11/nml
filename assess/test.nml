@@ -1,7 +1,3 @@
-let hi = f => f (Hi 5)
-let result = hi Hi
-
-let - = True x => False x | False x => True x
-let stuff = -(True 5)
-
-let ∈ = x => y => x
+let postfix not = True x => False x | False x => True x
+let infix then = x => y => y
+let result = (True 5) not then False 5

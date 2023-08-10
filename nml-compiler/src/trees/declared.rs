@@ -29,6 +29,8 @@ impl<'a> nodes::Data for Data<'a> {
     type PatternName = Infallible;
     type Var = Infallible;
     type Variant = Infallible;
+
+    type Apply = Infallible;
 }
 
 pub struct Item<'a> {

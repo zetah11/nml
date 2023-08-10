@@ -31,8 +31,12 @@ pub enum Token<'src> {
     If,
     #[token("in")]
     In,
+    #[token("infix")]
+    Infix,
     #[token("let")]
     Let,
+    #[token("postfix")]
+    Postfix,
 
     #[token(",")]
     Comma,

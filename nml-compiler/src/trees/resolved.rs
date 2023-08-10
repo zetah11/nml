@@ -25,6 +25,8 @@ impl<'a> nodes::Data for Data<'a> {
     type PatternName = Infallible;
     type Var = Name;
     type Variant = Label;
+
+    type Apply = (&'a Self::Expr, &'a Self::Expr);
 }
 
 pub struct Item<'a> {

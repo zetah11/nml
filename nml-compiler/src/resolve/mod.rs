@@ -1,5 +1,6 @@
 mod dependencies;
 mod expr;
+mod operators;
 mod pattern;
 
 use std::collections::BTreeMap;
@@ -11,6 +12,7 @@ use crate::errors::{ErrorId, Errors};
 use crate::names::{Ident, Name, Names, ScopeName};
 use crate::source::{SourceId, Span};
 use crate::topology;
+use crate::trees::parsed::Affix;
 use crate::trees::{declared, parsed, resolved};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -49,6 +51,7 @@ struct Resolver<'a, 'err> {
 
     items: BTreeMap<Name, ItemId>,
     spans: BTreeMap<Name, Span>,
+    affii: BTreeMap<Name, Affix>,
 
     scopes: (Vec<Scope>, Scope),
     counter: usize,
@@ -71,6 +74,7 @@ impl<'a, 'err> Resolver<'a, 'err> {
 
             items: BTreeMap::new(),
             spans: BTreeMap::new(),
+            affii: BTreeMap::new(),
 
             scopes: (Vec::new(), scope),
             counter: 0,
@@ -115,7 +119,13 @@ impl<'a, 'err> Resolver<'a, 'err> {
         resolved::Item { id, node, span }
     }
 
-    fn define_value(&mut self, item: ItemId, at: Span, ident: Ident) -> Result<Name, ErrorId> {
+    fn define_value(
+        &mut self,
+        item: ItemId,
+        at: Span,
+        affix: Affix,
+        ident: Ident,
+    ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
 
         let prev = self.items.insert(name, item);
@@ -130,6 +140,8 @@ impl<'a, 'err> Resolver<'a, 'err> {
         };
 
         self.spans.insert(name, at);
+        self.affii.insert(name, affix);
+
         result
     }
 

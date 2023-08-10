@@ -12,6 +12,8 @@ pub enum Node<'a> {
     Invalid(ErrorId),
 
     Wildcard,
+    Infix,
+    Postfix,
 
     Name(Name<'a>),
     Number(&'a str),
@@ -35,7 +37,7 @@ pub enum Node<'a> {
     Alt(Vec<&'a Thing<'a>>),
     Arrow(&'a Thing<'a>, &'a Thing<'a>),
 
-    Apply(&'a Thing<'a>, Vec<&'a Thing<'a>>),
+    Apply(Vec<&'a Thing<'a>>),
     Field(&'a Thing<'a>, Vec<(Name<'a>, Span)>),
 
     Record {

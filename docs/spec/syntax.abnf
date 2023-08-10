@@ -28,7 +28,7 @@ arrow         = simple ["=>" arrow]
 
 apply         = 1*field
 field         = base *("." name)
-base          = ["infix" / "postfix"] name / NUMBER / "_"
+base          = name / NUMBER / "_" / "infix" / "postfix"
 base         =/ "(" thing ")"
 base         =/ "{" *(def ",") [def] ["|" thing] "}"
 

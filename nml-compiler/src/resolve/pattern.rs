@@ -11,12 +11,14 @@ impl<'a> Resolver<'a, '_> {
             parsed::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
             parsed::PatternNode::Unit => resolved::PatternNode::Unit,
 
-            parsed::PatternNode::Small(name) => match self.define_value(item, span, *name) {
-                Ok(name) => resolved::PatternNode::Bind(name),
-                Err(e) => resolved::PatternNode::Invalid(e),
-            },
+            parsed::PatternNode::Small((affix, name)) => {
+                match self.define_value(item, span, *affix, *name) {
+                    Ok(name) => resolved::PatternNode::Bind(name),
+                    Err(e) => resolved::PatternNode::Invalid(e),
+                }
+            }
 
-            parsed::PatternNode::Big(name) => {
+            parsed::PatternNode::Big((_, name)) => {
                 if self.lookup_value(name).is_some() {
                     todo!("non-anonymous variant")
                 } else {
@@ -28,7 +30,7 @@ impl<'a> Resolver<'a, '_> {
             }
 
             parsed::PatternNode::Apply(
-                parsed::Pattern { node: parsed::PatternNode::Big(name), .. },
+                parsed::Pattern { node: parsed::PatternNode::Big((_, name)), .. },
                 arg,
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);

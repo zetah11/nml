@@ -13,6 +13,15 @@ pub(crate) struct ParseErrors<'a> {
 }
 
 impl ParseErrors<'_> {
+    pub fn ambiguous_infix_operators(&mut self, prev: Span) -> ErrorId {
+        let error = self
+            .error("ambiguous expression")
+            .with_label(prev, "previous infix operator here")
+            .with_note("infix operators have no precedence")
+            .with_help("disambiguate by adding explicit parentheses");
+        self.errors.add(error)
+    }
+
     pub fn expected_case_arm(&mut self) -> ErrorId {
         let error = self
             .error("expected a case arm")
@@ -22,6 +31,11 @@ impl ParseErrors<'_> {
 
     pub fn expected_comma(&mut self) -> ErrorId {
         let error = self.error("expected a comma `,`");
+        self.errors.add(error)
+    }
+
+    pub fn expected_expr(&mut self) -> ErrorId {
+        let error = self.error("expected an expression");
         self.errors.add(error)
     }
 
@@ -64,6 +78,11 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn infix_function(&mut self, name: &str) -> ErrorId {
+        let error = self.error(format!("`{name}` is an infix function"));
+        self.errors.add(error)
+    }
+
     pub fn item_definition_with_body(&mut self) -> ErrorId {
         let error = self.error("items do not have an expression body").with_note(
             "the expression body is after the `in` keyword, and is only valid in expressions",
@@ -92,6 +111,11 @@ impl ParseErrors<'_> {
 
     pub fn multiple_record_extensions(&mut self) -> ErrorId {
         let error = self.error("cannot extend multiple records");
+        self.errors.add(error)
+    }
+
+    pub fn postfix_function(&mut self, name: &str) -> ErrorId {
+        let error = self.error(format!("`{name}` is a postfix function"));
         self.errors.add(error)
     }
 

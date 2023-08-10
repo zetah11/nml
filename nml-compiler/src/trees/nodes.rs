@@ -13,6 +13,8 @@ pub trait Data {
     type PatternName;
     type Var;
     type Variant;
+
+    type Apply;
 }
 
 pub enum ItemNode<D: Data> {
@@ -67,7 +69,7 @@ pub enum ExprNode<'a, D: Data> {
 
     /* Functions ------------------------------------------------------------ */
     /// `x y`
-    Apply(&'a D::Expr, &'a D::Expr),
+    Apply(D::Apply),
 
     /// `a => x | b => y`
     Lambda(&'a [(D::Pattern, D::Expr)]),

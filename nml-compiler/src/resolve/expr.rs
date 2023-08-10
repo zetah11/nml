@@ -68,13 +68,7 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Restrict(of, *label)
             }
 
-            parsed::ExprNode::Apply(fun, arg) => {
-                let fun = self.expr(item, fun);
-                let fun = self.alloc.alloc(fun);
-                let arg = self.expr(item, arg);
-                let arg = self.alloc.alloc(arg);
-                resolved::ExprNode::Apply(fun, arg)
-            }
+            parsed::ExprNode::Apply(terms) => return self.apply_run(item, terms),
 
             parsed::ExprNode::Lambda(arrows) => {
                 let arrows =

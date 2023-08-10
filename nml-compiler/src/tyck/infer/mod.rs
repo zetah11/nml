@@ -226,7 +226,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 (o::ExprNode::Lambda(arrows), ty)
             }
 
-            i::ExprNode::Apply(fun, arg) => {
+            i::ExprNode::Apply((fun, arg)) => {
                 trace!("infer apply");
                 let fun = self.infer(fun);
                 let fun = self.alloc.alloc(fun);
@@ -241,7 +241,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 self.solver.unify(&mut pretty, self.alloc, self.errors, span, fun.ty, expected);
 
                 trace!("done apply");
-                (o::ExprNode::Apply(fun, arg), u)
+                (o::ExprNode::Apply((fun, arg)), u)
             }
 
             i::ExprNode::Let(pattern, bound, body) => {

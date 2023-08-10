@@ -21,9 +21,11 @@ impl<'a> nodes::Data for Data<'a> {
     type Pattern = Pattern<'a>;
 
     type ExprName = Ident;
-    type PatternName = Ident;
+    type PatternName = (Affix, Ident);
     type Var = Infallible;
     type Variant = Infallible;
+
+    type Apply = &'a [Self::Expr];
 }
 
 pub struct Item<'a> {
@@ -44,3 +46,10 @@ pub struct Pattern<'a> {
 pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
 pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
 pub type PatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum Affix {
+    Prefix,
+    Infix,
+    Postfix,
+}

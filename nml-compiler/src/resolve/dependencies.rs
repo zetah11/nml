@@ -54,7 +54,7 @@ impl Resolver<'_, '_> {
 
             ExprNode::Variant(_) => {}
 
-            ExprNode::Apply(fun, arg) => {
+            ExprNode::Apply((fun, arg)) => {
                 self.in_expr(ignore, out, fun);
                 self.in_expr(ignore, out, arg);
             }
