@@ -4,7 +4,11 @@ use crate::trees::{parsed, resolved};
 use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn expr(&mut self, item: ItemId, expr: &parsed::Expr) -> resolved::Expr<'a> {
+    pub fn expr<'lit>(
+        &mut self,
+        item: ItemId,
+        expr: &parsed::Expr<'_, 'lit>,
+    ) -> resolved::Expr<'a, 'lit> {
         let span = expr.span;
         let node = match &expr.node {
             parsed::ExprNode::Invalid(e) => resolved::ExprNode::Invalid(*e),
@@ -31,7 +35,7 @@ impl<'a> Resolver<'a, '_> {
                 }
             }
 
-            parsed::ExprNode::Number(num) => resolved::ExprNode::Number(num.clone()),
+            parsed::ExprNode::Number(num) => resolved::ExprNode::Number(num),
 
             parsed::ExprNode::If(cond, then, elze) => {
                 let cond = self.expr(item, cond);

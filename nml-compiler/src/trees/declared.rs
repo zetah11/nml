@@ -1,29 +1,15 @@
-use std::collections::BTreeMap;
 use std::convert::Infallible;
 
-use crate::errors::{ErrorId, Errors};
-use crate::names::{Ident, Name};
-use crate::resolve::ItemId;
-use crate::source::{SourceId, Span};
-
 use super::{nodes, parsed, resolved};
+use crate::resolve::ItemId;
+use crate::source::Span;
 
-pub struct Source<'a> {
-    pub items: &'a [Item<'a>],
-    pub errors: Errors,
-    pub unattached: Vec<(ErrorId, Span)>,
-    pub source: SourceId,
+pub struct Data<'a, 'b, 'lit>(std::marker::PhantomData<(&'a &'lit (), &'b &'lit ())>);
 
-    pub names: BTreeMap<Ident, Name>,
-    pub defines: BTreeMap<Name, (Span, ItemId)>,
-}
-
-pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
-
-impl<'a> nodes::Data for Data<'a> {
-    type Item = Item<'a>;
-    type Expr = &'a parsed::Expr<'a>;
-    type Pattern = resolved::Pattern<'a>;
+impl<'a, 'b, 'lit> nodes::Data for Data<'a, 'b, 'lit> {
+    type Item = Item<'a, 'b, 'lit>;
+    type Expr = &'b parsed::Expr<'b, 'lit>;
+    type Pattern = resolved::Pattern<'a, 'lit>;
 
     type ExprName = Infallible;
     type PatternName = Infallible;
@@ -33,10 +19,10 @@ impl<'a> nodes::Data for Data<'a> {
     type Apply = Infallible;
 }
 
-pub struct Item<'a> {
-    pub node: ItemNode<'a>,
+pub struct Item<'a, 'b, 'lit> {
+    pub node: ItemNode<'a, 'b, 'lit>,
     pub span: Span,
     pub id: ItemId,
 }
 
-pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
+pub type ItemNode<'a, 'b, 'lit> = nodes::ItemNode<Data<'a, 'b, 'lit>>;

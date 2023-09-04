@@ -6,19 +6,19 @@ use crate::source::{SourceId, Span};
 
 use super::nodes;
 
-pub struct Source<'a> {
-    pub items: &'a [Item<'a>],
+pub struct Source<'a, 'lit> {
+    pub items: &'a [Item<'a, 'lit>],
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
     pub source: SourceId,
 }
 
-pub struct Data<'a>(std::marker::PhantomData<&'a ()>);
+pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
-impl<'a> nodes::Data for Data<'a> {
-    type Item = Item<'a>;
-    type Expr = Expr<'a>;
-    type Pattern = Pattern<'a>;
+impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
+    type Item = Item<'a, 'lit>;
+    type Expr = Expr<'a, 'lit>;
+    type Pattern = Pattern<'a, 'lit>;
 
     type ExprName = Ident;
     type PatternName = (Affix, Ident);
@@ -28,24 +28,24 @@ impl<'a> nodes::Data for Data<'a> {
     type Apply = &'a [Self::Expr];
 }
 
-pub struct Item<'a> {
-    pub node: ItemNode<'a>,
+pub struct Item<'a, 'lit> {
+    pub node: ItemNode<'a, 'lit>,
     pub span: Span,
 }
 
-pub struct Expr<'a> {
-    pub node: ExprNode<'a>,
+pub struct Expr<'a, 'lit> {
+    pub node: ExprNode<'a, 'lit>,
     pub span: Span,
 }
 
-pub struct Pattern<'a> {
-    pub node: PatternNode<'a>,
+pub struct Pattern<'a, 'lit> {
+    pub node: PatternNode<'a, 'lit>,
     pub span: Span,
 }
 
-pub type ItemNode<'a> = nodes::ItemNode<Data<'a>>;
-pub type ExprNode<'a> = nodes::ExprNode<'a, Data<'a>>;
-pub type PatternNode<'a> = nodes::PatternNode<'a, Data<'a>>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<Data<'a, 'lit>>;
+pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, Data<'a, 'lit>>;
+pub type PatternNode<'a, 'lit> = nodes::PatternNode<'a, Data<'a, 'lit>>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Affix {

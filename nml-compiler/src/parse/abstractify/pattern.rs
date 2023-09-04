@@ -2,8 +2,8 @@ use super::Abstractifier;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
 
-impl<'a> Abstractifier<'a, '_> {
-    pub fn pattern(&mut self, node: &cst::Thing) -> ast::Pattern<'a> {
+impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
+    pub fn pattern(&mut self, node: &cst::Thing) -> ast::Pattern<'a, 'lit> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::PatternNode::Invalid(*e),
@@ -49,7 +49,7 @@ impl<'a> Abstractifier<'a, '_> {
         ast::Pattern { node, span }
     }
 
-    fn name<'b>(&mut self, affix: ast::Affix, node: &cst::Thing) -> ast::Pattern<'b> {
+    fn name<'b, 'c>(&mut self, affix: ast::Affix, node: &cst::Thing) -> ast::Pattern<'b, 'c> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Name(cst::Name::Small(name)) => {

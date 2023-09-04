@@ -2,11 +2,11 @@ use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
 impl<'a> Checker<'a, '_, '_, '_> {
-    pub fn infer_pattern(
+    pub fn infer_pattern<'lit>(
         &mut self,
         wildcards: &mut Vec<&'a Type<'a>>,
-        pattern: &i::Pattern,
-    ) -> o::MonoPattern<'a> {
+        pattern: &i::Pattern<'_, 'lit>,
+    ) -> o::MonoPattern<'a, 'lit> {
         let span = pattern.span;
         let (node, ty) = match &pattern.node {
             i::PatternNode::Invalid(e) => {

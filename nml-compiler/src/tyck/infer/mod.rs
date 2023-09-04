@@ -6,7 +6,7 @@ use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
 impl<'a> Checker<'a, '_, '_, '_> {
-    pub fn infer(&mut self, expr: &i::Expr) -> o::Expr<'a> {
+    pub fn infer<'lit>(&mut self, expr: &i::Expr<'_, 'lit>) -> o::Expr<'a, 'lit> {
         let span = expr.span;
         let (node, ty) = match &expr.node {
             i::ExprNode::Invalid(e) => {
@@ -43,7 +43,7 @@ impl<'a> Checker<'a, '_, '_, '_> {
             i::ExprNode::Number(v) => {
                 trace!("infer num");
                 trace!("done num");
-                (o::ExprNode::Number(v.clone()), &*self.alloc.alloc(Type::Integer))
+                (o::ExprNode::Number(v), &*self.alloc.alloc(Type::Integer))
             }
 
             i::ExprNode::If(cond, then, otherwise) => {

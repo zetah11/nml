@@ -9,37 +9,41 @@ mod lambda;
 mod pattern;
 
 use bumpalo::Bump;
+use internment::Arena;
 use malachite::num::basic::traits::Zero;
 use malachite::Integer;
 
 use super::cst;
 use crate::errors::{ErrorId, Errors};
+use crate::literals::Literal;
 use crate::names::{Ident, Names};
 use crate::source::Span;
 use crate::trees::parsed as ast;
 
-pub struct Abstractifier<'a, 'err> {
+pub struct Abstractifier<'a, 'lit, 'err> {
     alloc: &'a Bump,
     names: &'a Names<'a>,
+    literals: &'lit Arena<Literal>,
     errors: &'err mut Errors,
 
     parse_errors: Vec<(ErrorId, Span)>,
 }
 
-impl<'a, 'err> Abstractifier<'a, 'err> {
+impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
     pub fn new(
         alloc: &'a Bump,
         names: &'a Names<'a>,
+        literals: &'lit Arena<Literal>,
         errors: &'err mut Errors,
         parse_errors: Vec<(ErrorId, Span)>,
     ) -> Self {
-        Self { alloc, names, errors, parse_errors }
+        Self { alloc, names, literals, errors, parse_errors }
     }
 
     pub fn program(
         mut self,
         items: Vec<&cst::Thing>,
-    ) -> (&'a [ast::Item<'a>], Vec<(ErrorId, Span)>) {
+    ) -> (&'a [ast::Item<'a, 'lit>], Vec<(ErrorId, Span)>) {
         let mut into = bumpalo::collections::Vec::with_capacity_in(items.len(), self.alloc);
 
         for node in items {
@@ -71,7 +75,9 @@ impl<'a, 'err> Abstractifier<'a, 'err> {
         let mut res = Integer::ZERO;
 
         for c in lit.chars() {
-            let Some(digit) = c.to_digit(10) else { continue; };
+            let Some(digit) = c.to_digit(10) else {
+                continue;
+            };
             res = res * Integer::from(10) + Integer::from(digit);
         }
 

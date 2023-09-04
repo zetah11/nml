@@ -9,7 +9,8 @@ mod tokens;
 use lsp::TraceValue;
 use lsp_types::{self as lsp, Url};
 use nml_compiler::alloc::Bump;
-use nml_compiler::intern::ThreadedRodeo;
+use nml_compiler::intern::{Arena, ThreadedRodeo};
+use nml_compiler::literals::Literal;
 use nml_compiler::names::Ident;
 use nml_compiler::source::{Source, SourceId, Sources};
 use std::collections::{HashMap, HashSet};
@@ -80,6 +81,7 @@ struct Server {
     sources: Sources,
 
     idents: ThreadedRodeo<Ident>,
+    literals: Arena<Literal>,
     errors: HashSet<Url>,
 }
 
@@ -92,6 +94,7 @@ impl Server {
             sources: Sources::new(),
 
             idents: ThreadedRodeo::new(),
+            literals: Arena::new(),
             errors: HashSet::new(),
         }
     }

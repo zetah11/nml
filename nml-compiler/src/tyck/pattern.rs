@@ -4,7 +4,10 @@ use crate::trees::nodes::PatternNode;
 use super::{Checker, Scheme};
 
 impl<'a> Checker<'a, '_, '_, '_> {
-    pub(super) fn generalize(&mut self, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
+    pub(super) fn generalize<'lit>(
+        &mut self,
+        pattern: &MonoPattern<'a, 'lit>,
+    ) -> PolyPattern<'a, 'lit> {
         let span = pattern.span;
         let mut pretty = self.pretty.build();
         let scheme = self.solver.generalize(&mut pretty, self.alloc, pattern.ty);
@@ -39,7 +42,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
         PolyPattern { node, span, scheme }
     }
 
-    pub(super) fn monomorphic(&mut self, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
+    pub(super) fn monomorphic<'lit>(
+        &mut self,
+        pattern: &MonoPattern<'a, 'lit>,
+    ) -> PolyPattern<'a, 'lit> {
         let span = pattern.span;
         let scheme = Scheme::mono(pattern.ty);
 

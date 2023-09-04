@@ -13,10 +13,10 @@ impl Server {
         &self,
         alloc: &'a Bump,
         source: &Source,
-    ) -> (Names, inferred::Program<'a>) {
+    ) -> (Names, inferred::Program<'a, '_>) {
         let names = Names::new(&self.idents);
 
-        let parsed = parse(alloc, &names, source);
+        let parsed = parse(alloc, &names, &self.literals, source);
         let resolved = resolve(&names, alloc, &parsed);
         let inferred = tyck::infer(alloc, &names, &resolved);
 

@@ -4,8 +4,8 @@ use super::Abstractifier;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
 
-impl<'a> Abstractifier<'a, '_> {
-    pub fn item(&mut self, into: &mut Vec<ast::Item<'a>>, node: &cst::Thing) {
+impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
+    pub fn item(&mut self, into: &mut Vec<ast::Item<'a, 'lit>>, node: &cst::Thing) {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ItemNode::Invalid(*e),
@@ -30,7 +30,7 @@ impl<'a> Abstractifier<'a, '_> {
         into.push(ast::Item { node, span });
     }
 
-    fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a> {
+    fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
         let pattern = self.pattern(def.pattern);
         let body = def.definition.map(|node| self.expr(node)).unwrap_or_else(|| {
             let span = pattern.span;

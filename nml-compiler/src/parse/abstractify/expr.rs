@@ -1,10 +1,11 @@
 use super::Abstractifier;
+use crate::literals::Literal;
 use crate::names::Label;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
 
-impl<'a> Abstractifier<'a, '_> {
-    pub fn expr(&mut self, node: &cst::Thing) -> ast::Expr<'a> {
+impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
+    pub fn expr(&mut self, node: &cst::Thing) -> ast::Expr<'a, 'lit> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ExprNode::Invalid(*e),
@@ -28,6 +29,7 @@ impl<'a> Abstractifier<'a, '_> {
 
             cst::Node::Number(lit) => {
                 let num = Self::parse_number(lit);
+                let num = Literal::int(self.literals, num);
                 ast::ExprNode::Number(num)
             }
 

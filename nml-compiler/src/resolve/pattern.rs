@@ -4,7 +4,11 @@ use crate::trees::{parsed, resolved};
 use super::{ItemId, Resolver};
 
 impl<'a> Resolver<'a, '_> {
-    pub fn pattern(&mut self, item: ItemId, pattern: &parsed::Pattern) -> resolved::Pattern<'a> {
+    pub fn pattern<'lit>(
+        &mut self,
+        item: ItemId,
+        pattern: &parsed::Pattern<'_, 'lit>,
+    ) -> resolved::Pattern<'a, 'lit> {
         let span = pattern.span;
         let node = match &pattern.node {
             parsed::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),

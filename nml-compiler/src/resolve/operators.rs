@@ -4,7 +4,11 @@ use crate::trees::parsed::Affix;
 use crate::trees::{parsed, resolved};
 
 impl<'a> Resolver<'a, '_> {
-    pub(super) fn apply_run(&mut self, item: ItemId, terms: &[parsed::Expr]) -> resolved::Expr<'a> {
+    pub(super) fn apply_run<'lit>(
+        &mut self,
+        item: ItemId,
+        terms: &[parsed::Expr<'_, 'lit>],
+    ) -> resolved::Expr<'a, 'lit> {
         let mut infix: Option<(Vec<resolved::Expr>, resolved::Expr, Name)> = None;
         let mut exprs: Vec<resolved::Expr> = Vec::with_capacity(terms.len());
 
@@ -43,7 +47,7 @@ impl<'a> Resolver<'a, '_> {
                         let node = resolved::ExprNode::Invalid(e);
                         exprs.push(resolved::Expr { node, span });
                     } else {
-                        let lhs = exprs.drain(..).collect();
+                        let lhs = std::mem::take(&mut exprs);
                         let name = *name;
                         infix = Some((lhs, term, name));
                     }
@@ -88,11 +92,11 @@ impl<'a> Resolver<'a, '_> {
         }
     }
 
-    fn prefixes(
+    fn prefixes<'lit>(
         &self,
-        mut fun: resolved::Expr<'a>,
-        args: Vec<resolved::Expr<'a>>,
-    ) -> resolved::Expr<'a> {
+        mut fun: resolved::Expr<'a, 'lit>,
+        args: Vec<resolved::Expr<'a, 'lit>>,
+    ) -> resolved::Expr<'a, 'lit> {
         for arg in args {
             let arg = self.alloc.alloc(arg);
             let span = fun.span + arg.span;

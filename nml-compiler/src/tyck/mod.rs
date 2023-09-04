@@ -18,11 +18,11 @@ use crate::names::Names;
 use crate::source::Span;
 use crate::trees::{inferred, resolved};
 
-pub fn infer<'a>(
+pub fn infer<'a, 'lit>(
     alloc: &'a Bump,
     names: &Names,
-    program: &resolved::Program,
-) -> inferred::Program<'a> {
+    program: &resolved::Program<'_, 'lit>,
+) -> inferred::Program<'a, 'lit> {
     let mut errors = program.errors.clone();
     let mut pretty = Pretty::new(names).with_show_levels(false).with_show_error_id(false);
     let mut checker = Checker::new(alloc, &mut errors, &mut pretty);
@@ -59,7 +59,10 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     }
 
     /// Check a set of mutually recursive items.
-    pub fn check_items<'b>(&mut self, items: &'b [resolved::Item]) -> &'a [inferred::Item<'a>] {
+    pub fn check_items<'b, 'lit>(
+        &mut self,
+        items: &'b [resolved::Item<'_, 'lit>],
+    ) -> &'a [inferred::Item<'a, 'lit>] {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {

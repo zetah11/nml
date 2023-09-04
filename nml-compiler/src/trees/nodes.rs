@@ -25,7 +25,7 @@ pub enum ItemNode<D: Data> {
     Let(D::Pattern, D::Expr),
 }
 
-pub enum ExprNode<'a, D: Data> {
+pub enum ExprNode<'a, 'lit, D: Data> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -48,7 +48,7 @@ pub enum ExprNode<'a, D: Data> {
     Bool(bool),
 
     /// Some integer
-    Number(Integer),
+    Number(&'lit Integer),
 
     /// `if x then y else z`
     If(&'a D::Expr, &'a D::Expr, &'a D::Expr),
@@ -105,4 +105,65 @@ pub enum PatternNode<'a, D: Data> {
 
     /// A pattern application
     Apply(&'a D::Pattern, &'a D::Pattern),
+}
+
+/* Copy and Clone impls ----------------------------------------------------- */
+
+impl<D: Data> Copy for ItemNode<D>
+where
+    D::Pattern: Copy,
+    D::Expr: Copy,
+{
+}
+
+impl<D: Data> Clone for ItemNode<D>
+where
+    D::Pattern: Copy,
+    D::Expr: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<D: Data> Copy for ExprNode<'_, '_, D>
+where
+    D::ExprName: Copy,
+    D::Var: Copy,
+    D::Variant: Copy,
+    D::Apply: Copy,
+    D::Pattern: Copy,
+{
+}
+
+impl<D: Data> Clone for ExprNode<'_, '_, D>
+where
+    D::ExprName: Copy,
+    D::Var: Copy,
+    D::Variant: Copy,
+    D::Apply: Copy,
+    D::Pattern: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<D: Data> Copy for PatternNode<'_, D>
+where
+    D::PatternName: Copy,
+    D::Var: Copy,
+    D::Variant: Copy,
+{
+}
+
+impl<D: Data> Clone for PatternNode<'_, D>
+where
+    D::PatternName: Copy,
+    D::Var: Copy,
+    D::Variant: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
 }

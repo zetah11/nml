@@ -18,11 +18,15 @@ use crate::trees::{declared, parsed, resolved};
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ItemId(usize);
 
-pub fn resolve<'a>(
+pub fn resolve<'a, 'b, 'lit>(
     names: &'a Names<'a>,
     alloc: &'a Bump,
-    program: &parsed::Source<'a>,
-) -> resolved::Program<'a> {
+    program: &'b parsed::Source<'b, 'lit>,
+) -> resolved::Program<'a, 'lit>
+where
+    'lit: 'a + 'b,
+    'a: 'b,
+{
     let mut errors = program.errors.clone();
     let mut resolver = Resolver::new(names, alloc, &mut errors, program.source);
 
@@ -82,15 +86,30 @@ impl<'a, 'err> Resolver<'a, 'err> {
         }
     }
 
-    pub fn items(&mut self, items: &'a [parsed::Item<'a>]) -> BTreeMap<ItemId, resolved::Item<'a>> {
+    pub fn items<'b, 'lit>(
+        &mut self,
+        items: &'b [parsed::Item<'b, 'lit>],
+    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>>
+    where
+        'lit: 'a + 'b,
+        'a: 'b,
+    {
         debug!("declaring {} items", items.len());
-        let items: Vec<_> = items.iter().map(|item| self.declare_item(item)).collect();
+        let items: Vec<declared::Item<'a, 'b, 'lit>> =
+            items.iter().map(|item| self.declare_item(item)).collect();
 
         debug!("resolving {} items", items.len());
         items.into_iter().map(|node| (node.id, self.resolve_item(node))).collect()
     }
 
-    fn declare_item(&mut self, item: &'a parsed::Item<'a>) -> declared::Item<'a> {
+    fn declare_item<'b, 'lit>(
+        &mut self,
+        item: &'b parsed::Item<'b, 'lit>,
+    ) -> declared::Item<'a, 'b, 'lit>
+    where
+        'lit: 'a + 'b,
+        'a: 'b,
+    {
         let id = ItemId(self.item_ids);
         self.item_ids += 1;
         let span = item.span;
@@ -105,7 +124,10 @@ impl<'a, 'err> Resolver<'a, 'err> {
         declared::Item { node, span, id }
     }
 
-    fn resolve_item(&mut self, item: declared::Item<'a>) -> resolved::Item<'a> {
+    fn resolve_item<'b, 'lit>(
+        &mut self,
+        item: declared::Item<'a, 'b, 'lit>,
+    ) -> resolved::Item<'a, 'lit> {
         let id = item.id;
         let span = item.span;
         let node = match item.node {
