@@ -37,14 +37,11 @@ impl<'a> Resolver<'a, '_> {
 
             parsed::ExprNode::Number(num) => resolved::ExprNode::Number(num),
 
-            parsed::ExprNode::If(cond, then, elze) => {
+            parsed::ExprNode::If([cond, then, elze]) => {
                 let cond = self.expr(item, cond);
-                let cond = self.alloc.alloc(cond);
                 let then = self.expr(item, then);
-                let then = self.alloc.alloc(then);
                 let elze = self.expr(item, elze);
-                let elze = self.alloc.alloc(elze);
-                resolved::ExprNode::If(cond, then, elze)
+                resolved::ExprNode::If(self.alloc.alloc([cond, then, elze]))
             }
 
             parsed::ExprNode::Field(of, field, field_span) => {
@@ -88,14 +85,12 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Lambda(arrows)
             }
 
-            parsed::ExprNode::Let(binding, bound, body) => {
+            parsed::ExprNode::Let(binding, [bound, body]) => {
                 let binding = self.pattern(item, binding);
                 let bound = self.expr(item, bound);
-                let bound = self.alloc.alloc(bound);
                 self.scope(Self::name_of(&binding), |this| {
                     let body = this.expr(item, body);
-                    let body = self.alloc.alloc(body);
-                    resolved::ExprNode::Let(binding, bound, body)
+                    resolved::ExprNode::Let(binding, self.alloc.alloc([bound, body]))
                 })
             }
 

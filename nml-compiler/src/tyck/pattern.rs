@@ -38,10 +38,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 PatternNode::Deconstruct(*label, pattern)
             }
 
-            PatternNode::Apply(fun, arg) => {
-                let fun = self.alloc.alloc(self.monomorphic(fun));
-                let arg = self.alloc.alloc(self.monomorphic(arg));
-                PatternNode::Apply(fun, arg)
+            PatternNode::Apply([fun, arg]) => {
+                let fun = self.monomorphic(fun);
+                let arg = self.monomorphic(arg);
+                PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
             PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
@@ -76,10 +76,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 PatternNode::Deconstruct(*label, pattern)
             }
 
-            PatternNode::Apply(fun, arg) => {
-                let fun = self.alloc.alloc(self.gen_pattern(&scheme, fun));
-                let arg = self.alloc.alloc(self.gen_pattern(&scheme, arg));
-                PatternNode::Apply(fun, arg)
+            PatternNode::Apply([fun, arg]) => {
+                let fun = self.gen_pattern(&scheme, fun);
+                let arg = self.gen_pattern(&scheme, arg);
+                PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
             PatternNode::Small(v) | PatternNode::Big(v) => match *v {},

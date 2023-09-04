@@ -18,10 +18,8 @@ impl<'a> Resolver<'a, '_> {
             match &term.node {
                 resolved::ExprNode::Var(name) if self.affii.get(name) == Some(&Affix::Postfix) => {
                     if let Some(prev) = exprs.pop() {
-                        let fun = self.alloc.alloc(term);
-                        let arg = self.alloc.alloc(prev);
-                        let span = fun.span + arg.span;
-                        let node = resolved::ExprNode::Apply((fun, arg));
+                        let span = term.span + prev.span;
+                        let node = resolved::ExprNode::Apply(self.alloc.alloc([term, prev]));
                         exprs.push(resolved::Expr { node, span });
                     } else {
                         let span = term.span;
@@ -78,16 +76,12 @@ impl<'a> Resolver<'a, '_> {
                 self.prefixes(fun, exprs)
             };
 
-            let op = self.alloc.alloc(op);
-            let lhs = self.alloc.alloc(lhs);
-            let rhs = self.alloc.alloc(rhs);
-
             let span = lhs.span + op.span;
-            let node = resolved::ExprNode::Apply((op, lhs));
-            let fun = self.alloc.alloc(resolved::Expr { node, span });
+            let node = resolved::ExprNode::Apply(self.alloc.alloc([op, lhs]));
+            let fun = resolved::Expr { node, span };
 
             let span = fun.span + rhs.span;
-            let node = resolved::ExprNode::Apply((fun, rhs));
+            let node = resolved::ExprNode::Apply(self.alloc.alloc([fun, rhs]));
             resolved::Expr { node, span }
         } else {
             let fun = exprs.remove(0);
@@ -101,9 +95,8 @@ impl<'a> Resolver<'a, '_> {
         args: Vec<resolved::Expr<'a, 'lit>>,
     ) -> resolved::Expr<'a, 'lit> {
         for arg in args {
-            let arg = self.alloc.alloc(arg);
             let span = fun.span + arg.span;
-            let node = resolved::ExprNode::Apply((self.alloc.alloc(fun), arg));
+            let node = resolved::ExprNode::Apply(self.alloc.alloc([fun, arg]));
             fun = resolved::Expr { node, span };
         }
 

@@ -42,11 +42,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 (o::MonoPatternNode::Deconstruct(*label, pattern), ty)
             }
 
-            i::PatternNode::Apply(ctr, arg) => {
+            i::PatternNode::Apply([ctr, arg]) => {
                 let ctr = self.infer_pattern(wildcards, ctr);
-                let ctr = self.alloc.alloc(ctr);
                 let arg = self.infer_pattern(wildcards, arg);
-                let arg = self.alloc.alloc(arg);
 
                 let res_ty = self.fresh();
                 let fun_ty = self.alloc.alloc(Type::Fun(arg.ty, res_ty));
@@ -55,7 +53,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 self.solver
                     .unify(&mut pretty, self.alloc, self.errors, span, ctr.ty, fun_ty);
 
-                (o::MonoPatternNode::Apply(ctr, arg), res_ty)
+                let terms = self.alloc.alloc([ctr, arg]);
+                (o::MonoPatternNode::Apply(terms), res_ty)
             }
 
             i::PatternNode::Small(v) | i::PatternNode::Big(v) => match *v {},

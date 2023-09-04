@@ -39,15 +39,13 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 alternative,
             } => {
                 let cond = self.expr(conditional);
-                let cond = self.alloc.alloc(cond);
                 let then = self.expr(consequence);
-                let then = self.alloc.alloc(then);
                 let elze = alternative.map(|node| self.expr(node)).unwrap_or_else(|| {
                     let node = ast::ExprNode::Unit;
                     ast::Expr { node, span }
                 });
-                let elze = self.alloc.alloc(elze);
-                ast::ExprNode::If(cond, then, elze)
+
+                ast::ExprNode::If(self.alloc.alloc([cond, then, elze]))
             }
 
             cst::Node::Field(of, fields) => {
@@ -171,10 +169,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                         ast::Expr { node, span }
                     };
 
-                    let bound = self.alloc.alloc(bound);
-
                     let span = def.span;
-                    let node = ast::ExprNode::Let(binding, bound, self.alloc.alloc(body));
+                    let node = ast::ExprNode::Let(binding, self.alloc.alloc([bound, body]));
                     body = ast::Expr { node, span };
                 }
 

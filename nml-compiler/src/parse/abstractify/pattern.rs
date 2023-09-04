@@ -34,9 +34,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let mut fun = nodes.next().expect("`apply` contains at least one node");
 
                 for arg in nodes {
-                    let arg = self.alloc.alloc(arg);
                     let span = fun.span + arg.span;
-                    let node = ast::PatternNode::Apply(self.alloc.alloc(fun), arg);
+                    let node = ast::PatternNode::Apply(self.alloc.alloc([fun, arg]));
                     fun = ast::Pattern { node, span };
                 }
 

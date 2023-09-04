@@ -77,10 +77,8 @@ impl<'a, 'ids> Store<'a, 'ids> {
         then: Expr<'a, 'ids>,
         elze: Expr<'a, 'ids>,
     ) -> Expr<'a, 'ids> {
-        let cond = self.alloc.alloc(cond);
-        let then = self.alloc.alloc(then);
-        let elze = self.alloc.alloc(elze);
-        self.expr(ExprNode::If(cond, then, elze))
+        let terms = self.alloc.alloc([cond, then, elze]);
+        self.expr(ExprNode::If(terms))
     }
 
     pub fn field(&self, of: Expr<'a, 'ids>, label: impl AsRef<str>) -> Expr<'a, 'ids> {
@@ -123,17 +121,15 @@ impl<'a, 'ids> Store<'a, 'ids> {
         I: IntoIterator<Item = (Pattern<'a, 'ids>, Expr<'a, 'ids>)>,
         I::IntoIter: ExactSizeIterator,
     {
-        let scrutinee = self.alloc.alloc(scrutinee);
         let cases = self.alloc.alloc_slice_fill_iter(cases);
         let lambda = self.expr(ExprNode::Lambda(cases));
-        let lambda = self.alloc.alloc(lambda);
-        self.expr(ExprNode::Apply((lambda, scrutinee)))
+        let terms = self.alloc.alloc([lambda, scrutinee]);
+        self.expr(ExprNode::Apply(terms))
     }
 
     pub fn apply(&self, fun: Expr<'a, 'ids>, arg: Expr<'a, 'ids>) -> Expr<'a, 'ids> {
-        let fun = self.alloc.alloc(fun);
-        let arg = self.alloc.alloc(arg);
-        self.expr(ExprNode::Apply((fun, arg)))
+        let terms = self.alloc.alloc([fun, arg]);
+        self.expr(ExprNode::Apply(terms))
     }
 
     pub fn lambda(&self, arg: Pattern<'a, 'ids>, body: Expr<'a, 'ids>) -> Expr<'a, 'ids> {
@@ -149,9 +145,8 @@ impl<'a, 'ids> Store<'a, 'ids> {
         bound: Expr<'a, 'ids>,
         body: Expr<'a, 'ids>,
     ) -> Expr<'a, 'ids> {
-        let bound = self.alloc.alloc(bound);
-        let body = self.alloc.alloc(body);
-        self.expr(ExprNode::Let(pattern, bound, body))
+        let terms = self.alloc.alloc([bound, body]);
+        self.expr(ExprNode::Let(pattern, terms))
     }
 
     pub fn wildcard(&self) -> Pattern<'a, 'ids> {
@@ -179,9 +174,8 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn apply_pat(&self, ctr: Pattern<'a, 'ids>, arg: Pattern<'a, 'ids>) -> Pattern<'a, 'ids> {
-        let ctr = self.alloc.alloc(ctr);
-        let arg = self.alloc.alloc(arg);
-        self.pattern(PatternNode::Apply(ctr, arg))
+        let terms = self.alloc.alloc([ctr, arg]);
+        self.pattern(PatternNode::Apply(terms))
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {

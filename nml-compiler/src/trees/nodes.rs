@@ -51,7 +51,7 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     Number(&'lit Integer),
 
     /// `if x then y else z`
-    If(&'a D::Expr, &'a D::Expr, &'a D::Expr),
+    If(&'a [D::Expr; 3]),
 
     /* Records -------------------------------------------------------------- */
     /// `x.a`
@@ -78,7 +78,7 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     Lambda(&'a [(D::Pattern, D::Expr)]),
 
     /// `let a = x in y`
-    Let(D::Pattern, &'a D::Expr, &'a D::Expr),
+    Let(D::Pattern, &'a [D::Expr; 2]),
 }
 
 pub enum PatternNode<'a, D: Data> {
@@ -107,7 +107,7 @@ pub enum PatternNode<'a, D: Data> {
     Deconstruct(D::Variant, &'a D::Pattern),
 
     /// A pattern application
-    Apply(&'a D::Pattern, &'a D::Pattern),
+    Apply(&'a [D::Pattern; 2]),
 }
 
 /* Copy and Clone impls ----------------------------------------------------- */

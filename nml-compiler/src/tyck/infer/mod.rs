@@ -49,14 +49,11 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 (o::ExprNode::Number(v), &*self.alloc.alloc(Type::Integer))
             }
 
-            i::ExprNode::If(cond, then, otherwise) => {
+            i::ExprNode::If([cond, then, otherwise]) => {
                 trace!("infer if");
                 let cond = self.infer(cond);
-                let cond = self.alloc.alloc(cond);
                 let then = self.infer(then);
-                let then = self.alloc.alloc(then);
                 let elze = self.infer(otherwise);
-                let elze = self.alloc.alloc(elze);
 
                 let bool_ty = self.alloc.alloc(Type::Boolean);
 
@@ -69,7 +66,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 trace!("done if");
 
-                (o::ExprNode::If(cond, then, elze), then.ty)
+                let ty = then.ty;
+                let terms = self.alloc.alloc([cond, then, elze]);
+                (o::ExprNode::If(terms), ty)
             }
 
             i::ExprNode::Field(record, label, label_span) => {
@@ -251,12 +250,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 (o::ExprNode::Lambda(arrows), ty)
             }
 
-            i::ExprNode::Apply((fun, arg)) => {
+            i::ExprNode::Apply([fun, arg]) => {
                 trace!("infer apply");
                 let fun = self.infer(fun);
-                let fun = self.alloc.alloc(fun);
                 let arg = self.infer(arg);
-                let arg = self.alloc.alloc(arg);
 
                 let u = self.fresh();
                 let expected = self.alloc.alloc(Type::Fun(arg.ty, u));
@@ -267,14 +264,15 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     .unify(&mut pretty, self.alloc, self.errors, span, fun.ty, expected);
 
                 trace!("done apply");
-                (o::ExprNode::Apply((fun, arg)), u)
+
+                let terms = self.alloc.alloc([fun, arg]);
+                (o::ExprNode::Apply(terms), u)
             }
 
-            i::ExprNode::Let(pattern, bound, body) => {
+            i::ExprNode::Let(pattern, [bound, body]) => {
                 trace!("infer let");
                 let (pattern, bound) = self.enter(|this| {
                     let bound = this.infer(bound);
-                    let bound = self.alloc.alloc(bound);
 
                     let mut wildcards = Vec::new();
                     let pattern = this.infer_pattern(&mut wildcards, pattern);
@@ -303,8 +301,9 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 trace!("done let");
                 let body = self.infer(body);
-                let body = self.alloc.alloc(body);
-                (o::ExprNode::Let(pattern, bound, body), body.ty)
+                let ty = body.ty;
+                let terms = self.alloc.alloc([bound, body]);
+                (o::ExprNode::Let(pattern, terms), ty)
             }
 
             i::ExprNode::Small(v) | i::ExprNode::Big(v) => match *v {},

@@ -36,11 +36,10 @@ impl<'a> Resolver<'a, '_> {
             }
 
             parsed::PatternNode::Apply(
-                parsed::Pattern {
+                [parsed::Pattern {
                     node: parsed::PatternNode::Big((_, name)),
                     ..
-                },
-                arg,
+                }, arg],
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);
                 let arg = self.pattern(item, arg);
@@ -48,12 +47,10 @@ impl<'a> Resolver<'a, '_> {
                 resolved::PatternNode::Deconstruct(label, arg)
             }
 
-            parsed::PatternNode::Apply(fun, arg) => {
+            parsed::PatternNode::Apply([fun, arg]) => {
                 let fun = self.pattern(item, fun);
-                let fun = self.alloc.alloc(fun);
                 let arg = self.pattern(item, arg);
-                let arg = self.alloc.alloc(arg);
-                resolved::PatternNode::Apply(fun, arg)
+                resolved::PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
             parsed::PatternNode::Bind(x) => match *x {},

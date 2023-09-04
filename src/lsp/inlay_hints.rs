@@ -64,7 +64,7 @@ impl<'a> HintsBuilder<'a> {
                 self.pattern(pattern);
             }
 
-            PolyPatternNode::Apply(fun, arg) => {
+            PolyPatternNode::Apply([fun, arg]) => {
                 self.pattern(fun);
                 self.pattern(arg);
             }

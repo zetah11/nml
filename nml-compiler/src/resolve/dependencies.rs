@@ -32,7 +32,7 @@ impl Resolver<'_, '_> {
                 out.extend(self.items.get(name).copied());
             }
 
-            ExprNode::If(cond, then, elze) => {
+            ExprNode::If([cond, then, elze]) => {
                 self.in_expr(ignore, out, cond);
                 self.in_expr(ignore, out, then);
                 self.in_expr(ignore, out, elze);
@@ -54,7 +54,7 @@ impl Resolver<'_, '_> {
 
             ExprNode::Variant(_) => {}
 
-            ExprNode::Apply((fun, arg)) => {
+            ExprNode::Apply([fun, arg]) => {
                 self.in_expr(ignore, out, fun);
                 self.in_expr(ignore, out, arg);
             }
@@ -66,7 +66,7 @@ impl Resolver<'_, '_> {
                 }
             }
 
-            ExprNode::Let(binding, bound, body) => {
+            ExprNode::Let(binding, [bound, body]) => {
                 self.in_pattern(ignore, out, binding);
                 self.in_expr(ignore, out, bound);
                 self.in_expr(ignore, out, body);
@@ -98,7 +98,7 @@ impl Resolver<'_, '_> {
                 self.in_pattern(ignore, out, pattern);
             }
 
-            PatternNode::Apply(fun, arg) => {
+            PatternNode::Apply([fun, arg]) => {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
             }

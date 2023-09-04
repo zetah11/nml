@@ -26,7 +26,7 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type Var = Name;
     type Variant = Label;
 
-    type Apply = (&'a Self::Expr, &'a Self::Expr);
+    type Apply = &'a [Self::Expr; 2];
 }
 
 pub struct Item<'a, 'lit> {
