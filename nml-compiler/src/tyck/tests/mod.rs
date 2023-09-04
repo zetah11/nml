@@ -49,7 +49,9 @@ impl<'a, 'ids> Store<'a, 'ids> {
         };
 
         let mut errors = Errors::new();
-        let mut pretty = Pretty::new(&names).with_show_levels(true).with_show_error_id(true);
+        let mut pretty = Pretty::new(&names)
+            .with_show_levels(true)
+            .with_show_error_id(true);
 
         let checker = Checker::new(&alloc, &mut errors, &mut pretty);
         f(this, checker)
@@ -94,11 +96,13 @@ impl<'a, 'ids> Store<'a, 'ids> {
         I::IntoIter: ExactSizeIterator,
     {
         let rest = rest.map(|rest| &*self.alloc.alloc(rest));
-        let fields = self.alloc.alloc_slice_fill_iter(fields.into_iter().map(|(label, field)| {
-            let label = self.names.label(label);
-            let span = self.source.span(0, 0);
-            (Ok(label), span, field)
-        }));
+        let fields = self
+            .alloc
+            .alloc_slice_fill_iter(fields.into_iter().map(|(label, field)| {
+                let label = self.names.label(label);
+                let span = self.source.span(0, 0);
+                (Ok(label), span, field)
+            }));
 
         self.expr(ExprNode::Record(fields, rest))
     }
@@ -133,7 +137,9 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn lambda(&self, arg: Pattern<'a, 'ids>, body: Expr<'a, 'ids>) -> Expr<'a, 'ids> {
-        let arrows = self.alloc.alloc_slice_fill_iter(std::iter::once((arg, body)));
+        let arrows = self
+            .alloc
+            .alloc_slice_fill_iter(std::iter::once((arg, body)));
         self.expr(ExprNode::Lambda(arrows))
     }
 

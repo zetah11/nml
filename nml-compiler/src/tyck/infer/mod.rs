@@ -12,7 +12,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
             i::ExprNode::Invalid(e) => {
                 trace!("infer err");
                 trace!("done err");
-                (o::ExprNode::Invalid(*e), &*self.alloc.alloc(Type::Invalid(*e)))
+                (
+                    o::ExprNode::Invalid(*e),
+                    &*self.alloc.alloc(Type::Invalid(*e)),
+                )
             }
 
             i::ExprNode::Var(name) => {
@@ -59,8 +62,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver.unify(&mut pretty, self.alloc, self.errors, span, cond.ty, bool_ty);
-                self.solver.unify(&mut pretty, self.alloc, self.errors, span, then.ty, elze.ty);
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, cond.ty, bool_ty);
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, then.ty, elze.ty);
 
                 trace!("done if");
 
@@ -153,7 +158,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 fields.reverse();
 
                 trace!("done record");
-                (o::ExprNode::Record(fields, extend), &*self.alloc.alloc(Type::Record(row)))
+                (
+                    o::ExprNode::Record(fields, extend),
+                    &*self.alloc.alloc(Type::Record(row)),
+                )
             }
 
             i::ExprNode::Restrict(old, label) => {
@@ -168,10 +176,20 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver.unify(&mut pretty, self.alloc, self.errors, span, old.ty, record_ty);
+                self.solver.unify(
+                    &mut pretty,
+                    self.alloc,
+                    self.errors,
+                    span,
+                    old.ty,
+                    record_ty,
+                );
 
                 trace!("done restrict");
-                (o::ExprNode::Restrict(old, *label), &*self.alloc.alloc(Type::Record(r)))
+                (
+                    o::ExprNode::Restrict(old, *label),
+                    &*self.alloc.alloc(Type::Record(r)),
+                )
             }
 
             i::ExprNode::Variant(name) => {
@@ -182,7 +200,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 let row_ty = self.alloc.alloc(Type::Variant(row_ty));
                 trace!("done variant");
 
-                (o::ExprNode::Variant(*name), &*self.alloc.alloc(Type::Fun(arg_ty, row_ty)))
+                (
+                    o::ExprNode::Variant(*name),
+                    &*self.alloc.alloc(Type::Fun(arg_ty, row_ty)),
+                )
             }
 
             i::ExprNode::Lambda(arrows) => {
@@ -191,36 +212,40 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 let output_ty = self.fresh();
 
                 let arrows =
-                    self.alloc.alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
-                        let pattern = self.infer_pattern(&mut wildcards, pattern);
-                        let body = self.infer(body);
+                    self.alloc
+                        .alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
+                            let pattern = self.infer_pattern(&mut wildcards, pattern);
+                            let body = self.infer(body);
 
-                        let mut pretty = self.pretty.build();
-                        self.solver.unify(
-                            &mut pretty,
-                            self.alloc,
-                            self.errors,
-                            pattern.span,
-                            input_ty,
-                            pattern.ty,
-                        );
-                        self.solver.unify(
-                            &mut pretty,
-                            self.alloc,
-                            self.errors,
-                            body.span,
-                            output_ty,
-                            body.ty,
-                        );
+                            let mut pretty = self.pretty.build();
+                            self.solver.unify(
+                                &mut pretty,
+                                self.alloc,
+                                self.errors,
+                                pattern.span,
+                                input_ty,
+                                pattern.ty,
+                            );
+                            self.solver.unify(
+                                &mut pretty,
+                                self.alloc,
+                                self.errors,
+                                body.span,
+                                output_ty,
+                                body.ty,
+                            );
 
-                        let pattern = self.monomorphic(&pattern);
-                        (pattern, body)
-                    }));
+                            let pattern = self.monomorphic(&pattern);
+                            (pattern, body)
+                        }));
 
-                let keep =
-                    wildcards.into_iter().flat_map(|ty| self.solver.vars_in_ty(ty)).collect();
+                let keep = wildcards
+                    .into_iter()
+                    .flat_map(|ty| self.solver.vars_in_ty(ty))
+                    .collect();
                 let mut pretty = self.pretty.build();
-                self.solver.minimize(&mut pretty, self.alloc, &keep, input_ty);
+                self.solver
+                    .minimize(&mut pretty, self.alloc, &keep, input_ty);
 
                 let ty = &*self.alloc.alloc(Type::Fun(input_ty, output_ty));
                 (o::ExprNode::Lambda(arrows), ty)
@@ -238,7 +263,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
 
                 let mut pretty = self.pretty.build();
 
-                self.solver.unify(&mut pretty, self.alloc, self.errors, span, fun.ty, expected);
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, fun.ty, expected);
 
                 trace!("done apply");
                 (o::ExprNode::Apply((fun, arg)), u)
@@ -253,11 +279,14 @@ impl<'a> Checker<'a, '_, '_, '_> {
                     let mut wildcards = Vec::new();
                     let pattern = this.infer_pattern(&mut wildcards, pattern);
 
-                    let keep =
-                        wildcards.into_iter().flat_map(|ty| this.solver.vars_in_ty(ty)).collect();
+                    let keep = wildcards
+                        .into_iter()
+                        .flat_map(|ty| this.solver.vars_in_ty(ty))
+                        .collect();
 
                     let mut pretty = this.pretty.build();
-                    this.solver.minimize(&mut pretty, this.alloc, &keep, pattern.ty);
+                    this.solver
+                        .minimize(&mut pretty, this.alloc, &keep, pattern.ty);
                     this.solver.unify(
                         &mut pretty,
                         this.alloc,

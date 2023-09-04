@@ -48,5 +48,10 @@ pub fn parse<'a, 'lit>(
         abstractifier.program(concrete)
     };
 
-    parsed::Source { items: abstracted, errors, unattached, source: source.id }
+    parsed::Source {
+        items: abstracted,
+        errors,
+        unattached,
+        source: source.id,
+    }
 }

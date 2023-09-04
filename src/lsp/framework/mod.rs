@@ -26,7 +26,13 @@ pub(super) fn stdio(mut builder: impl Builder) -> anyhow::Result<()> {
 
     let client = Client::new(connection.sender.clone());
     let server = builder.build(trace.clone(), client.clone());
-    let main = Loop { server, requests: connection.receiver, client, state: State::Ready, trace };
+    let main = Loop {
+        server,
+        requests: connection.receiver,
+        client,
+        state: State::Ready,
+        trace,
+    };
 
     match main.run() {
         Final::Exit { properly: true } => Ok(()),
@@ -96,7 +102,9 @@ impl Loop {
     fn handle_notification(&mut self, notification: Notification) -> Result<(), Final> {
         match (self.state, notification.method.as_str()) {
             (state, m) if m == notification::Exit::METHOD => {
-                return Err(Final::Exit { properly: matches!(state, State::ShuttingDown) });
+                return Err(Final::Exit {
+                    properly: matches!(state, State::ShuttingDown),
+                });
             }
 
             (State::ShuttingDown, _) => return Err(Final::Exit { properly: false }),
@@ -112,7 +120,10 @@ impl Loop {
                     lsp::TraceValue::Verbose => "verbose",
                 };
 
-                self.client.log(lsp::MessageType::INFO, format!("set trace amount to `{word}`",));
+                self.client.log(
+                    lsp::MessageType::INFO,
+                    format!("set trace amount to `{word}`",),
+                );
             }
 
             (_, m) if m == notification::DidChangeTextDocument::METHOD => {
@@ -136,8 +147,10 @@ impl Loop {
             }
 
             (_, m) => {
-                self.client
-                    .log(lsp::MessageType::ERROR, format!("unexpected notification type `{m}`"));
+                self.client.log(
+                    lsp::MessageType::ERROR,
+                    format!("unexpected notification type `{m}`"),
+                );
             }
         }
 
@@ -155,7 +168,9 @@ impl Loop {
             (State::ShuttingDown, _) => {
                 self.client.respond(
                     request.id,
-                    Err::<(), _>(Error::InvalidRequest("unexpected request after shutdown".into())),
+                    Err::<(), _>(Error::InvalidRequest(
+                        "unexpected request after shutdown".into(),
+                    )),
                 );
             }
 

@@ -58,7 +58,10 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     Field(&'a D::Expr, Result<Label, ErrorId>, Span),
 
     /// `{ a = x, b = y | r }`
-    Record(&'a [(Result<Label, ErrorId>, Span, D::Expr)], Option<&'a D::Expr>),
+    Record(
+        &'a [(Result<Label, ErrorId>, Span, D::Expr)],
+        Option<&'a D::Expr>,
+    ),
 
     /// `x \ a`
     Restrict(&'a D::Expr, Label),

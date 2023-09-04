@@ -80,7 +80,10 @@ impl<'a> DiagnosticBuilder<'a> {
             .map(|(source, rf)| (*source, IndexedText::new(rf.1.content.as_str())))
             .collect();
 
-        f(DiagnosticBuilder { refs: &refs, indicies })
+        f(DiagnosticBuilder {
+            refs: &refs,
+            indicies,
+        })
     }
 
     pub fn build(&self, error: Error) -> (Url, Diagnostic) {
@@ -97,7 +100,10 @@ impl<'a> DiagnosticBuilder<'a> {
             .into_iter()
             .map(|(message, span)| {
                 let (url, range) = self.span_to_range(span);
-                let location = Location { uri: url.clone(), range };
+                let location = Location {
+                    uri: url.clone(),
+                    range,
+                };
 
                 DiagnosticRelatedInformation { location, message }
             })
@@ -141,8 +147,14 @@ impl<'a> DiagnosticBuilder<'a> {
             .unwrap_or(Pos::new(0, 0)..Pos::new(0, 0));
         let range = text.range_to_lsp_range(&range).unwrap_or_default();
         let range = Range {
-            start: Position { line: range.start.line, character: range.start.character },
-            end: Position { line: range.end.line, character: range.end.character },
+            start: Position {
+                line: range.start.line,
+                character: range.start.character,
+            },
+            end: Position {
+                line: range.end.line,
+                character: range.end.character,
+            },
         };
 
         (source.0, range)

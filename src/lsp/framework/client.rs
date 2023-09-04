@@ -45,7 +45,9 @@ impl Client {
 
     pub(super) fn respond(&mut self, id: RequestId, result: Result<impl Serialize, Error>) {
         let e = match result {
-            Ok(data) => self.messages.send(Message::Response(Response::new_ok(id, data))),
+            Ok(data) => self
+                .messages
+                .send(Message::Response(Response::new_ok(id, data))),
 
             Err(e) => {
                 let (code, message) = match e {
@@ -53,7 +55,11 @@ impl Client {
                     Error::InternalError(message) => (ErrorCode::InternalError, message),
                 };
 
-                self.messages.send(Message::Response(Response::new_err(id, code as i32, message)))
+                self.messages.send(Message::Response(Response::new_err(
+                    id,
+                    code as i32,
+                    message,
+                )))
             }
         };
 
@@ -62,7 +68,10 @@ impl Client {
 
     pub(super) fn notify<N: notification::Notification>(&mut self, params: N::Params) {
         self.messages
-            .send(Message::Notification(Notification::new(N::METHOD.into(), params)))
+            .send(Message::Notification(Notification::new(
+                N::METHOD.into(),
+                params,
+            )))
             .expect("attempting to notify on closed channel");
     }
 }

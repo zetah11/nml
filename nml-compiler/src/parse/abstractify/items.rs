@@ -9,9 +9,16 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ItemNode::Invalid(*e),
-            cst::Node::Let { keyword: _, defs, within } => {
+            cst::Node::Let {
+                keyword: _,
+                defs,
+                within,
+            } => {
                 if let Some(within) = within {
-                    let e = self.errors.parse_error(within.span).item_definition_with_body();
+                    let e = self
+                        .errors
+                        .parse_error(within.span)
+                        .item_definition_with_body();
                     self.parse_errors.push((e, within.span));
                 }
 
@@ -32,12 +39,15 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
     fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
         let pattern = self.pattern(def.pattern);
-        let body = def.definition.map(|node| self.expr(node)).unwrap_or_else(|| {
-            let span = pattern.span;
-            let e = self.errors.parse_error(span).missing_definition();
-            let node = ast::ExprNode::Invalid(e);
-            ast::Expr { node, span }
-        });
+        let body = def
+            .definition
+            .map(|node| self.expr(node))
+            .unwrap_or_else(|| {
+                let span = pattern.span;
+                let e = self.errors.parse_error(span).missing_definition();
+                let node = ast::ExprNode::Invalid(e);
+                ast::Expr { node, span }
+            });
 
         let span = def.span;
         let node = ast::ItemNode::Let(pattern, body);

@@ -43,13 +43,17 @@ impl framework::Builder for Builder {
     fn initialize(&mut self, params: lsp::InitializeParams) -> lsp::InitializeResult {
         self.trace = params.trace;
 
-        let server_info =
-            Some(lsp::ServerInfo { name: meta::NAME.into(), version: Some(meta::VERSION.into()) });
+        let server_info = Some(lsp::ServerInfo {
+            name: meta::NAME.into(),
+            version: Some(meta::VERSION.into()),
+        });
 
         let capabilities = lsp::ServerCapabilities {
             inlay_hint_provider: Some(lsp::OneOf::Right(
                 lsp::InlayHintServerCapabilities::RegistrationOptions(
-                    lsp::InlayHintRegistrationOptions { ..Default::default() },
+                    lsp::InlayHintRegistrationOptions {
+                        ..Default::default()
+                    },
                 ),
             )),
 
@@ -68,7 +72,10 @@ impl framework::Builder for Builder {
             ..Default::default()
         };
 
-        lsp::InitializeResult { server_info, capabilities }
+        lsp::InitializeResult {
+            server_info,
+            capabilities,
+        }
     }
 }
 
@@ -162,7 +169,9 @@ impl Server {
                 .ok_or_else(|| Error::InvalidRequest(format!("unknown document `{name}`")))?
         };
 
-        Ok(Some(lsp::SemanticTokensResult::Tokens(self.compute_tokens(document))))
+        Ok(Some(lsp::SemanticTokensResult::Tokens(
+            self.compute_tokens(document),
+        )))
     }
 
     /// `textDocument/inlayHints`

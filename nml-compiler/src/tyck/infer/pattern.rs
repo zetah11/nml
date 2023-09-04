@@ -9,9 +9,10 @@ impl<'a> Checker<'a, '_, '_, '_> {
     ) -> o::MonoPattern<'a, 'lit> {
         let span = pattern.span;
         let (node, ty) = match &pattern.node {
-            i::PatternNode::Invalid(e) => {
-                (o::MonoPatternNode::Invalid(*e), &*self.alloc.alloc(Type::Invalid(*e)))
-            }
+            i::PatternNode::Invalid(e) => (
+                o::MonoPatternNode::Invalid(*e),
+                &*self.alloc.alloc(Type::Invalid(*e)),
+            ),
 
             i::PatternNode::Wildcard => {
                 (o::MonoPatternNode::Wildcard, self.wildcard_type(wildcards))
@@ -51,7 +52,8 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 let fun_ty = self.alloc.alloc(Type::Fun(arg.ty, res_ty));
 
                 let mut pretty = self.pretty.build();
-                self.solver.unify(&mut pretty, self.alloc, self.errors, span, ctr.ty, fun_ty);
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, ctr.ty, fun_ty);
 
                 (o::MonoPatternNode::Apply(ctr, arg), res_ty)
             }

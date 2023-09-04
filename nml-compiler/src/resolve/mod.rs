@@ -31,12 +31,17 @@ where
     let mut resolver = Resolver::new(names, alloc, &mut errors, program.source);
 
     let mut items = resolver.items(program.items);
-    let graph = items.iter().map(|(id, item)| (*id, resolver.dependencies(item))).collect();
+    let graph = items
+        .iter()
+        .map(|(id, item)| (*id, resolver.dependencies(item)))
+        .collect();
     let order = topology::find(&graph);
 
     let items = alloc.alloc_slice_fill_iter(order.into_iter().map(|component| {
         &*alloc.alloc_slice_fill_iter(
-            component.into_iter().map(|id| items.remove(id).expect("all item ids are defined")),
+            component
+                .into_iter()
+                .map(|id| items.remove(id).expect("all item ids are defined")),
         )
     }));
 
@@ -99,7 +104,10 @@ impl<'a, 'err> Resolver<'a, 'err> {
             items.iter().map(|item| self.declare_item(item)).collect();
 
         debug!("resolving {} items", items.len());
-        items.into_iter().map(|node| (node.id, self.resolve_item(node))).collect()
+        items
+            .into_iter()
+            .map(|node| (node.id, self.resolve_item(node)))
+            .collect()
     }
 
     fn declare_item<'b, 'lit>(
@@ -154,7 +162,10 @@ impl<'a, 'err> Resolver<'a, 'err> {
         debug_assert!(prev.is_none());
 
         let result = if let Some(prev) = self.scopes.1.values.insert(ident, name) {
-            let prev_span = self.spans.get(&prev).expect("all defined names have a defining span");
+            let prev_span = self
+                .spans
+                .get(&prev)
+                .expect("all defined names have a defining span");
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
@@ -194,7 +205,11 @@ impl<'a, 'err> Resolver<'a, 'err> {
 
         let result = f(self);
 
-        let top = self.scopes.0.pop().expect("only the `scope` method modifies the scope stack");
+        let top = self
+            .scopes
+            .0
+            .pop()
+            .expect("only the `scope` method modifies the scope stack");
         self.scopes.1 = top;
 
         result
@@ -209,10 +224,16 @@ struct Scope {
 
 impl Scope {
     pub fn new(name: ScopeName) -> Self {
-        Self { name, values: BTreeMap::new() }
+        Self {
+            name,
+            values: BTreeMap::new(),
+        }
     }
 
     pub fn top_level(source: SourceId) -> Self {
-        Self { name: ScopeName::TopLevel(source), values: BTreeMap::new() }
+        Self {
+            name: ScopeName::TopLevel(source),
+            values: BTreeMap::new(),
+        }
     }
 }

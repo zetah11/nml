@@ -30,6 +30,10 @@ pub fn run(path: &Path) -> anyhow::Result<()> {
     if result.is_perfect() {
         Ok(())
     } else {
-        Err(anyhow!("{} errors and {} warnings", result.num_errors(), result.num_warnings()))
+        Err(anyhow!(
+            "{} errors and {} warnings",
+            result.num_errors(),
+            result.num_warnings()
+        ))
     }
 }

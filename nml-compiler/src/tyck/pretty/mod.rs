@@ -19,7 +19,13 @@ pub struct Pretty<'a> {
 
 impl<'a> Pretty<'a> {
     pub fn new(names: &'a Names) -> Self {
-        Self { vars: BTreeMap::new(), show_levels: false, show_error_id: false, counter: 0, names }
+        Self {
+            vars: BTreeMap::new(),
+            show_levels: false,
+            show_error_id: false,
+            counter: 0,
+            names,
+        }
     }
 
     pub fn build(&mut self) -> Prettifier<'_, 'a> {
@@ -27,11 +33,17 @@ impl<'a> Pretty<'a> {
     }
 
     pub fn with_show_levels(self, show_levels: bool) -> Self {
-        Self { show_levels, ..self }
+        Self {
+            show_levels,
+            ..self
+        }
     }
 
     pub fn with_show_error_id(self, show_error_id: bool) -> Self {
-        Self { show_error_id, ..self }
+        Self {
+            show_error_id,
+            ..self
+        }
     }
 
     fn name(&mut self, var: TypeVar) -> &str {
@@ -212,6 +224,9 @@ impl Prettifier<'_, '_> {
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {
-        subst.get(name).expect("attempted to pretty-print unbound generic").clone()
+        subst
+            .get(name)
+            .expect("attempted to pretty-print unbound generic")
+            .clone()
     }
 }

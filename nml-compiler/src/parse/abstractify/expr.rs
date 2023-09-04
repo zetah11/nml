@@ -33,7 +33,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::Number(num)
             }
 
-            cst::Node::If { conditional, consequence, alternative } => {
+            cst::Node::If {
+                conditional,
+                consequence,
+                alternative,
+            } => {
                 let cond = self.expr(conditional);
                 let cond = self.alloc.alloc(cond);
                 let then = self.expr(consequence);
@@ -54,9 +58,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     let name = match field {
                         cst::Name::Small(name) => Ok(self.names.label(name)),
                         cst::Name::Operator(name) => Ok(self.names.label(name)),
-                        cst::Name::Big(name) => {
-                            Err(self.errors.parse_error(field_span).expected_name_small(Some(name)))
-                        }
+                        cst::Name::Big(name) => Err(self
+                            .errors
+                            .parse_error(field_span)
+                            .expected_name_small(Some(name))),
                     };
 
                     let span = expr.span + field_span;
@@ -68,14 +73,19 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             }
 
             cst::Node::Record { defs, extends } => {
-                let extend = if let Some(span) =
-                    extends.iter().skip(1).map(|thing| thing.span).reduce(|a, b| a + b)
+                let extend = if let Some(span) = extends
+                    .iter()
+                    .skip(1)
+                    .map(|thing| thing.span)
+                    .reduce(|a, b| a + b)
                 {
                     let e = self.errors.parse_error(span).multiple_record_extensions();
                     let node = ast::ExprNode::Invalid(e);
                     Some(&*self.alloc.alloc(ast::Expr { node, span }))
                 } else {
-                    extends.first().map(|node| &*self.alloc.alloc(self.expr(node)))
+                    extends
+                        .first()
+                        .map(|node| &*self.alloc.alloc(self.expr(node)))
                 };
 
                 let fields = self.alloc.alloc_slice_fill_with(defs.len(), |idx| {
@@ -112,8 +122,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             }
 
             cst::Node::Apply(things) => {
-                let exprs =
-                    self.alloc.alloc_slice_fill_iter(things.iter().map(|node| self.expr(node)));
+                let exprs = self
+                    .alloc
+                    .alloc_slice_fill_iter(things.iter().map(|node| self.expr(node)));
                 ast::ExprNode::Apply(exprs)
             }
 
@@ -121,21 +132,30 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let pattern = self.pattern(pattern);
                 let body = self.expr(body);
                 ast::ExprNode::Lambda(
-                    self.alloc.alloc_slice_fill_iter(std::iter::once((pattern, body))),
+                    self.alloc
+                        .alloc_slice_fill_iter(std::iter::once((pattern, body))),
                 )
             }
 
             cst::Node::Alt(nodes) => {
-                let arrows =
-                    self.alloc.alloc_slice_fill_iter(nodes.iter().map(|node| self.arrow(node)));
+                let arrows = self
+                    .alloc
+                    .alloc_slice_fill_iter(nodes.iter().map(|node| self.arrow(node)));
                 ast::ExprNode::Lambda(arrows)
             }
 
-            cst::Node::Let { keyword: _, defs, within } => {
+            cst::Node::Let {
+                keyword: _,
+                defs,
+                within,
+            } => {
                 let mut body = if let Some(within) = within {
                     self.expr(within)
                 } else {
-                    let e = self.errors.parse_error(span).value_definition_without_body();
+                    let e = self
+                        .errors
+                        .parse_error(span)
+                        .value_definition_without_body();
                     let node = ast::ExprNode::Invalid(e);
                     ast::Expr { node, span }
                 };

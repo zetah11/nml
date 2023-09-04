@@ -31,7 +31,11 @@ struct HintsBuilder<'a> {
 
 impl<'a> HintsBuilder<'a> {
     pub fn new(names: &'a Names<'a>, text: &'a str) -> Self {
-        Self { index: IndexedText::new(text), hints: Vec::new(), pretty: Pretty::new(names) }
+        Self {
+            index: IndexedText::new(text),
+            hints: Vec::new(),
+            pretty: Pretty::new(names),
+        }
     }
 
     pub fn items(&mut self, items: &[Item]) {
@@ -70,7 +74,9 @@ impl<'a> HintsBuilder<'a> {
     }
 
     fn hint_scheme(&mut self, at: Span, scheme: &Scheme) {
-        let Some(position) = self.span_to_end_position(at) else { return; };
+        let Some(position) = self.span_to_end_position(at) else {
+            return;
+        };
 
         let ty = {
             let mut pretty = self.pretty.build();
@@ -92,8 +98,9 @@ impl<'a> HintsBuilder<'a> {
     }
 
     fn span_to_end_position(&self, span: Span) -> Option<lsp::Position> {
-        self.index
-            .offset_to_pos(span.end)
-            .map(|pos| lsp::Position { line: pos.line, character: pos.col })
+        self.index.offset_to_pos(span.end).map(|pos| lsp::Position {
+            line: pos.line,
+            character: pos.col,
+        })
     }
 }

@@ -3,7 +3,10 @@ use crate::source::Span;
 
 impl Errors {
     pub(crate) fn name_error(&mut self, at: Span) -> NameErrors {
-        NameErrors { errors: self, primary: at }
+        NameErrors {
+            errors: self,
+            primary: at,
+        }
     }
 }
 
@@ -22,7 +25,9 @@ impl NameErrors<'_> {
 
     pub fn unapplied_anonymous_variant(&mut self, name: &str) -> ErrorId {
         let error = self
-            .error(format!("anonymous variant `{name}` must be applied to a single argument"))
+            .error(format!(
+                "anonymous variant `{name}` must be applied to a single argument"
+            ))
             .with_note("all anonymous variants must take a single argument");
         self.errors.add(error)
     }

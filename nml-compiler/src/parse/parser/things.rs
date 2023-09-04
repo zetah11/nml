@@ -103,7 +103,11 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         trace!("done let/fun");
 
         let span = opener + self.closest_span();
-        let node = Node::Let { keyword: (kw, opener), defs: (primary, others), within };
+        let node = Node::Let {
+            keyword: (kw, opener),
+            defs: (primary, others),
+            within,
+        };
         self.alloc.alloc(Thing { node, span })
     }
 
@@ -129,7 +133,11 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         trace!("done def");
 
         let span = opener.unwrap_or(pattern.span) + self.closest_span();
-        ValueDef { span, pattern, definition }
+        ValueDef {
+            span,
+            pattern,
+            definition,
+        }
     }
 
     /// ```abnf
@@ -151,18 +159,29 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         let thing = if let Some(_else_kw) = self.consume(Token::Else) {
             let alternative = self.thing();
             let span = opener + alternative.span;
-            let node = Node::If { conditional, consequence, alternative: Some(alternative) };
+            let node = Node::If {
+                conditional,
+                consequence,
+                alternative: Some(alternative),
+            };
             self.alloc.alloc(Thing { node, span })
         } else {
             let end = self.consume(Token::End).unwrap_or_else(|| {
-                let e = self.errors.parse_error(opener).missing_end("if", self.current_span);
+                let e = self
+                    .errors
+                    .parse_error(opener)
+                    .missing_end("if", self.current_span);
                 let span = self.closest_span();
                 self.parse_errors.push((e, span));
                 span
             });
 
             let span = opener + end;
-            let node = Node::If { conditional, consequence, alternative: None };
+            let node = Node::If {
+                conditional,
+                consequence,
+                alternative: None,
+            };
             self.alloc.alloc(Thing { node, span })
         };
 
@@ -186,7 +205,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         };
 
         let end = self.consume(Token::End).unwrap_or_else(|| {
-            let e = self.errors.parse_error(opener).missing_end("case", self.current_span);
+            let e = self
+                .errors
+                .parse_error(opener)
+                .missing_end("case", self.current_span);
             let span = self.closest_span();
             self.parse_errors.push((e, span));
             span
@@ -356,7 +378,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             let thing = self.thing();
             trace!("done group");
             if self.consume(Token::RightParen).is_none() {
-                let e = self.errors.parse_error(opener).unclosed_paren(self.current_span);
+                let e = self
+                    .errors
+                    .parse_error(opener)
+                    .unclosed_paren(self.current_span);
                 let span = self.closest_span();
                 let node = Node::Invalid(e);
                 return self.alloc.alloc(Thing { node, span });
@@ -388,7 +413,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
                     extends.push(self.thing());
                 }
 
-                expected_comma = self.consume(Token::Comma).is_none().then_some(self.current_span);
+                expected_comma = self
+                    .consume(Token::Comma)
+                    .is_none()
+                    .then_some(self.current_span);
             }
 
             trace!("done record");
@@ -398,7 +426,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
                 let node = Node::Record { defs, extends };
                 (node, span)
             } else {
-                let e = self.errors.parse_error(opener).unclosed_brace(self.current_span);
+                let e = self
+                    .errors
+                    .parse_error(opener)
+                    .unclosed_brace(self.current_span);
                 let span = self.closest_span();
                 let node = Node::Invalid(e);
                 (node, span)

@@ -76,13 +76,14 @@ impl<'a> Resolver<'a, '_> {
 
             parsed::ExprNode::Lambda(arrows) => {
                 let arrows =
-                    self.alloc.alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
-                        self.scope(None, |this| {
-                            let pattern = this.pattern(item, pattern);
-                            let body = this.expr(item, body);
-                            (pattern, body)
-                        })
-                    }));
+                    self.alloc
+                        .alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
+                            self.scope(None, |this| {
+                                let pattern = this.pattern(item, pattern);
+                                let body = this.expr(item, body);
+                                (pattern, body)
+                            })
+                        }));
 
                 resolved::ExprNode::Lambda(arrows)
             }

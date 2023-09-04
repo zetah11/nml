@@ -24,7 +24,9 @@ pub fn infer<'a, 'lit>(
     program: &resolved::Program<'_, 'lit>,
 ) -> inferred::Program<'a, 'lit> {
     let mut errors = program.errors.clone();
-    let mut pretty = Pretty::new(names).with_show_levels(false).with_show_error_id(false);
+    let mut pretty = Pretty::new(names)
+        .with_show_levels(false)
+        .with_show_error_id(false);
     let mut checker = Checker::new(alloc, &mut errors, &mut pretty);
 
     let items =
@@ -55,7 +57,14 @@ struct Checker<'a, 'err, 'ids, 'p> {
 
 impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     pub fn new(alloc: &'a Bump, errors: &'err mut Errors, pretty: &'p mut Pretty<'ids>) -> Self {
-        Self { alloc, env: Env::new(), solver: Solver::new(), errors, pretty, holes: Vec::new() }
+        Self {
+            alloc,
+            env: Env::new(),
+            solver: Solver::new(),
+            errors,
+            pretty,
+            holes: Vec::new(),
+        }
     }
 
     /// Check a set of mutually recursive items.
@@ -81,13 +90,18 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                             .flat_map(|ty| this.solver.vars_in_ty(ty))
                             .collect();
                         let mut pretty = this.pretty.build();
-                        this.solver.minimize(&mut pretty, this.alloc, &keep, pattern.ty);
+                        this.solver
+                            .minimize(&mut pretty, this.alloc, &keep, pattern.ty);
 
                         inferred::BoundItemNode::Let(pattern, expr)
                     }
                 };
 
-                let item = inferred::BoundItem { node, span: item.span, id: item.id };
+                let item = inferred::BoundItem {
+                    node,
+                    span: item.span,
+                    id: item.id,
+                };
                 typed_items.push(item);
             }
 
@@ -112,24 +126,29 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                     }
                 };
 
-                inferred_items.push(inferred::BoundItem { node, span: item.span, id: item.id });
+                inferred_items.push(inferred::BoundItem {
+                    node,
+                    span: item.span,
+                    id: item.id,
+                });
             }
         });
 
         // Generalize!
-        self.alloc.alloc_slice_fill_iter(inferred_items.into_iter().map(|item| {
-            let id = item.id;
-            let span = item.span;
-            let node = match item.node {
-                inferred::BoundItemNode::Invalid(e) => inferred::ItemNode::Invalid(e),
-                inferred::BoundItemNode::Let(pattern, expr) => {
-                    let pattern = self.generalize(&pattern);
-                    inferred::ItemNode::Let(pattern, expr)
-                }
-            };
+        self.alloc
+            .alloc_slice_fill_iter(inferred_items.into_iter().map(|item| {
+                let id = item.id;
+                let span = item.span;
+                let node = match item.node {
+                    inferred::BoundItemNode::Invalid(e) => inferred::ItemNode::Invalid(e),
+                    inferred::BoundItemNode::Let(pattern, expr) => {
+                        let pattern = self.generalize(&pattern);
+                        inferred::ItemNode::Let(pattern, expr)
+                    }
+                };
 
-            inferred::Item { node, span, id }
-        }))
+                inferred::Item { node, span, id }
+            }))
     }
 
     fn fresh(&mut self) -> &'a Type<'a> {

@@ -72,7 +72,9 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
     /// Returns `Some(next_span)` if the next token matches.
     fn peek(&self, m: impl Matcher) -> Option<Span> {
-        self.next.as_ref().and_then(|(token, span)| m.matches(token).then_some(*span))
+        self.next
+            .as_ref()
+            .and_then(|(token, span)| m.matches(token).then_some(*span))
     }
 
     /// Advances the parser and returns `Some(span)` if the token which was next

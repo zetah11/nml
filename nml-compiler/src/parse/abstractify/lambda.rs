@@ -8,9 +8,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         node: &cst::Thing,
     ) -> &'a [(ast::Pattern<'a, 'lit>, ast::Expr<'a, 'lit>)] {
         if let cst::Node::Alt(lambdas) = &node.node {
-            self.alloc.alloc_slice_fill_iter(lambdas.iter().map(|node| self.arrow(node)))
+            self.alloc
+                .alloc_slice_fill_iter(lambdas.iter().map(|node| self.arrow(node)))
         } else {
-            self.alloc.alloc_slice_fill_iter(std::iter::once(self.arrow(node)))
+            self.alloc
+                .alloc_slice_fill_iter(std::iter::once(self.arrow(node)))
         }
     }
 
@@ -23,7 +25,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             cst::Node::Invalid(e) => {
                 let pattern = ast::PatternNode::Invalid(*e);
                 let expr = ast::ExprNode::Invalid(*e);
-                let pattern = ast::Pattern { node: pattern, span };
+                let pattern = ast::Pattern {
+                    node: pattern,
+                    span,
+                };
                 let expr = ast::Expr { node: expr, span };
                 (pattern, expr)
             }

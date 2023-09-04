@@ -64,12 +64,18 @@ where
         for child in graph.get(vertex).into_iter().flatten() {
             if !self.indicies.contains_key(child) {
                 self.connect(graph, child);
-                let lowlink =
-                    *self.lowlinks.get(&vertex).unwrap().min(self.lowlinks.get(child).unwrap());
+                let lowlink = *self
+                    .lowlinks
+                    .get(&vertex)
+                    .unwrap()
+                    .min(self.lowlinks.get(child).unwrap());
                 self.lowlinks.insert(vertex, lowlink);
             } else if self.on_stack.contains(child) {
-                let lowlink =
-                    *self.lowlinks.get(&vertex).unwrap().min(self.indicies.get(child).unwrap());
+                let lowlink = *self
+                    .lowlinks
+                    .get(&vertex)
+                    .unwrap()
+                    .min(self.indicies.get(child).unwrap());
                 self.lowlinks.insert(vertex, lowlink);
             }
         }
@@ -104,7 +110,11 @@ mod tests {
             (2, BTreeSet::from([1])),
         ]);
 
-        let expected = vec![BTreeSet::from([&0]), BTreeSet::from([&1]), BTreeSet::from([&2])];
+        let expected = vec![
+            BTreeSet::from([&0]),
+            BTreeSet::from([&1]),
+            BTreeSet::from([&2]),
+        ];
 
         let actual = find(&graph);
 
@@ -135,7 +145,11 @@ mod tests {
             (3, BTreeSet::from([1])),
         ]);
 
-        let expected = vec![BTreeSet::from([&0]), BTreeSet::from([&1, &2]), BTreeSet::from([&3])];
+        let expected = vec![
+            BTreeSet::from([&0]),
+            BTreeSet::from([&1, &2]),
+            BTreeSet::from([&3]),
+        ];
 
         let actual = find(&graph);
 
@@ -144,8 +158,11 @@ mod tests {
 
     #[test]
     fn disjoint() {
-        let graph =
-            BTreeMap::from([(0, BTreeSet::new()), (1, BTreeSet::new()), (2, BTreeSet::new())]);
+        let graph = BTreeMap::from([
+            (0, BTreeSet::new()),
+            (1, BTreeSet::new()),
+            (2, BTreeSet::new()),
+        ]);
 
         let actual = find(&graph);
 

@@ -37,7 +37,13 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         errors: &'err mut Errors,
         parse_errors: Vec<(ErrorId, Span)>,
     ) -> Self {
-        Self { alloc, names, literals, errors, parse_errors }
+        Self {
+            alloc,
+            names,
+            literals,
+            errors,
+            parse_errors,
+        }
     }
 
     pub fn program(
@@ -61,9 +67,10 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
             cst::Node::Name(cst::Name::Small(name)) => Ok(self.names.intern(name)),
             cst::Node::Name(cst::Name::Operator(name)) => Ok(self.names.intern(name)),
 
-            cst::Node::Name(cst::Name::Big(name)) => {
-                Err(self.errors.parse_error(span).expected_name_small(Some(name)))
-            }
+            cst::Node::Name(cst::Name::Big(name)) => Err(self
+                .errors
+                .parse_error(span)
+                .expected_name_small(Some(name))),
 
             _ => Err(self.errors.parse_error(span).expected_name_small(None)),
         };

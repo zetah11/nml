@@ -28,13 +28,18 @@ impl<'a> Resolver<'a, '_> {
                 } else {
                     let name = self.names.get_ident(name);
                     resolved::PatternNode::Invalid(
-                        self.errors.name_error(span).unapplied_anonymous_variant(name),
+                        self.errors
+                            .name_error(span)
+                            .unapplied_anonymous_variant(name),
                     )
                 }
             }
 
             parsed::PatternNode::Apply(
-                parsed::Pattern { node: parsed::PatternNode::Big((_, name)), .. },
+                parsed::Pattern {
+                    node: parsed::PatternNode::Big((_, name)),
+                    ..
+                },
                 arg,
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);

@@ -3,7 +3,10 @@ use crate::source::Span;
 
 impl Errors {
     pub(crate) fn parse_error(&mut self, at: Span) -> ParseErrors {
-        ParseErrors { errors: self, primary: at }
+        ParseErrors {
+            errors: self,
+            primary: at,
+        }
     }
 }
 
@@ -84,9 +87,11 @@ impl ParseErrors<'_> {
     }
 
     pub fn item_definition_with_body(&mut self) -> ErrorId {
-        let error = self.error("items do not have an expression body").with_note(
-            "the expression body is after the `in` keyword, and is only valid in expressions",
-        );
+        let error = self
+            .error("items do not have an expression body")
+            .with_note(
+                "the expression body is after the `in` keyword, and is only valid in expressions",
+            );
         self.errors.add(error)
     }
 
@@ -120,8 +125,9 @@ impl ParseErrors<'_> {
     }
 
     pub fn unclosed_brace(&mut self, possible_placement: Span) -> ErrorId {
-        let error =
-            self.error("unclosed brace").with_label(possible_placement, "expected a `}` here");
+        let error = self
+            .error("unclosed brace")
+            .with_label(possible_placement, "expected a `}` here");
         self.errors.add(error)
     }
 

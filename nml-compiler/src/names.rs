@@ -46,7 +46,11 @@ pub struct Names<'a> {
 
 impl<'a> Names<'a> {
     pub fn new(idents: &'a ThreadedRodeo<Ident>) -> Self {
-        Self { idents, names: DashMap::new(), counter: AtomicUsize::new(0) }
+        Self {
+            idents,
+            names: DashMap::new(),
+            counter: AtomicUsize::new(0),
+        }
     }
 
     pub fn intern(&self, name: impl AsRef<str>) -> Ident {
@@ -69,7 +73,10 @@ impl<'a> Names<'a> {
     }
 
     pub fn get_name(&self, name: &Name) -> Qualified {
-        *self.names.get(name).expect("names from separate name stores are never mixed")
+        *self
+            .names
+            .get(name)
+            .expect("names from separate name stores are never mixed")
     }
 }
 

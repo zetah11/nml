@@ -2,7 +2,10 @@ use lsp_types::{SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend};
 use nml_compiler::parse::Token;
 
 pub fn get() -> SemanticTokensLegend {
-    SemanticTokensLegend { token_types: TYPES.into(), token_modifiers: MODIFIERS.into() }
+    SemanticTokensLegend {
+        token_types: TYPES.into(),
+        token_modifiers: MODIFIERS.into(),
+    }
 }
 
 /// Get the semantic token type and the modifiers for the given token type,

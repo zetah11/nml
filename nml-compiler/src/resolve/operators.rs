@@ -36,7 +36,10 @@ impl<'a> Resolver<'a, '_> {
                 resolved::ExprNode::Var(name) if self.affii.get(name) == Some(&Affix::Infix) => {
                     if let Some((_, op, _)) = infix.as_ref() {
                         let span = term.span;
-                        let e = self.errors.parse_error(span).ambiguous_infix_operators(op.span);
+                        let e = self
+                            .errors
+                            .parse_error(span)
+                            .ambiguous_infix_operators(op.span);
                         let node = resolved::ExprNode::Invalid(e);
                         exprs.push(resolved::Expr { node, span });
                     } else if exprs.is_empty() {

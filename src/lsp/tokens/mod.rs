@@ -39,11 +39,18 @@ struct RelativeSpan {
 
 impl<'s> SemanticTokensBuilder<'s> {
     pub fn new(source: &'s str) -> Self {
-        Self { source, tokens: Vec::new(), previous: None }
+        Self {
+            source,
+            tokens: Vec::new(),
+            previous: None,
+        }
     }
 
     pub fn build(self) -> SemanticTokens {
-        SemanticTokens { result_id: None, data: self.tokens }
+        SemanticTokens {
+            result_id: None,
+            data: self.tokens,
+        }
     }
 
     /// Add a token to this list of semantic tokens.
@@ -58,9 +65,15 @@ impl<'s> SemanticTokensBuilder<'s> {
     /// Push the given type and modifiers at the given span to the token list.
     fn push_token(&mut self, relative: RelativeSpan, ty: u32, modifiers: u32) {
         // TODO: split into multiple if length is too big
-        let Ok(delta_line) = u32::try_from(relative.delta_line) else { return; };
-        let Ok(delta_start) = u32::try_from(relative.delta_column) else { return; };
-        let Ok(length) = u32::try_from(relative.length) else { return; };
+        let Ok(delta_line) = u32::try_from(relative.delta_line) else {
+            return;
+        };
+        let Ok(delta_start) = u32::try_from(relative.delta_column) else {
+            return;
+        };
+        let Ok(length) = u32::try_from(relative.length) else {
+            return;
+        };
 
         self.tokens.push(SemanticToken {
             delta_line,
@@ -98,6 +111,10 @@ impl<'s> SemanticTokensBuilder<'s> {
             }
         }
 
-        RelativeSpan { delta_line, delta_column, length: span.length() }
+        RelativeSpan {
+            delta_line,
+            delta_column,
+            length: span.length(),
+        }
     }
 }

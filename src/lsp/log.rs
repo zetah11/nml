@@ -14,7 +14,9 @@ pub struct AtomicTraceValue {
 
 impl AtomicTraceValue {
     pub fn new(initial: TraceValue) -> Self {
-        let this = Self { value: AtomicU8::new(0) };
+        let this = Self {
+            value: AtomicU8::new(0),
+        };
         this.store(initial);
         this
     }
@@ -73,12 +75,19 @@ impl Log for Logger {
 
     fn log(&self, record: &log::Record) {
         // Ignore lsp_server debug messages
-        if record.module_path().map(|path| path.starts_with("lsp_server")).unwrap_or(false) {
+        if record
+            .module_path()
+            .map(|path| path.starts_with("lsp_server"))
+            .unwrap_or(false)
+        {
             return;
         }
 
         if self.enabled(record.metadata()) {
-            let prefix = record.module_path().map(|s| format!("{s}: ")).unwrap_or_default();
+            let prefix = record
+                .module_path()
+                .map(|s| format!("{s}: "))
+                .unwrap_or_default();
             let message = format!("{prefix}{}", record.args());
 
             let typ = match record.level() {

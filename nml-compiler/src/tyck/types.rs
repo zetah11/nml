@@ -50,7 +50,10 @@ pub struct Scheme<'a> {
 
 impl<'a> Scheme<'a> {
     pub fn mono(ty: &'a Type<'a>) -> Self {
-        Self { params: Vec::new(), ty }
+        Self {
+            params: Vec::new(),
+            ty,
+        }
     }
 
     pub fn is_mono(&self) -> bool {
@@ -59,7 +62,10 @@ impl<'a> Scheme<'a> {
 
     /// Use the type parameters from this scheme on another type.
     pub fn onto(&self, ty: &'a Type<'a>) -> Self {
-        Self { params: self.params.clone(), ty }
+        Self {
+            params: self.params.clone(),
+            ty,
+        }
     }
 }
 
@@ -70,7 +76,9 @@ pub struct Env<'a> {
 
 impl<'a> Env<'a> {
     pub fn new() -> Self {
-        Self { context: BTreeMap::new() }
+        Self {
+            context: BTreeMap::new(),
+        }
     }
 
     pub fn insert(&mut self, name: Name, scheme: Scheme<'a>) {
@@ -84,6 +92,8 @@ impl<'a> Env<'a> {
     }
 
     pub fn lookup(&self, name: &Name) -> &Scheme<'a> {
-        self.context.get(name).expect("all names are defined before use")
+        self.context
+            .get(name)
+            .expect("all names are defined before use")
     }
 }

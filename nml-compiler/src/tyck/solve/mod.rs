@@ -28,7 +28,12 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     pub fn new() -> Self {
-        Self { subst: BTreeMap::new(), row_subst: BTreeMap::new(), counter: 0, level: 0 }
+        Self {
+            subst: BTreeMap::new(),
+            row_subst: BTreeMap::new(),
+            counter: 0,
+            level: 0,
+        }
     }
 
     pub fn fresh(&mut self, alloc: &'a Bump) -> &'a Type<'a> {
@@ -130,7 +135,11 @@ impl<'a> Solver<'a> {
             })
         );
 
-        let subst = scheme.params.iter().map(|name| (name, self.new_var(VarKind::Type))).collect();
+        let subst = scheme
+            .params
+            .iter()
+            .map(|name| (name, self.new_var(VarKind::Type)))
+            .collect();
 
         self.inst_ty(alloc, &subst, scheme.ty)
     }
@@ -316,7 +325,10 @@ impl<'a> Solver<'a> {
         trace!(
             "min {} -- keep [{}]",
             pretty.ty(self.apply(alloc, ty)),
-            keep.iter().map(|v| pretty.var(v, None)).collect::<Vec<_>>().join(", ")
+            keep.iter()
+                .map(|v| pretty.var(v, None))
+                .collect::<Vec<_>>()
+                .join(", ")
         );
 
         self.minimize_ty(alloc, keep, ty);
@@ -467,7 +479,10 @@ impl<'a> Solver<'a> {
                 let e = {
                     let lhs = reporting.pretty.ty(lhs);
                     let rhs = reporting.pretty.ty(rhs);
-                    let e = reporting.errors.type_error(reporting.at).inequal_types(lhs, rhs);
+                    let e = reporting
+                        .errors
+                        .type_error(reporting.at)
+                        .inequal_types(lhs, rhs);
                     alloc.alloc(Type::Invalid(e))
                 };
 
@@ -522,7 +537,10 @@ impl<'a> Solver<'a> {
                 let e = {
                     let lhs = reporting.pretty.record(lhs);
                     let rhs = reporting.pretty.record(rhs);
-                    let e = reporting.errors.type_error(reporting.at).inequal_types(lhs, rhs);
+                    let e = reporting
+                        .errors
+                        .type_error(reporting.at)
+                        .inequal_types(lhs, rhs);
                     alloc.alloc(Row::Invalid(e))
                 };
 
@@ -552,7 +570,10 @@ impl<'a> Solver<'a> {
             let ty = {
                 let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.ty(ty);
-                let e = reporting.errors.type_error(reporting.at).recursive_type(var, ty);
+                let e = reporting
+                    .errors
+                    .type_error(reporting.at)
+                    .recursive_type(var, ty);
                 alloc.alloc(Type::Invalid(e))
             };
 
@@ -582,7 +603,10 @@ impl<'a> Solver<'a> {
             let record = {
                 let var = reporting.pretty.var(var, Some(level));
                 let ty = reporting.pretty.record(record);
-                let e = reporting.errors.type_error(reporting.at).recursive_type(var, ty);
+                let e = reporting
+                    .errors
+                    .type_error(reporting.at)
+                    .recursive_type(var, ty);
                 alloc.alloc(Row::Invalid(e))
             };
 
@@ -590,7 +614,10 @@ impl<'a> Solver<'a> {
         }
 
         let prev = self.row_subst.insert(*var, record);
-        debug_assert!(prev.is_none(), "overwrote previous record row unificiation variable");
+        debug_assert!(
+            prev.is_none(),
+            "overwrote previous record row unificiation variable"
+        );
     }
 
     fn occurs(&self, var: &TypeVar, l1: &Level, ty: &Type) -> bool {
