@@ -56,6 +56,11 @@ impl<'a> Scheme<'a> {
     pub fn is_mono(&self) -> bool {
         self.params.is_empty()
     }
+
+    /// Use the type parameters from this scheme on another type.
+    pub fn onto(&self, ty: &'a Type<'a>) -> Self {
+        Self { params: self.params.clone(), ty }
+    }
 }
 
 #[derive(Debug, Default)]

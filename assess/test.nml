@@ -1,3 +1,1 @@
-let postfix not = True x => False x | False x => True x
-let infix then = x => y => y
-let result = (True 5) not then False 5
+let f = person => person.name
