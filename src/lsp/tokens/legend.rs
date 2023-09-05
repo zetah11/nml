@@ -26,7 +26,6 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
         | Token::Do
         | Token::Else
         | Token::End
-        | Token::Fun
         | Token::If
         | Token::In
         | Token::Infix

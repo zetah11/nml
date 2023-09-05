@@ -19,7 +19,6 @@ pub enum Node<'a> {
     Number(&'a str),
 
     Let {
-        keyword: (ValueDefKw, Span),
         defs: (ValueDef<'a>, Vec<ValueDef<'a>>),
 
         /// The expression after the `in`
@@ -65,10 +64,4 @@ pub struct ValueDef<'a> {
     /// The definition part (the thing after the `=`) or `None` if there was no
     /// `=`.
     pub definition: Option<&'a Thing<'a>>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ValueDefKw {
-    Let,
-    Fun,
 }

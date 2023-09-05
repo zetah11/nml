@@ -140,11 +140,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::Lambda(arrows)
             }
 
-            cst::Node::Let {
-                keyword: _,
-                defs,
-                within,
-            } => {
+            cst::Node::Let { defs, within } => {
                 let mut body = if let Some(within) = within {
                     self.expr(within)
                 } else {

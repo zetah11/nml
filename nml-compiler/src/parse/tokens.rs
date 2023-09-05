@@ -25,8 +25,6 @@ pub enum Token<'src> {
     Else,
     #[token("end")]
     End,
-    #[token("fun")]
-    Fun,
     #[token("if")]
     If,
     #[token("in")]

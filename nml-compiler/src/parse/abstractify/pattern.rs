@@ -9,11 +9,20 @@ use crate::trees::parsed as ast;
 /// individually patterns.
 pub enum AbstractPattern<'a, 'lit> {
     Fun(
-        (ast::Affix, Ident<'lit>),
-        &'a [ast::Pattern<'a, 'lit>],
+        (ast::Affix, Ident<'lit>, Span),
+        Vec<ast::Pattern<'a, 'lit>>,
         Span,
     ),
     Single(ast::Pattern<'a, 'lit>),
+}
+
+impl AbstractPattern<'_, '_> {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Fun(.., span) => *span,
+            Self::Single(pat) => pat.span,
+        }
+    }
 }
 
 impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
@@ -65,7 +74,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let mut fun = nodes.next().expect("`apply` contains at least one node");
 
                 if let Some(name) = Self::fun_name(&fun) {
-                    let args = self.alloc.alloc_slice_fill_iter(nodes);
+                    let args = nodes.collect();
                     return AbstractPattern::Fun(name, args, span);
                 } else {
                     for arg in nodes {
@@ -85,9 +94,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         AbstractPattern::Single(pattern)
     }
 
-    fn fun_name(pattern: &ast::Pattern<'a, 'lit>) -> Option<(ast::Affix, Ident<'lit>)> {
-        if let ast::PatternNode::Small(name) = &pattern.node {
-            Some(*name)
+    fn fun_name(pattern: &ast::Pattern<'a, 'lit>) -> Option<(ast::Affix, Ident<'lit>, Span)> {
+        if let ast::PatternNode::Small((affix, name)) = &pattern.node {
+            Some((*affix, *name, pattern.span))
         } else {
             None
         }
