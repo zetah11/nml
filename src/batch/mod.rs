@@ -3,7 +3,6 @@
 
 use std::path::Path;
 
-use anyhow::anyhow;
 use nml_compiler::alloc::Bump;
 use nml_compiler::intern::Arena;
 use nml_compiler::names::Names;
@@ -12,7 +11,7 @@ use nml_compiler::resolve::resolve;
 use nml_compiler::source::Sources;
 use nml_compiler::tyck::infer;
 
-pub fn run(path: &Path) -> anyhow::Result<()> {
+pub fn run(path: &Path) -> Result<(), BatchError> {
     let file = std::fs::read_to_string(path)?;
     let sources = Sources::new();
     let source = sources.add(file);
@@ -30,10 +29,23 @@ pub fn run(path: &Path) -> anyhow::Result<()> {
     if result.is_perfect() {
         Ok(())
     } else {
-        Err(anyhow!(
-            "{} errors and {} warnings",
-            result.num_errors(),
-            result.num_warnings()
-        ))
+        Err(BatchError::CompilerError {
+            num_errors: result.num_errors(),
+            num_warnings: result.num_warnings(),
+        })
+    }
+}
+
+pub enum BatchError {
+    IoError(std::io::Error),
+    CompilerError {
+        num_errors: usize,
+        num_warnings: usize,
+    },
+}
+
+impl From<std::io::Error> for BatchError {
+    fn from(value: std::io::Error) -> Self {
+        Self::IoError(value)
     }
 }

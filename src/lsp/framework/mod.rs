@@ -4,17 +4,17 @@ pub use self::client::Client;
 
 mod client;
 
-use crossbeam::channel::Receiver;
+use crossbeam_channel::Receiver;
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types as lsp;
 use lsp_types::notification::{self, Notification as _};
 use lsp_types::request::{self, Request as _};
 
 use super::log::AtomicTraceValue;
-use super::Server;
+use super::{LspError, Server};
 
 /// Initialize and run the given server on standard IO.
-pub(super) fn stdio(mut builder: impl Builder) -> anyhow::Result<()> {
+pub(super) fn stdio(mut builder: impl Builder) -> Result<(), LspError> {
     let (connection, _) = Connection::stdio();
     let (id, params) = connection.initialize_start()?;
     let params: lsp::InitializeParams = serde_json::from_value(params)?;
@@ -36,7 +36,7 @@ pub(super) fn stdio(mut builder: impl Builder) -> anyhow::Result<()> {
 
     match main.run() {
         Final::Exit { properly: true } => Ok(()),
-        Final::Exit { properly: false } => Err(anyhow::anyhow!("")),
+        Final::Exit { properly: false } => Err(LspError::ImproperExit),
         Final::Error(e) => Err(e),
     }
 }
@@ -64,10 +64,10 @@ enum State {
 
 enum Final {
     Exit { properly: bool },
-    Error(anyhow::Error),
+    Error(LspError),
 }
 
-impl<E: Into<anyhow::Error>> From<E> for Final {
+impl<E: Into<LspError>> From<E> for Final {
     fn from(value: E) -> Self {
         Self::Error(value.into())
     }

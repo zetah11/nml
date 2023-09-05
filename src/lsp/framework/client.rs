@@ -1,4 +1,4 @@
-use crossbeam::channel::Sender;
+use crossbeam_channel::Sender;
 use lsp_server::{ErrorCode, Message, Notification, RequestId, Response};
 use lsp_types as lsp;
 use lsp_types::notification;

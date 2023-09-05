@@ -1,8 +1,11 @@
+pub use self::lsp_error::LspError;
+
 mod check;
 mod diagnostics;
 mod framework;
 mod inlay_hints;
 mod log;
+mod lsp_error;
 mod sync;
 mod tokens;
 
@@ -20,7 +23,7 @@ use self::framework::{Client, Error};
 use self::log::{AtomicTraceValue, Logger};
 use crate::meta;
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run() -> Result<(), LspError> {
     framework::stdio(Builder::new())
 }
 
