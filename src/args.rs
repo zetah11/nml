@@ -21,8 +21,13 @@ pub enum Command {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "check")]
 pub struct Check {
+    /// the source file to check
     #[argh(positional)]
     pub path: PathBuf,
+
+    /// the amount of logging to perform
+    #[argh(option)]
+    pub log: Option<LogLevel>,
 }
 /// Run the compiler as a language server.
 #[derive(FromArgs, Debug)]

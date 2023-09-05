@@ -49,6 +49,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Infix,
+        Token::Postfix,
         Token::LeftParen,
         Token::LeftBrace,
         Token::Pipe,
@@ -73,7 +75,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```
     fn item(&mut self, default: impl FnOnce(&mut Self) -> &'a Thing<'a>) -> &'a Thing<'a> {
         if let Some(opener) = self.consume(Token::Let) {
-            self.let_fun(opener)
+            self.let_def(opener)
         } else if let Some(opener) = self.consume(Token::If) {
             self.if_do(opener)
         } else if let Some(opener) = self.consume(Token::Case) {
@@ -84,10 +86,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// let = ("let" / "fun") def *("and" def) ["in" thing]
+    /// let = "let" def *("and" def) ["in" thing]
     /// ```
-    fn let_fun(&mut self, opener: Span) -> &'a Thing<'a> {
-        trace!("parse let/fun");
+    fn let_def(&mut self, opener: Span) -> &'a Thing<'a> {
+        trace!("parse let-def");
 
         let primary = self.def(Some(opener));
         let mut others = Vec::new();
@@ -98,7 +100,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
         let within = self.consume(Token::In).map(|_| self.thing());
 
-        trace!("done let/fun");
+        trace!("done let");
 
         let span = opener + self.closest_span();
         let node = Node::Let {
@@ -115,6 +117,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Infix,
+        Token::Postfix,
         Token::LeftParen,
         Token::LeftBrace,
     ];
@@ -225,6 +229,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Infix,
+        Token::Postfix,
         Token::LeftParen,
         Token::LeftBrace,
         Token::Pipe,
@@ -259,6 +265,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Infix,
+        Token::Postfix,
         Token::LeftParen,
         Token::LeftBrace,
     ];
@@ -310,6 +318,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Operator(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Infix,
+        Token::Postfix,
         Token::LeftParen,
         Token::LeftBrace,
     ];
@@ -346,7 +356,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// base  = name / NUMBER / "_"
+    /// base  = name / NUMBER / "_" / "infix" / "postfix"
     /// base =/ "(" thing ")"
     /// base =/ "{" *(def ",") [def] ["|" thing] "}"
     /// ```

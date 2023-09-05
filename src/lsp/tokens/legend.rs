@@ -17,7 +17,8 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
 
     match token {
         Token::Comment => Some((types::COMMENT, mods::NONE)),
-        Token::BigName(_) | Token::SmallName(_) | Token::Operator(_) => None,
+        Token::BigName(_) | Token::SmallName(_) => None,
+        Token::Operator(_) => Some((types::OPERATOR, mods::NONE)),
 
         Token::Number(_) => Some((types::NUMBER, mods::NONE)),
 
@@ -43,11 +44,12 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
     }
 }
 
-const TYPES: [SemanticTokenType; 4] = [
+const TYPES: [SemanticTokenType; 5] = [
     SemanticTokenType::COMMENT,
     SemanticTokenType::NUMBER,
     SemanticTokenType::STRING,
     SemanticTokenType::KEYWORD,
+    SemanticTokenType::OPERATOR,
 ];
 
 const MODIFIERS: [SemanticTokenModifier; 1] = [SemanticTokenModifier::DOCUMENTATION];
@@ -57,6 +59,7 @@ mod types {
     pub const NUMBER: u32 = 1;
     //pub const STRING: u32 = 2;
     pub const KEYWORD: u32 = 3;
+    pub const OPERATOR: u32 = 4;
 }
 
 mod mods {

@@ -17,7 +17,7 @@ thing         = item{lambda}
 simple        = item{apply}
 item{default} = let / if / case / default
 
-let           = ("let" / "fun") def *("and" def) ["in" thing]
+let           = "let" def *("and" def) ["in" thing]
 def           = apply "=" thing
 
 if            = "if" thing "do" thing ("else" thing / "end")

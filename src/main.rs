@@ -15,8 +15,15 @@ fn main() -> ExitCode {
 
         Command::Lsp(_) => lsp_error(Err(LspError::NoChannel)),
 
-        Command::Check(Check { path }) => {
-            simple_logger::init().expect("log setup should never fail");
+        Command::Check(Check { path, log }) => {
+            if let Some(log) = log {
+                if let Some(level) = log.to_level_filter().to_level() {
+                    simple_logger::init_with_level(level).expect("this is the only logger");
+                }
+            } else if std::env::var("RUST_LOG").is_ok() {
+                simple_logger::init_with_env().expect("this is the only logger");
+            }
+
             batch_error(nmlc::batch::run(&path))
         }
     }
