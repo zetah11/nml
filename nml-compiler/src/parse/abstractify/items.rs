@@ -38,7 +38,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     }
 
     fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
-        let pattern = self.pattern(def.pattern);
+        let pattern = self.single_pattern(def.pattern);
         let body = def
             .definition
             .map(|node| self.expr(node))

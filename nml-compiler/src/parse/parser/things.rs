@@ -41,6 +41,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     const THING_STARTS: &'static [Token<'static>] = &[
+        Token::Fun,
         Token::Let,
         Token::If,
         Token::Case,
@@ -108,6 +109,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             defs: (primary, others),
             within,
         };
+
         self.alloc.alloc(Thing { node, span })
     }
 

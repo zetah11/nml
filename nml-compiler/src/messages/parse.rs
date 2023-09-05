@@ -138,6 +138,11 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn unexpected_function_definition(&mut self) -> ErrorId {
+        let error = self.error("unexpected function definition pattern");
+        self.errors.add(error)
+    }
+
     pub fn unexpected_token(&mut self) -> ErrorId {
         let error = self.error("unexpected token");
         self.errors.add(error)

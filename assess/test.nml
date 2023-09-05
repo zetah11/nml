@@ -1,4 +1,1 @@
-let infix then = a => b => b
-let infix before = a => b => a
-
-let bap = 5 then (6 before 10)
+let f x = x

@@ -34,7 +34,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             }
 
             cst::Node::Arrow(pattern, body) => {
-                let pattern = self.pattern(pattern);
+                let pattern = self.single_pattern(pattern);
                 let body = self.expr(body);
                 (pattern, body)
             }
