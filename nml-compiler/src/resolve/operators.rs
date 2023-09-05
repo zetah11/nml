@@ -3,8 +3,8 @@ use crate::names::Name;
 use crate::trees::parsed::Affix;
 use crate::trees::{parsed, resolved};
 
-impl<'a> Resolver<'a, '_> {
-    pub(super) fn apply_run<'lit>(
+impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+    pub(super) fn apply_run(
         &mut self,
         item: ItemId,
         terms: &[parsed::Expr<'_, 'lit>],
@@ -89,7 +89,7 @@ impl<'a> Resolver<'a, '_> {
         }
     }
 
-    fn prefixes<'lit>(
+    fn prefixes(
         &self,
         mut fun: resolved::Expr<'a, 'lit>,
         args: Vec<resolved::Expr<'a, 'lit>>,

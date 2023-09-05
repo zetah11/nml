@@ -26,7 +26,7 @@ pub fn tokens(source: &Source) -> impl Iterator<Item = (Result<Token, ()>, Span)
 
 pub fn parse<'a, 'lit>(
     alloc: &'a Bump,
-    names: &'a Names,
+    names: &'a Names<'lit>,
     literals: &'lit Arena<Literal>,
     source: &Source,
 ) -> parsed::Source<'a, 'lit> {

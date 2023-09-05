@@ -19,7 +19,7 @@ use crate::trees::{declared, parsed, resolved};
 pub struct ItemId(usize);
 
 pub fn resolve<'a, 'b, 'lit>(
-    names: &'a Names<'a>,
+    names: &'a Names<'lit>,
     alloc: &'a Bump,
     program: &'b parsed::Source<'b, 'lit>,
 ) -> resolved::Program<'a, 'lit>
@@ -53,8 +53,8 @@ where
     }
 }
 
-struct Resolver<'a, 'err> {
-    names: &'a Names<'a>,
+struct Resolver<'a, 'lit, 'err> {
+    names: &'a Names<'lit>,
     alloc: &'a Bump,
     errors: &'err mut Errors,
 
@@ -62,14 +62,14 @@ struct Resolver<'a, 'err> {
     spans: BTreeMap<Name, Span>,
     affii: BTreeMap<Name, Affix>,
 
-    scopes: (Vec<Scope>, Scope),
+    scopes: (Vec<Scope<'lit>>, Scope<'lit>),
     counter: usize,
     item_ids: usize,
 }
 
-impl<'a, 'err> Resolver<'a, 'err> {
+impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
     pub fn new(
-        names: &'a Names<'a>,
+        names: &'a Names<'lit>,
         alloc: &'a Bump,
         errors: &'err mut Errors,
         source: SourceId,
@@ -91,12 +91,11 @@ impl<'a, 'err> Resolver<'a, 'err> {
         }
     }
 
-    pub fn items<'b, 'lit>(
+    pub fn items<'b>(
         &mut self,
         items: &'b [parsed::Item<'b, 'lit>],
     ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>>
     where
-        'lit: 'a + 'b,
         'a: 'b,
     {
         debug!("declaring {} items", items.len());
@@ -110,12 +109,8 @@ impl<'a, 'err> Resolver<'a, 'err> {
             .collect()
     }
 
-    fn declare_item<'b, 'lit>(
-        &mut self,
-        item: &'b parsed::Item<'b, 'lit>,
-    ) -> declared::Item<'a, 'b, 'lit>
+    fn declare_item<'b>(&mut self, item: &'b parsed::Item<'b, 'lit>) -> declared::Item<'a, 'b, 'lit>
     where
-        'lit: 'a + 'b,
         'a: 'b,
     {
         let id = ItemId(self.item_ids);
@@ -132,10 +127,7 @@ impl<'a, 'err> Resolver<'a, 'err> {
         declared::Item { node, span, id }
     }
 
-    fn resolve_item<'b, 'lit>(
-        &mut self,
-        item: declared::Item<'a, 'b, 'lit>,
-    ) -> resolved::Item<'a, 'lit> {
+    fn resolve_item<'b>(&mut self, item: declared::Item<'a, 'b, 'lit>) -> resolved::Item<'a, 'lit> {
         let id = item.id;
         let span = item.span;
         let node = match item.node {
@@ -154,7 +146,7 @@ impl<'a, 'err> Resolver<'a, 'err> {
         item: ItemId,
         at: Span,
         affix: Affix,
-        ident: Ident,
+        ident: Ident<'lit>,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
 
@@ -217,12 +209,12 @@ impl<'a, 'err> Resolver<'a, 'err> {
 }
 
 #[derive(Debug)]
-struct Scope {
+struct Scope<'lit> {
     name: ScopeName,
-    values: BTreeMap<Ident, Name>,
+    values: BTreeMap<Ident<'lit>, Name>,
 }
 
-impl Scope {
+impl Scope<'_> {
     pub fn new(name: ScopeName) -> Self {
         Self {
             name,

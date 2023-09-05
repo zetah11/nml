@@ -10,7 +10,7 @@ impl<'a> Solver<'a> {
         &mut self,
         reporting: &mut Reporting,
         alloc: &'a Bump,
-        label: &Label,
+        label: &Label<'a>,
         row: &'a Row<'a>,
         tail: Option<&TypeVar>,
     ) -> (&'a Type<'a>, &'a Row<'a>) {
@@ -65,12 +65,12 @@ impl<'a> Solver<'a> {
             }
         }
     }
+}
 
-    pub(super) fn row_tail<'b>(row: &'b Row) -> Option<&'b TypeVar> {
-        match row {
-            Row::Var(var, _) => Some(var),
-            Row::Extend(_, _, rest) => Self::row_tail(rest),
-            Row::Empty | Row::Invalid(_) | Row::Param(_) => None,
-        }
+pub(super) fn row_tail<'b>(row: &'b Row<'b>) -> Option<&'b TypeVar> {
+    match row {
+        Row::Var(var, _) => Some(var),
+        Row::Extend(_, _, rest) => row_tail(rest),
+        Row::Empty | Row::Invalid(_) | Row::Param(_) => None,
     }
 }

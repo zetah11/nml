@@ -48,7 +48,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         ast::Pattern { node, span }
     }
 
-    fn name<'b, 'c>(&mut self, affix: ast::Affix, node: &cst::Thing) -> ast::Pattern<'b, 'c> {
+    fn name<'b>(&mut self, affix: ast::Affix, node: &cst::Thing) -> ast::Pattern<'b, 'lit> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Name(cst::Name::Small(name)) => {

@@ -20,7 +20,7 @@ use crate::trees::{inferred, resolved};
 
 pub fn infer<'a, 'lit>(
     alloc: &'a Bump,
-    names: &Names,
+    names: &'a Names<'lit>,
     program: &resolved::Program<'_, 'lit>,
 ) -> inferred::Program<'a, 'lit> {
     let mut errors = program.errors.clone();
@@ -40,8 +40,8 @@ pub fn infer<'a, 'lit>(
     }
 }
 
-struct Reporting<'a, 'b, 'c> {
-    pretty: &'a mut Prettifier<'b, 'c>,
+struct Reporting<'a, 'b, 'c, 'd> {
+    pretty: &'a mut Prettifier<'b, 'c, 'd>,
     errors: &'a mut Errors,
     at: Span,
 }
@@ -51,12 +51,16 @@ struct Checker<'a, 'err, 'ids, 'p> {
     env: Env<'a>,
     solver: Solver<'a>,
     errors: &'err mut Errors,
-    pretty: &'p mut Pretty<'ids>,
+    pretty: &'p mut Pretty<'a, 'ids>,
     holes: Vec<(Span, &'a Type<'a>)>,
 }
 
 impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
-    pub fn new(alloc: &'a Bump, errors: &'err mut Errors, pretty: &'p mut Pretty<'ids>) -> Self {
+    pub fn new(
+        alloc: &'a Bump,
+        errors: &'err mut Errors,
+        pretty: &'p mut Pretty<'a, 'ids>,
+    ) -> Self {
         Self {
             alloc,
             env: Env::new(),
@@ -68,10 +72,10 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     }
 
     /// Check a set of mutually recursive items.
-    pub fn check_items<'b, 'lit>(
+    pub fn check_items<'b>(
         &mut self,
-        items: &'b [resolved::Item<'_, 'lit>],
-    ) -> &'a [inferred::Item<'a, 'lit>] {
+        items: &'b [resolved::Item<'_, 'ids>],
+    ) -> &'a [inferred::Item<'a, 'ids>] {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {

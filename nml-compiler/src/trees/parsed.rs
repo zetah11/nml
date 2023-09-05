@@ -20,8 +20,8 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type Expr = Expr<'a, 'lit>;
     type Pattern = Pattern<'a, 'lit>;
 
-    type ExprName = Ident;
-    type PatternName = (Affix, Ident);
+    type ExprName = Ident<'lit>;
+    type PatternName = (Affix, Ident<'lit>);
     type Var = Infallible;
     type Variant = Infallible;
 

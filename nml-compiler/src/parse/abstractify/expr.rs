@@ -1,5 +1,4 @@
 use super::Abstractifier;
-use crate::literals::Literal;
 use crate::names::Label;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
@@ -28,8 +27,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             }
 
             cst::Node::Number(lit) => {
-                let num = Self::parse_number(lit);
-                let num = Literal::int(self.literals, num);
+                let num = self.parse_number(lit);
                 ast::ExprNode::Number(num)
             }
 

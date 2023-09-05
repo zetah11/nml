@@ -3,20 +3,14 @@ use crate::trees::nodes::PatternNode;
 
 use super::{Checker, Scheme};
 
-impl<'a> Checker<'a, '_, '_, '_> {
-    pub(super) fn generalize<'lit>(
-        &mut self,
-        pattern: &MonoPattern<'a, 'lit>,
-    ) -> PolyPattern<'a, 'lit> {
+impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
+    pub(super) fn generalize(&mut self, pattern: &MonoPattern<'a, 'ids>) -> PolyPattern<'a, 'ids> {
         let mut pretty = self.pretty.build();
         let scheme = self.solver.generalize(&mut pretty, self.alloc, pattern.ty);
         self.gen_pattern(&scheme, pattern)
     }
 
-    pub(super) fn monomorphic<'lit>(
-        &mut self,
-        pattern: &MonoPattern<'a, 'lit>,
-    ) -> PolyPattern<'a, 'lit> {
+    pub(super) fn monomorphic(&mut self, pattern: &MonoPattern<'a, 'ids>) -> PolyPattern<'a, 'ids> {
         let span = pattern.span;
         let scheme = Scheme::mono(pattern.ty);
 
@@ -50,11 +44,11 @@ impl<'a> Checker<'a, '_, '_, '_> {
         PolyPattern { node, span, scheme }
     }
 
-    fn gen_pattern<'lit>(
+    fn gen_pattern(
         &mut self,
         scheme: &Scheme<'a>,
-        pattern: &MonoPattern<'a, 'lit>,
-    ) -> PolyPattern<'a, 'lit> {
+        pattern: &MonoPattern<'a, 'ids>,
+    ) -> PolyPattern<'a, 'ids> {
         let span = pattern.span;
         let ty = self.solver.apply(self.alloc, pattern.ty);
         let scheme = scheme.onto(ty);

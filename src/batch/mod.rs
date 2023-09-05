@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::anyhow;
 use nml_compiler::alloc::Bump;
-use nml_compiler::intern::{Arena, ThreadedRodeo};
+use nml_compiler::intern::Arena;
 use nml_compiler::names::Names;
 use nml_compiler::parse::parse;
 use nml_compiler::resolve::resolve;
@@ -18,7 +18,7 @@ pub fn run(path: &Path) -> anyhow::Result<()> {
     let source = sources.add(file);
 
     let alloc = Bump::new();
-    let idents = ThreadedRodeo::new();
+    let idents = Arena::new();
     let literals = Arena::new();
     let names = Names::new(&idents);
 

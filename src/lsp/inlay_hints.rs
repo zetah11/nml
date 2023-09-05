@@ -11,7 +11,8 @@ use super::Server;
 impl Server {
     pub fn make_hints(&self, source: &Source) -> Vec<lsp::InlayHint> {
         let alloc = Bump::new();
-        let (names, program) = self.check_source(&alloc, source);
+        let names = Names::new(&self.idents);
+        let program = self.check_source(&names, &alloc, source);
 
         let mut builder = HintsBuilder::new(&names, source.content.as_str());
 
@@ -23,14 +24,14 @@ impl Server {
     }
 }
 
-struct HintsBuilder<'a> {
+struct HintsBuilder<'a, 'lit> {
     index: IndexedText<&'a str>,
     hints: Vec<lsp::InlayHint>,
-    pretty: Pretty<'a>,
+    pretty: Pretty<'a, 'lit>,
 }
 
-impl<'a> HintsBuilder<'a> {
-    pub fn new(names: &'a Names<'a>, text: &'a str) -> Self {
+impl<'a, 'lit> HintsBuilder<'a, 'lit> {
+    pub fn new(names: &'a Names<'lit>, text: &'a str) -> Self {
         Self {
             index: IndexedText::new(text),
             hints: Vec::new(),

@@ -40,7 +40,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         things
     }
 
-    const THING_STARTS: &[Token<'static>] = &[
+    const THING_STARTS: &'static [Token<'static>] = &[
         Token::Let,
         Token::If,
         Token::Case,
@@ -111,7 +111,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         self.alloc.alloc(Thing { node, span })
     }
 
-    const DEF_STARTS: &[Token<'static>] = &[
+    const DEF_STARTS: &'static [Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
         Token::Operator(""),
@@ -221,7 +221,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         self.alloc.alloc(Thing { node, span })
     }
 
-    const LAMBDA_STARTS: &[Token<'static>] = &[
+    const LAMBDA_STARTS: &'static [Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
         Token::Operator(""),
@@ -255,7 +255,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         }
     }
 
-    const ARROW_STARTS: &[Token<'static>] = &[
+    const ARROW_STARTS: &'static [Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
         Token::Operator(""),
@@ -306,7 +306,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         }
     }
 
-    const FIELD_STARTS: &[Token<'static>] = &[
+    const FIELD_STARTS: &'static [Token<'static>] = &[
         Token::SmallName(""),
         Token::BigName(""),
         Token::Operator(""),

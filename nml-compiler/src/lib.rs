@@ -8,11 +8,7 @@ pub mod trees;
 pub mod tyck;
 
 pub use bumpalo as alloc;
-
-pub mod intern {
-    pub use internment::Arena;
-    pub use lasso::ThreadedRodeo;
-}
+pub use internment as intern;
 
 mod messages;
 mod topology;

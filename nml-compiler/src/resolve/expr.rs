@@ -3,8 +3,8 @@ use crate::trees::{parsed, resolved};
 
 use super::{ItemId, Resolver};
 
-impl<'a> Resolver<'a, '_> {
-    pub fn expr<'lit>(
+impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+    pub fn expr(
         &mut self,
         item: ItemId,
         expr: &parsed::Expr<'_, 'lit>,

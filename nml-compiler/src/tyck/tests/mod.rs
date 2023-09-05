@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 
 use bumpalo::Bump;
 use internment::Arena;
-use lasso::ThreadedRodeo;
 use malachite::Integer;
 
 use crate::errors::Errors;
@@ -31,19 +30,19 @@ struct Store<'a, 'ids> {
 impl<'a, 'ids> Store<'a, 'ids> {
     pub fn with<F, T>(f: F) -> T
     where
-        F: for<'b, 'c, 'e, 'i, 'p> FnOnce(Store<'b, 'c>, Checker<'b, 'e, 'i, 'p>) -> T,
+        F: for<'b, 'c, 'e, 'p> FnOnce(Store<'b, 'c>, Checker<'b, 'e, 'c, 'p>) -> T,
     {
         let _ = pretty_env_logger::try_init();
         let alloc = Bump::new();
-        let ids = ThreadedRodeo::new();
         let source = SourceId::new(0);
+        let ids = Arena::new();
         let literals = Arena::new();
         let names = Names::new(&ids);
+
         let this = Store {
             alloc: &alloc,
             source,
             names: &names,
-
             literals: &literals,
             name_intern: RefCell::new(BTreeMap::new()),
         };

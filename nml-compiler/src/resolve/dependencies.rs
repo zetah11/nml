@@ -5,7 +5,7 @@ use crate::trees::resolved::{Expr, ExprNode, Item, ItemNode, Pattern, PatternNod
 
 use super::{ItemId, Resolver};
 
-impl Resolver<'_, '_> {
+impl Resolver<'_, '_, '_> {
     pub fn dependencies(&self, item: &Item) -> BTreeSet<ItemId> {
         match &item.node {
             ItemNode::Invalid(_) => BTreeSet::new(),

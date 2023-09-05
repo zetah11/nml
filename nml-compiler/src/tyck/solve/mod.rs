@@ -504,7 +504,7 @@ impl<'a> Solver<'a> {
             (Row::Empty, Row::Invalid(_)) | (Row::Invalid(_), Row::Empty) => {}
 
             (Row::Extend(label, ty1, rest1), row2 @ Row::Extend(..)) => {
-                let tail = Self::row_tail(rest1);
+                let tail = rows::row_tail(rest1);
                 let (ty2, rest2) = self.rewrite(reporting, alloc, label, row2, tail);
                 self.unify_ty(reporting, alloc, ty1, ty2);
                 self.unify_row(reporting, alloc, rest1, rest2);

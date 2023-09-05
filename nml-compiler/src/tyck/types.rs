@@ -30,7 +30,7 @@ pub enum Row<'a> {
     Empty,
     Var(TypeVar, Level),
     Param(Generic),
-    Extend(Label, &'a Type<'a>, &'a Row<'a>),
+    Extend(Label<'a>, &'a Type<'a>, &'a Row<'a>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

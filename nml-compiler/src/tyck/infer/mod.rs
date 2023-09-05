@@ -5,8 +5,8 @@ use log::trace;
 use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
-impl<'a> Checker<'a, '_, '_, '_> {
-    pub fn infer<'lit>(&mut self, expr: &i::Expr<'_, 'lit>) -> o::Expr<'a, 'lit> {
+impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
+    pub fn infer(&mut self, expr: &i::Expr<'_, 'ids>) -> o::Expr<'a, 'ids> {
         let span = expr.span;
         let (node, ty) = match &expr.node {
             i::ExprNode::Invalid(e) => {

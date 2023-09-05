@@ -22,7 +22,7 @@ use crate::trees::parsed as ast;
 
 pub struct Abstractifier<'a, 'lit, 'err> {
     alloc: &'a Bump,
-    names: &'a Names<'a>,
+    names: &'a Names<'lit>,
     literals: &'lit Arena<Literal>,
     errors: &'err mut Errors,
 
@@ -32,7 +32,7 @@ pub struct Abstractifier<'a, 'lit, 'err> {
 impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
     pub fn new(
         alloc: &'a Bump,
-        names: &'a Names<'a>,
+        names: &'a Names<'lit>,
         literals: &'lit Arena<Literal>,
         errors: &'err mut Errors,
         parse_errors: Vec<(ErrorId, Span)>,
@@ -60,7 +60,7 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         (into.into_bump_slice(), self.parse_errors)
     }
 
-    fn small_name(&mut self, thing: &cst::Thing) -> (Result<Ident, ErrorId>, Span) {
+    fn small_name(&mut self, thing: &cst::Thing) -> (Result<Ident<'lit>, ErrorId>, Span) {
         let span = thing.span;
         let ident = match thing.node {
             cst::Node::Invalid(e) => Err(e),
@@ -78,7 +78,7 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         (ident, span)
     }
 
-    fn parse_number(lit: &str) -> Integer {
+    fn parse_number(&self, lit: &str) -> &'lit Integer {
         let mut res = Integer::ZERO;
 
         for c in lit.chars() {
@@ -88,6 +88,6 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
             res = res * Integer::from(10) + Integer::from(digit);
         }
 
-        res
+        Literal::int(self.literals, res)
     }
 }

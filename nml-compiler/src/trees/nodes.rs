@@ -55,16 +55,16 @@ pub enum ExprNode<'a, 'lit, D: Data> {
 
     /* Records -------------------------------------------------------------- */
     /// `x.a`
-    Field(&'a D::Expr, Result<Label, ErrorId>, Span),
+    Field(&'a D::Expr, Result<Label<'lit>, ErrorId>, Span),
 
     /// `{ a = x, b = y | r }`
     Record(
-        &'a [(Result<Label, ErrorId>, Span, D::Expr)],
+        &'a [(Result<Label<'lit>, ErrorId>, Span, D::Expr)],
         Option<&'a D::Expr>,
     ),
 
     /// `x \ a`
-    Restrict(&'a D::Expr, Label),
+    Restrict(&'a D::Expr, Label<'lit>),
 
     /* Variants ------------------------------------------------------------- */
     /// `A`

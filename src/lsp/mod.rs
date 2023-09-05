@@ -9,9 +9,9 @@ mod tokens;
 use lsp::TraceValue;
 use lsp_types::{self as lsp, Url};
 use nml_compiler::alloc::Bump;
-use nml_compiler::intern::{Arena, ThreadedRodeo};
+use nml_compiler::intern::Arena;
 use nml_compiler::literals::Literal;
-use nml_compiler::names::Ident;
+use nml_compiler::names::Names;
 use nml_compiler::source::{Source, SourceId, Sources};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -87,7 +87,7 @@ struct Server {
     names: HashMap<SourceId, Url>,
     sources: Sources,
 
-    idents: ThreadedRodeo<Ident>,
+    idents: Arena<str>,
     literals: Arena<Literal>,
     errors: HashSet<Url>,
 }
@@ -100,7 +100,7 @@ impl Server {
             names: HashMap::new(),
             sources: Sources::new(),
 
-            idents: ThreadedRodeo::new(),
+            idents: Arena::new(),
             literals: Arena::new(),
             errors: HashSet::new(),
         }
@@ -119,8 +119,9 @@ impl Server {
 
         let mut errors = {
             let alloc = Bump::new();
+            let names = Names::new(&self.idents);
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(&alloc, source).1.errors
+            self.check_source(&names, &alloc, source).errors
         };
 
         self.send_diagnostics(&mut errors);
@@ -134,8 +135,9 @@ impl Server {
 
         let mut errors = {
             let alloc = Bump::new();
+            let names = Names::new(&self.idents);
             let source = self.tracked.get(&name).expect("just inserted");
-            self.check_source(&alloc, source).1.errors
+            self.check_source(&names, &alloc, source).errors
         };
 
         self.send_diagnostics(&mut errors);
@@ -149,8 +151,9 @@ impl Server {
 
             let mut errors = {
                 let alloc = Bump::new();
+                let names = Names::new(&self.idents);
                 let source = self.tracked.get(&name).expect("just inserted");
-                self.check_source(&alloc, source).1.errors
+                self.check_source(&names, &alloc, source).errors
             };
 
             self.send_diagnostics(&mut errors);

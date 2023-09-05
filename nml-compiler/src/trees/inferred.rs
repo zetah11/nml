@@ -27,7 +27,7 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Label;
+    type Variant = Label<'lit>;
 
     type Apply = &'a [Self::Expr; 2];
 }
@@ -40,7 +40,7 @@ impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Label;
+    type Variant = Label<'lit>;
 
     type Apply = Infallible;
 }
