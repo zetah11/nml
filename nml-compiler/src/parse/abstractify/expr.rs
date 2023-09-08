@@ -46,6 +46,12 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::If(self.alloc.alloc([cond, then, elze]))
             }
 
+            cst::Node::Anno(expr, ty) => {
+                let expr = self.alloc.alloc(self.expr(expr));
+                let ty = self.ty(ty);
+                ast::ExprNode::Anno(expr, ty)
+            }
+
             cst::Node::Field(of, fields) => {
                 let mut expr = self.expr(of);
 

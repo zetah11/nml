@@ -66,6 +66,9 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     /// `if x then y else z`
     If(&'a [D::Expr; 3]),
 
+    /// `x : t`
+    Anno(&'a D::Expr, D::Type),
+
     /* Records -------------------------------------------------------------- */
     /// `x.a`
     Field(&'a D::Expr, Result<Label<'lit>, ErrorId>, Span),
@@ -157,22 +160,24 @@ where
 
 impl<D: Data> Copy for ExprNode<'_, '_, D>
 where
+    D::Pattern: Copy,
+    D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
     D::Variant: Copy,
     D::Apply: Copy,
-    D::Pattern: Copy,
     D::GenScope: Copy,
 {
 }
 
 impl<D: Data> Clone for ExprNode<'_, '_, D>
 where
+    D::Pattern: Copy,
+    D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
     D::Variant: Copy,
     D::Apply: Copy,
-    D::Pattern: Copy,
     D::GenScope: Copy,
 {
     fn clone(&self) -> Self {

@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 pub use self::pretty::{Prettifier, Pretty};
-pub use self::types::{Env, Row, Scheme, Type};
+pub use self::types::{Env, Generic, Row, Scheme, Type};
 
 mod infer;
+mod lower;
 mod pattern;
 mod pretty;
 mod solve;
@@ -14,7 +17,7 @@ use bumpalo::Bump;
 
 use self::solve::Solver;
 use crate::errors::Errors;
-use crate::names::Names;
+use crate::names::{Name, Names};
 use crate::source::Span;
 use crate::trees::{inferred, resolved};
 
@@ -53,6 +56,9 @@ struct Checker<'a, 'err, 'ids, 'p> {
     errors: &'err mut Errors,
     pretty: &'p mut Pretty<'a, 'ids>,
     holes: Vec<(Span, &'a Type<'a>)>,
+
+    /// Binds syntactical generic names like `'a` to their generic type.
+    explicit_generics: BTreeMap<Name, Generic>,
 }
 
 impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
@@ -68,6 +74,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             errors,
             pretty,
             holes: Vec::new(),
+
+            explicit_generics: BTreeMap::new(),
         }
     }
 
@@ -97,7 +105,14 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                         this.solver
                             .minimize(&mut pretty, this.alloc, &keep, pattern.ty);
 
-                        let scope = self.alloc.alloc_slice_fill_iter(scope.iter().copied());
+                        let scope = this.alloc.alloc_slice_fill_iter(scope.iter().map(|name| {
+                            let generic = this
+                                .explicit_generics
+                                .get(name)
+                                .expect("all generic names are defined");
+                            (*name, *generic)
+                        }));
+
                         inferred::BoundItemNode::Let(pattern, expr, scope)
                     }
                 };
@@ -213,7 +228,6 @@ fn to_name(n: usize) -> String {
 #[cfg(test)]
 fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
     use crate::tyck::solve::TypeVar;
-    use std::collections::BTreeMap;
 
     fn inner(subst: &mut BTreeMap<TypeVar, TypeVar>, t: &Type, u: &Type) -> bool {
         match (t, u) {

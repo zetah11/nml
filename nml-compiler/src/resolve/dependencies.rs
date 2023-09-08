@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
 use crate::names::Name;
-use crate::trees::resolved::{Expr, ExprNode, Item, ItemNode, Pattern, PatternNode};
+use crate::trees::resolved::{
+    Expr, ExprNode, Item, ItemNode, Pattern, PatternNode, Type, TypeNode,
+};
 
 use super::{ItemId, Resolver};
 
@@ -36,6 +38,11 @@ impl Resolver<'_, '_, '_> {
                 self.in_expr(ignore, out, cond);
                 self.in_expr(ignore, out, then);
                 self.in_expr(ignore, out, elze);
+            }
+
+            ExprNode::Anno(expr, ty) => {
+                self.in_expr(ignore, out, expr);
+                self.in_type(ignore, out, ty);
             }
 
             ExprNode::Field(expr, _, _) | ExprNode::Restrict(expr, _) => {
@@ -104,6 +111,18 @@ impl Resolver<'_, '_, '_> {
             }
 
             PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
+        }
+    }
+
+    fn in_type(&self, ignore: &mut BTreeSet<Name>, out: &mut BTreeSet<ItemId>, ty: &Type) {
+        let _ = (self, &*ignore, &*out);
+
+        match &ty.node {
+            TypeNode::Invalid(_) | TypeNode::Hole => {}
+            TypeNode::Function([t, u]) => {
+                self.in_type(ignore, out, t);
+                self.in_type(ignore, out, u);
+            }
         }
     }
 }

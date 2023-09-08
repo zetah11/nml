@@ -44,6 +44,12 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::ExprNode::If(self.alloc.alloc([cond, then, elze]))
             }
 
+            parsed::ExprNode::Anno(expr, ty) => {
+                let expr = self.alloc.alloc(self.expr(item, expr));
+                let ty = self.ty(ty);
+                resolved::ExprNode::Anno(expr, ty)
+            }
+
             parsed::ExprNode::Field(of, field, field_span) => {
                 let of = self.expr(item, of);
                 let of = self.alloc.alloc(of);

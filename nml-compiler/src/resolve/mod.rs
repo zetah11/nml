@@ -2,6 +2,7 @@ mod dependencies;
 mod expr;
 mod operators;
 mod pattern;
+mod types;
 
 use std::collections::BTreeMap;
 

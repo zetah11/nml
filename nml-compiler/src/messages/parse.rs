@@ -81,6 +81,13 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn expected_type(&mut self) -> ErrorId {
+        let error = self
+            .error("expected a type")
+            .with_note("types include wildcards (`_`) and function types (`t -> u`)");
+        self.errors.add(error)
+    }
+
     pub fn infix_function(&mut self, name: &str) -> ErrorId {
         let error = self.error(format!("`{name}` is an infix function"));
         self.errors.add(error)

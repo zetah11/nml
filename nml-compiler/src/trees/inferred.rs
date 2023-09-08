@@ -6,7 +6,7 @@ use crate::errors::{ErrorId, Errors};
 use crate::names::{Label, Name};
 use crate::resolve::ItemId;
 use crate::source::Span;
-use crate::tyck::{Scheme, Type};
+use crate::tyck::{Generic, Scheme, Type};
 
 pub struct Program<'a, 'lit> {
     pub items: &'a [&'a [Item<'a, 'lit>]],
@@ -31,7 +31,7 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type Variant = Label<'lit>;
 
     type Apply = &'a [Self::Expr; 2];
-    type GenScope = &'a [Name];
+    type GenScope = &'a [(Name, Generic)];
 }
 
 impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
@@ -104,5 +104,5 @@ impl<'a, 'lit, T> nodes::Data for BoundData<'a, 'lit, T> {
     type Variant = Name;
 
     type Apply = Infallible;
-    type GenScope = &'a [Name];
+    type GenScope = &'a [(Name, Generic)];
 }

@@ -71,6 +71,20 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 (o::ExprNode::If(terms), ty)
             }
 
+            i::ExprNode::Anno(expr, ty) => {
+                trace!("infer anno");
+                let expr = self.infer(expr);
+                let ty = self.lower(ty);
+
+                let mut pretty = self.pretty.build();
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, ty, expr.ty);
+
+                trace!("done anno");
+
+                return expr;
+            }
+
             i::ExprNode::Field(record, label, label_span) => {
                 trace!("infer field");
                 let record = self.infer(record);
@@ -297,7 +311,14 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                     (pattern, bound)
                 });
 
-                let scope = self.alloc.alloc_slice_fill_iter(scope.iter().copied());
+                let scope = self.alloc.alloc_slice_fill_iter(scope.iter().map(|name| {
+                    let generic = self
+                        .explicit_generics
+                        .get(name)
+                        .expect("all generic names are defined");
+                    (*name, *generic)
+                }));
+
                 let pattern = self.generalize(&pattern);
 
                 trace!("done let");

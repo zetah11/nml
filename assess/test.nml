@@ -1,3 +1,1 @@
-let infix $ f x = f x
-let age person = person.age
-let child = age $ (age $ { age = { age = 5 }})  -- rightfix coming to a cinema near you
+let bonk = 5 : _
