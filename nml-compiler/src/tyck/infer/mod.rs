@@ -269,7 +269,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 (o::ExprNode::Apply(terms), u)
             }
 
-            i::ExprNode::Let(pattern, [bound, body]) => {
+            i::ExprNode::Let(pattern, [bound, body], scope) => {
                 trace!("infer let");
                 let (pattern, bound) = self.enter(|this| {
                     let bound = this.infer(bound);
@@ -297,13 +297,14 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                     (pattern, bound)
                 });
 
+                let scope = self.alloc.alloc_slice_fill_iter(scope.iter().copied());
                 let pattern = self.generalize(&pattern);
 
                 trace!("done let");
                 let body = self.infer(body);
                 let ty = body.ty;
                 let terms = self.alloc.alloc([bound, body]);
-                (o::ExprNode::Let(pattern, terms), ty)
+                (o::ExprNode::Let(pattern, terms, scope), ty)
             }
 
             i::ExprNode::Small(v) | i::ExprNode::Big(v) => match *v {},

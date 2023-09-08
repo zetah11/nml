@@ -39,6 +39,8 @@ pub enum Node<'a> {
     Apply(Vec<&'a Thing<'a>>),
     Field(&'a Thing<'a>, Vec<(Name<'a>, Span)>),
 
+    Anno(&'a Thing<'a>, &'a Thing<'a>),
+
     Record {
         defs: Vec<ValueDef<'a>>,
         extends: Vec<&'a Thing<'a>>,

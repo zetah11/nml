@@ -7,6 +7,7 @@ mod expr;
 mod items;
 mod lambda;
 mod pattern;
+mod types;
 
 use bumpalo::Bump;
 use internment::Arena;

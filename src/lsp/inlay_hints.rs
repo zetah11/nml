@@ -43,7 +43,7 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
         for item in items {
             match &item.node {
                 ItemNode::Invalid(_) => {}
-                ItemNode::Let(pattern, _) => {
+                ItemNode::Let(pattern, _, _) => {
                     self.pattern(pattern);
                 }
             }

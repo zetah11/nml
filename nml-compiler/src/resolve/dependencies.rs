@@ -9,7 +9,7 @@ impl Resolver<'_, '_, '_> {
     pub fn dependencies(&self, item: &Item) -> BTreeSet<ItemId> {
         match &item.node {
             ItemNode::Invalid(_) => BTreeSet::new(),
-            ItemNode::Let(pattern, body) => {
+            ItemNode::Let(pattern, body, _) => {
                 let mut ignore = BTreeSet::new();
                 let mut depends = BTreeSet::new();
                 self.in_pattern(&mut ignore, &mut depends, pattern);
@@ -66,7 +66,7 @@ impl Resolver<'_, '_, '_> {
                 }
             }
 
-            ExprNode::Let(binding, [bound, body]) => {
+            ExprNode::Let(binding, [bound, body], _) => {
                 self.in_pattern(ignore, out, binding);
                 self.in_expr(ignore, out, bound);
                 self.in_expr(ignore, out, body);

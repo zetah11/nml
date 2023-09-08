@@ -85,7 +85,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             for item in items {
                 let node = match &item.node {
                     resolved::ItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(*e),
-                    resolved::ItemNode::Let(pattern, expr) => {
+                    resolved::ItemNode::Let(pattern, expr, scope) => {
                         let mut wildcards = Vec::new();
                         let pattern = this.infer_pattern(&mut wildcards, pattern);
 
@@ -97,7 +97,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                         this.solver
                             .minimize(&mut pretty, this.alloc, &keep, pattern.ty);
 
-                        inferred::BoundItemNode::Let(pattern, expr)
+                        let scope = self.alloc.alloc_slice_fill_iter(scope.iter().copied());
+                        inferred::BoundItemNode::Let(pattern, expr, scope)
                     }
                 };
 
@@ -113,7 +114,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             for item in typed_items {
                 let node = match item.node {
                     inferred::BoundItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(e),
-                    inferred::BoundItemNode::Let(pattern, body) => {
+                    inferred::BoundItemNode::Let(pattern, body, scope) => {
                         let body = this.infer(body);
 
                         let mut pretty = this.pretty.build();
@@ -126,7 +127,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                             body.ty,
                         );
 
-                        inferred::BoundItemNode::Let(pattern, body)
+                        inferred::BoundItemNode::Let(pattern, body, scope)
                     }
                 };
 
@@ -145,9 +146,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                 let span = item.span;
                 let node = match item.node {
                     inferred::BoundItemNode::Invalid(e) => inferred::ItemNode::Invalid(e),
-                    inferred::BoundItemNode::Let(pattern, expr) => {
+                    inferred::BoundItemNode::Let(pattern, expr, scope) => {
                         let pattern = self.generalize(&pattern);
-                        inferred::ItemNode::Let(pattern, expr)
+                        inferred::ItemNode::Let(pattern, expr, scope)
                     }
                 };
 

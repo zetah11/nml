@@ -10,6 +10,7 @@ impl<'a, 'b, 'lit> nodes::Data for Data<'a, 'b, 'lit> {
     type Item = Item<'a, 'b, 'lit>;
     type Expr = &'b parsed::Expr<'b, 'lit>;
     type Pattern = resolved::Pattern<'a, 'lit>;
+    type Type = &'b parsed::Type<'b, 'lit>;
 
     type ExprName = Infallible;
     type PatternName = Infallible;
@@ -17,6 +18,7 @@ impl<'a, 'b, 'lit> nodes::Data for Data<'a, 'b, 'lit> {
     type Variant = Infallible;
 
     type Apply = Infallible;
+    type GenScope = ();
 }
 
 pub struct Item<'a, 'b, 'lit> {

@@ -118,9 +118,9 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let span = item.span;
         let node = match &item.node {
             parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
-            parsed::ItemNode::Let(pattern, expr) => {
+            parsed::ItemNode::Let(pattern, expr, ()) => {
                 let pattern = self.pattern(id, pattern);
-                declared::ItemNode::Let(pattern, expr)
+                declared::ItemNode::Let(pattern, expr, ())
             }
         };
 
@@ -132,9 +132,9 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let span = item.span;
         let node = match item.node {
             declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
-            declared::ItemNode::Let(pattern, expr) => {
+            declared::ItemNode::Let(pattern, expr, ()) => {
                 let expr = self.expr(id, expr);
-                resolved::ItemNode::Let(pattern, expr)
+                resolved::ItemNode::Let(pattern, expr, self.alloc.alloc([]))
             }
         };
 

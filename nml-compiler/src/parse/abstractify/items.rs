@@ -70,7 +70,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         };
 
         let span = def.span;
-        let node = ast::ItemNode::Let(pattern, body);
+        let node = ast::ItemNode::Let(pattern, body, ());
         ast::Item { node, span }
     }
 }

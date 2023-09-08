@@ -14,11 +14,11 @@ start         = things
 things        = *thing
 
 thing         = item{lambda}
-simple        = item{apply}
+simple        = item{anno}
 item{default} = let / if / case / default
 
 let           = "let" def *("and" def) ["in" thing]
-def           = apply "=" thing
+def           = anno "=" thing
 
 if            = "if" thing "do" thing ("else" thing / "end")
 case          = "case" [arrow] [lambda] "end"
@@ -26,6 +26,7 @@ case          = "case" [arrow] [lambda] "end"
 lambda        = ["|"] arrow *("|" arrow)
 arrow         = simple ["=>" arrow]
 
+anno          = apply [":" apply]
 apply         = 1*field
 field         = base *("." name)
 base          = name / NUMBER / "_" / "infix" / "postfix"

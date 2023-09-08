@@ -40,6 +40,8 @@ pub enum Token<'src> {
     Comma,
     #[token(".")]
     Dot,
+    #[token(":")]
+    Colon,
     #[token("=")]
     Equal,
     #[token("=>")]

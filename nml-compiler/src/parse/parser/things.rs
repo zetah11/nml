@@ -67,7 +67,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// simple = item{apply}
     /// ```
     fn simple(&mut self) -> &'a Thing<'a> {
-        self.item(Self::apply)
+        self.item(Self::anno)
     }
 
     /// ```abnf
@@ -129,7 +129,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn def(&mut self, opener: Option<Span>) -> ValueDef<'a> {
         trace!("parse def");
 
-        let pattern = self.apply();
+        let pattern = self.anno();
         let definition = self.consume(Token::Equal).map(|_| self.thing());
 
         trace!("done def");
@@ -280,6 +280,22 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             let result = self.arrow();
             let span = expr.span + arrow + result.span;
             let node = Node::Arrow(expr, result);
+            self.alloc.alloc(Thing { node, span })
+        } else {
+            expr
+        }
+    }
+
+    /// ```abnf
+    /// anno = apply [":" apply]
+    /// ```
+    fn anno(&mut self) -> &'a Thing<'a> {
+        let expr = self.apply();
+
+        if self.consume(Token::Colon).is_some() {
+            let anno = self.apply();
+            let span = expr.span + anno.span;
+            let node = Node::Anno(expr, anno);
             self.alloc.alloc(Thing { node, span })
         } else {
             expr

@@ -145,7 +145,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
         body: Expr<'a, 'ids>,
     ) -> Expr<'a, 'ids> {
         let terms = self.alloc.alloc([bound, body]);
-        self.expr(ExprNode::Let(pattern, terms))
+        self.expr(ExprNode::Let(pattern, terms, self.alloc.alloc([])))
     }
 
     pub fn wildcard(&self) -> Pattern<'a, 'ids> {

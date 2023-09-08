@@ -164,7 +164,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     };
 
                     let span = def.span;
-                    let node = ast::ExprNode::Let(binding, self.alloc.alloc([bound, body]));
+                    let node = ast::ExprNode::Let(binding, self.alloc.alloc([bound, body]), ());
                     body = ast::Expr { node, span };
                 }
 

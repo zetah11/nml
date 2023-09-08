@@ -5,16 +5,29 @@ use crate::names::Label;
 use crate::source::Span;
 
 pub trait Data {
+    /// An item node in the syntax tree.
     type Item;
+    /// An expression node in the syntax tree.
     type Expr;
+    /// A pattern node in the syntax tree.
     type Pattern;
+    /// A type node in the syntax tree (i.e. a type as it appears in the source,
+    /// not an inferred type).
+    type Type;
 
+    /// A small or big name within an expression.
     type ExprName;
+    /// A small or big name within a pattern.
     type PatternName;
+    /// A variable name.
     type Var;
+    /// A variant or label name.
     type Variant;
 
+    /// The representation of an application expression.
     type Apply;
+    /// Additional data bound at a generalization scope.
+    type GenScope;
 }
 
 pub enum ItemNode<D: Data> {
@@ -22,7 +35,7 @@ pub enum ItemNode<D: Data> {
     Invalid(ErrorId),
 
     /// `let a = x`
-    Let(D::Pattern, D::Expr),
+    Let(D::Pattern, D::Expr, D::GenScope),
 }
 
 pub enum ExprNode<'a, 'lit, D: Data> {
@@ -78,7 +91,7 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     Lambda(&'a [(D::Pattern, D::Expr)]),
 
     /// `let a = x in y`
-    Let(D::Pattern, &'a [D::Expr; 2]),
+    Let(D::Pattern, &'a [D::Expr; 2], D::GenScope),
 }
 
 pub enum PatternNode<'a, D: Data> {
@@ -110,12 +123,24 @@ pub enum PatternNode<'a, D: Data> {
     Apply(&'a [D::Pattern; 2]),
 }
 
+pub enum TypeNode<'a, D: Data> {
+    /// Bad stuff.
+    Invalid(ErrorId),
+
+    /// `_`
+    Hole,
+
+    /// `t -> u`
+    Function(&'a [D::Type; 2]),
+}
+
 /* Copy and Clone impls ----------------------------------------------------- */
 
 impl<D: Data> Copy for ItemNode<D>
 where
     D::Pattern: Copy,
     D::Expr: Copy,
+    D::GenScope: Copy,
 {
 }
 
@@ -123,6 +148,7 @@ impl<D: Data> Clone for ItemNode<D>
 where
     D::Pattern: Copy,
     D::Expr: Copy,
+    D::GenScope: Copy,
 {
     fn clone(&self) -> Self {
         *self
@@ -136,6 +162,7 @@ where
     D::Variant: Copy,
     D::Apply: Copy,
     D::Pattern: Copy,
+    D::GenScope: Copy,
 {
 }
 
@@ -146,6 +173,7 @@ where
     D::Variant: Copy,
     D::Apply: Copy,
     D::Pattern: Copy,
+    D::GenScope: Copy,
 {
     fn clone(&self) -> Self {
         *self
@@ -166,6 +194,14 @@ where
     D::Var: Copy,
     D::Variant: Copy,
 {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<D: Data> Copy for TypeNode<'_, D> {}
+
+impl<D: Data> Clone for TypeNode<'_, D> {
     fn clone(&self) -> Self {
         *self
     }

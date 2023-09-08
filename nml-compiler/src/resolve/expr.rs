@@ -85,12 +85,16 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::ExprNode::Lambda(arrows)
             }
 
-            parsed::ExprNode::Let(binding, [bound, body]) => {
+            parsed::ExprNode::Let(binding, [bound, body], ()) => {
                 let binding = self.pattern(item, binding);
                 let bound = self.expr(item, bound);
                 self.scope(Self::name_of(&binding), |this| {
                     let body = this.expr(item, body);
-                    resolved::ExprNode::Let(binding, self.alloc.alloc([bound, body]))
+                    resolved::ExprNode::Let(
+                        binding,
+                        self.alloc.alloc([bound, body]),
+                        self.alloc.alloc([]),
+                    )
                 })
             }
 
