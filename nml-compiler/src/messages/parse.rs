@@ -25,6 +25,18 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn expected_annotation(&mut self, name: &str) -> ErrorId {
+        let error = self
+            .error("expected a type annotation")
+            .with_help(format!("try using a wildcard type: `{name} : _`"));
+        self.errors.add(error)
+    }
+
+    pub fn expected_annotated_name(&mut self) -> ErrorId {
+        let error = self.error("expected a name with a type annotation");
+        self.errors.add(error)
+    }
+
     pub fn expected_case_arm(&mut self) -> ErrorId {
         let error = self
             .error("expected a case arm")
@@ -128,6 +140,16 @@ impl ParseErrors<'_> {
 
     pub fn postfix_function(&mut self, name: &str) -> ErrorId {
         let error = self.error(format!("`{name}` is a postfix function"));
+        self.errors.add(error)
+    }
+
+    pub fn record_type_extension(&mut self) -> ErrorId {
+        let error = self.error("extensions in record types are not supported");
+        self.errors.add(error)
+    }
+
+    pub fn record_type_field_definition(&mut self) -> ErrorId {
+        let error = self.error("record type field may not be defined");
         self.errors.add(error)
     }
 

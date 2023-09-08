@@ -53,7 +53,7 @@ pub struct Type<'a, 'lit> {
 pub type ItemNode<'a, 'lit> = nodes::ItemNode<Data<'a, 'lit>>;
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, Data<'a, 'lit>>;
 pub type PatternNode<'a, 'lit> = nodes::PatternNode<'a, Data<'a, 'lit>>;
-pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, Data<'a, 'lit>>;
+pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Data<'a, 'lit>>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Affix {

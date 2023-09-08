@@ -1,5 +1,1 @@
-let infix o f g = x => f (g x)
-let postfix id x = x
-
-let a = ((id) o (id)) 5
-let b : _ = (o) (id) (id) 5
+let person : { x : {} } = { x = {} }

@@ -127,10 +127,16 @@ impl Resolver<'_, '_, '_> {
         let _ = (self, &*ignore, &*out);
 
         match &ty.node {
-            TypeNode::Invalid(_) | TypeNode::Hole => {}
+            TypeNode::Invalid(_) | TypeNode::Wildcard => {}
             TypeNode::Function([t, u]) => {
                 self.in_type(ignore, out, t);
                 self.in_type(ignore, out, u);
+            }
+
+            TypeNode::Record(fields) => {
+                for (.., ty) in fields.iter() {
+                    self.in_type(ignore, out, ty);
+                }
             }
         }
     }

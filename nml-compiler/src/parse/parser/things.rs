@@ -124,7 +124,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     ];
 
     /// ```abnf
-    /// def = apply "=" thing
+    /// def = apply ["=" thing]
     /// ```
     fn def(&mut self, opener: Option<Span>) -> ValueDef<'a> {
         trace!("parse def");

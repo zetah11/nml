@@ -6,11 +6,25 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     pub(super) fn lower(&mut self, ty: &i::Type<'_, 'ids>) -> &'a o::Type<'a> {
         let ty = match &ty.node {
             i::TypeNode::Invalid(e) => o::Type::Invalid(*e),
-            i::TypeNode::Hole => return self.fresh(),
+            i::TypeNode::Wildcard => return self.fresh(),
+
             i::TypeNode::Function([t, u]) => {
                 let t = self.lower(t);
                 let u = self.lower(u);
                 o::Type::Fun(t, u)
+            }
+
+            i::TypeNode::Record(fields) => {
+                let mut row: &_ = self.alloc.alloc(o::Row::Empty);
+
+                for (field_name, _, ty) in fields.iter() {
+                    let ty = self.lower(ty);
+                    if let Ok(field_name) = field_name {
+                        row = self.alloc.alloc(o::Row::Extend(*field_name, ty, row));
+                    }
+                }
+
+                o::Type::Record(self.alloc.alloc(row))
             }
         };
 

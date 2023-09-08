@@ -132,15 +132,18 @@ pub enum PatternNode<'a, D: Data> {
     Apply(&'a [D::Pattern; 2]),
 }
 
-pub enum TypeNode<'a, D: Data> {
+pub enum TypeNode<'a, 'lit, D: Data> {
     /// Bad stuff.
     Invalid(ErrorId),
 
     /// `_`
-    Hole,
+    Wildcard,
 
     /// `t -> u`
     Function(&'a [D::Type; 2]),
+
+    /// `{ a : t, b : u }`
+    Record(&'a [(Result<Label<'lit>, ErrorId>, Span, D::Type)]),
 }
 
 /* Copy and Clone impls ----------------------------------------------------- */
@@ -212,9 +215,9 @@ where
     }
 }
 
-impl<D: Data> Copy for TypeNode<'_, D> {}
+impl<D: Data> Copy for TypeNode<'_, '_, D> {}
 
-impl<D: Data> Clone for TypeNode<'_, D> {
+impl<D: Data> Clone for TypeNode<'_, '_, D> {
     fn clone(&self) -> Self {
         *self
     }
