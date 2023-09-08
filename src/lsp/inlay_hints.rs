@@ -61,6 +61,8 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
                 self.hint_scheme(pattern.span, &pattern.scheme);
             }
 
+            PolyPatternNode::Anno(..) => {}
+
             PolyPatternNode::Deconstruct(_, pattern) => {
                 self.pattern(pattern);
             }

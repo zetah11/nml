@@ -122,6 +122,9 @@ pub enum PatternNode<'a, D: Data> {
     /// A named pattern (e.g. a defined constructor)
     Named(D::Var),
 
+    /// `a : t`
+    Anno(&'a D::Pattern, D::Type),
+
     /// An anonymous variant
     Deconstruct(D::Variant, &'a D::Pattern),
 
@@ -190,6 +193,7 @@ where
 
 impl<D: Data> Copy for PatternNode<'_, D>
 where
+    D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
     D::Variant: Copy,
@@ -198,6 +202,7 @@ where
 
 impl<D: Data> Clone for PatternNode<'_, D>
 where
+    D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
     D::Variant: Copy,

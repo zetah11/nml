@@ -38,7 +38,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
-            PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
+            PatternNode::Small(v) | PatternNode::Big(v) | PatternNode::Anno(_, v) => match *v {},
         };
 
         PolyPattern { node, span, scheme }
@@ -76,7 +76,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
-            PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
+            PatternNode::Small(v) | PatternNode::Big(v) | PatternNode::Anno(_, v) => match *v {},
         };
 
         PolyPattern { node, span, scheme }

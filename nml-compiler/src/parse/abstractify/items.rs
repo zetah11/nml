@@ -52,7 +52,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             });
 
         let (pattern, body) = match pattern {
-            AbstractPattern::Fun((affix, name, name_span), args, _) => {
+            AbstractPattern::Fun((affix, name, name_span), args, types, _) => {
                 let node = ast::PatternNode::Small((affix, name));
                 let pattern = ast::Pattern {
                     node,
@@ -60,6 +60,17 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 };
 
                 let mut body = body;
+
+                for ty in types.into_iter() {
+                    let span = body.span + ty.span;
+                    let annee = self.alloc.alloc(body);
+                    let node = ast::ExprNode::Anno(annee, ty);
+                    body = ast::Expr { node, span };
+                }
+
+                // Iterate over the names in _reverse_ order since they range
+                // outermost to innermost (e.g. `a => b => ...` is
+                // `(a, (b, ...))`).
                 for arg in args.into_iter().rev() {
                     let span = arg.span + body.span;
                     let terms = self.alloc.alloc([(arg, body)]);

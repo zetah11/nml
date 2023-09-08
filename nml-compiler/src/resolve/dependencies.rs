@@ -105,6 +105,11 @@ impl Resolver<'_, '_, '_> {
                 out.extend(self.items.get(name).copied());
             }
 
+            PatternNode::Anno(pattern, ty) => {
+                self.in_pattern(ignore, out, pattern);
+                self.in_type(ignore, out, ty);
+            }
+
             PatternNode::Deconstruct(_, pattern) => {
                 self.in_pattern(ignore, out, pattern);
             }

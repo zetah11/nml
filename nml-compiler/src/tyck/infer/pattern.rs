@@ -1,8 +1,8 @@
 use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
-impl<'a> Checker<'a, '_, '_, '_> {
-    pub fn infer_pattern<'lit>(
+impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
+    pub fn infer_pattern(
         &mut self,
         wildcards: &mut Vec<&'a Type<'a>>,
         pattern: &i::Pattern<'_, 'lit>,
@@ -31,6 +31,17 @@ impl<'a> Checker<'a, '_, '_, '_> {
                 let mut pretty = self.pretty.build();
                 let ty = self.solver.instantiate(&mut pretty, self.alloc, scheme);
                 (o::MonoPatternNode::Named(*name), ty)
+            }
+
+            i::PatternNode::Anno(pattern, ty) => {
+                let pattern = self.infer_pattern(wildcards, pattern);
+                let ty = self.lower(ty);
+
+                let mut pretty = self.pretty.build();
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, ty, pattern.ty);
+
+                return pattern;
             }
 
             i::PatternNode::Deconstruct(label, pattern) => {

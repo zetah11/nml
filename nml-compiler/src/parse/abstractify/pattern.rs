@@ -11,6 +11,7 @@ pub enum AbstractPattern<'a, 'lit> {
     Fun(
         (ast::Affix, Ident<'lit>, Span),
         Vec<ast::Pattern<'a, 'lit>>,
+        Vec<ast::Type<'a, 'lit>>,
         Span,
     ),
     Single(ast::Pattern<'a, 'lit>),
@@ -50,6 +51,25 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 return AbstractPattern::Single(self.name(ast::Affix::Prefix, node))
             }
 
+            cst::Node::Anno(pattern, ty) => {
+                let pattern = self.pattern(pattern);
+                let ty = self.ty(ty);
+                return match pattern {
+                    AbstractPattern::Single(pattern) => {
+                        let pattern = self.alloc.alloc(pattern);
+                        let span = pattern.span + ty.span;
+                        let node = ast::PatternNode::Anno(pattern, ty);
+                        AbstractPattern::Single(ast::Pattern { node, span })
+                    }
+
+                    AbstractPattern::Fun(head, args, mut types, span) => {
+                        let span = span + ty.span;
+                        types.push(ty);
+                        AbstractPattern::Fun(head, args, types, span)
+                    }
+                };
+            }
+
             cst::Node::Apply(things) => {
                 let mut nodes = Vec::with_capacity(things.len());
                 let mut affix = None;
@@ -74,8 +94,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let mut fun = nodes.next().expect("`apply` contains at least one node");
 
                 if let Some(name) = Self::fun_name(&fun) {
-                    let args = nodes.collect();
-                    return AbstractPattern::Fun(name, args, span);
+                    let args: Vec<_> = nodes.collect();
+                    return AbstractPattern::Fun(name, args, vec![], span);
                 } else {
                     for arg in nodes {
                         let span = fun.span + arg.span;

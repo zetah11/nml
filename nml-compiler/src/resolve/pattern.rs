@@ -53,6 +53,12 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
+            parsed::PatternNode::Anno(pattern, ty) => {
+                let pattern = self.alloc.alloc(self.pattern(item, pattern));
+                let ty = self.ty(ty);
+                resolved::PatternNode::Anno(pattern, ty)
+            }
+
             parsed::PatternNode::Bind(x) => match *x {},
             parsed::PatternNode::Named(x) => match *x {},
             parsed::PatternNode::Deconstruct(x, _) => match *x {},
