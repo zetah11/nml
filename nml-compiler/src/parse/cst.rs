@@ -18,6 +18,8 @@ pub enum Node<'a> {
     Name(Name<'a>),
     Number(&'a str),
 
+    Group(&'a Thing<'a>),
+
     Let {
         defs: (ValueDef<'a>, Vec<ValueDef<'a>>),
 

@@ -50,6 +50,11 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::ExprNode::Anno(expr, ty)
             }
 
+            parsed::ExprNode::Group(expr) => {
+                let expr = self.alloc.alloc(self.expr(item, expr));
+                resolved::ExprNode::Group(expr)
+            }
+
             parsed::ExprNode::Field(of, field, field_span) => {
                 let of = self.expr(item, of);
                 let of = self.alloc.alloc(of);

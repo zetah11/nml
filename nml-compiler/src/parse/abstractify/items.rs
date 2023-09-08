@@ -25,6 +25,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 return;
             }
 
+            cst::Node::Group(item) => {
+                return self.item(into, item);
+            }
+
             _ => {
                 let e = self.errors.parse_error(span).expected_item();
                 ast::ItemNode::Invalid(e)

@@ -401,16 +401,18 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             trace!("parse group");
             let thing = self.thing();
             trace!("done group");
-            if self.consume(Token::RightParen).is_none() {
+            if let Some(closer) = self.consume(Token::RightParen) {
+                let span = opener + closer;
+                let node = Node::Group(thing);
+                (node, span)
+            } else {
                 let e = self
                     .errors
                     .parse_error(opener)
                     .unclosed_paren(self.current_span);
                 let span = self.closest_span();
                 let node = Node::Invalid(e);
-                return self.alloc.alloc(Thing { node, span });
-            } else {
-                return thing;
+                (node, span)
             }
         } else if let Some(opener) = self.consume(Token::LeftBrace) {
             trace!("parse record");

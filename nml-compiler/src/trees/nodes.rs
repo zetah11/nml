@@ -69,6 +69,9 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     /// `x : t`
     Anno(&'a D::Expr, D::Type),
 
+    /// `(x)`
+    Group(&'a D::Expr),
+
     /* Records -------------------------------------------------------------- */
     /// `x.a`
     Field(&'a D::Expr, Result<Label<'lit>, ErrorId>, Span),

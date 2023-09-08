@@ -23,12 +23,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         let span = node.span;
         match &node.node {
             cst::Node::Invalid(e) => {
-                let pattern = ast::PatternNode::Invalid(*e);
+                let node = ast::PatternNode::Invalid(*e);
                 let expr = ast::ExprNode::Invalid(*e);
-                let pattern = ast::Pattern {
-                    node: pattern,
-                    span,
-                };
+                let pattern = ast::Pattern { node, span };
                 let expr = ast::Expr { node: expr, span };
                 (pattern, expr)
             }
@@ -37,6 +34,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let pattern = self.single_pattern(pattern);
                 let body = self.expr(body);
                 (pattern, body)
+            }
+
+            cst::Node::Group(node) => {
+                return self.arrow(node);
             }
 
             _ => {

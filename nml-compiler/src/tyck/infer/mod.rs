@@ -85,6 +85,10 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 return expr;
             }
 
+            i::ExprNode::Group(expr) => {
+                return self.infer(expr);
+            }
+
             i::ExprNode::Field(record, label, label_span) => {
                 trace!("infer field");
                 let record = self.infer(record);

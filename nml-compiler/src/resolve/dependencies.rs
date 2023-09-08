@@ -45,6 +45,10 @@ impl Resolver<'_, '_, '_> {
                 self.in_type(ignore, out, ty);
             }
 
+            ExprNode::Group(expr) => {
+                self.in_expr(ignore, out, expr);
+            }
+
             ExprNode::Field(expr, _, _) | ExprNode::Restrict(expr, _) => {
                 self.in_expr(ignore, out, expr);
             }

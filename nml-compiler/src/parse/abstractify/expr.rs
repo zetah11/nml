@@ -52,6 +52,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::Anno(expr, ty)
             }
 
+            cst::Node::Group(expr) => {
+                let expr = self.alloc.alloc(self.expr(expr));
+                ast::ExprNode::Group(expr)
+            }
+
             cst::Node::Field(of, fields) => {
                 let mut expr = self.expr(of);
 
