@@ -15,6 +15,12 @@ pub(crate) struct ParseErrors<'a> {
     primary: Span,
 }
 
+pub enum NonSmallName<'a> {
+    None,
+    Big(&'a str),
+    Universal(&'a str),
+}
+
 impl ParseErrors<'_> {
     pub fn ambiguous_infix_operators(&mut self, prev: Span) -> ErrorId {
         let error = self
@@ -66,21 +72,31 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn expected_name_small(&mut self, big: Option<&str>) -> ErrorId {
+    pub fn expected_name_small(&mut self, got: NonSmallName) -> ErrorId {
         let mut error = self.error("expected a value or type name");
 
-        if let Some(big) = big {
-            let mut chars = big.chars();
-            let fixed: String = chars
-                .next()
-                .expect("names are at least one character long")
-                .to_lowercase()
-                .chain(chars)
-                .collect();
+        match got {
+            NonSmallName::None => {}
+            NonSmallName::Big(big) => {
+                let mut chars = big.chars();
+                let fixed: String = chars
+                    .next()
+                    .expect("names are at least one character long")
+                    .to_lowercase()
+                    .chain(chars)
+                    .collect();
 
-            error = error
-                .with_note("the case of the first letter determines what kind of name it is")
-                .with_help(format!("try making the first letter lowercase: `{fixed}`"));
+                error = error
+                    .with_note("the case of the first letter determines what kind of name it is")
+                    .with_help(format!("try making the first letter lowercase: `{fixed}`"));
+            }
+
+            NonSmallName::Universal(name) => {
+                let fixed = &name[1..]; // the first character is always '\''
+                error = error
+                    .with_note("value names cannot start with a tick `'`")
+                    .with_help(format!("try removing the apostrophe: `{fixed}`"));
+            }
         }
 
         self.errors.add(error)

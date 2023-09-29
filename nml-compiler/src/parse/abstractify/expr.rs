@@ -1,4 +1,5 @@
 use super::Abstractifier;
+use crate::messages::parse::NonSmallName;
 use crate::names::Label;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
@@ -65,10 +66,16 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     let name = match field {
                         cst::Name::Small(name) => Ok(self.names.label(name)),
                         cst::Name::Operator(name) => Ok(self.names.label(name)),
+
                         cst::Name::Big(name) => Err(self
                             .errors
                             .parse_error(field_span)
-                            .expected_name_small(Some(name))),
+                            .expected_name_small(NonSmallName::Big(name))),
+
+                        cst::Name::Universal(name) => Err(self
+                            .errors
+                            .parse_error(field_span)
+                            .expected_name_small(NonSmallName::Universal(name))),
                     };
 
                     let span = expr.span + field_span;

@@ -9,6 +9,9 @@ pub enum Token<'src> {
     #[regex(r"\p{Uppercase_Letter}[\p{XID_Continue}_']*", |lexer| lexer.slice())]
     BigName(&'src str),
 
+    #[regex(r"'[\p{XID_Continue}_][\p{XID_Continue}_']*", |lexer| lexer.slice())]
+    UniversalName(&'src str),
+
     #[regex(r"[0-9][0-9_']*", |lexer| lexer.slice())]
     Number(&'src str),
 

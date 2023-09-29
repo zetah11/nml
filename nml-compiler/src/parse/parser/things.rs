@@ -471,13 +471,14 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// name = SMALL / BIG / OPERATOR
+    /// name = SMALL / BIG / OPERATOR / UNIVERSAL
     /// ```
     fn name(&mut self) -> Option<(Name<'a>, Span)> {
         let (name, span) = match self.next.as_ref()? {
             (Token::SmallName(name), span) => (Name::Small(name), *span),
             (Token::BigName(name), span) => (Name::Big(name), *span),
             (Token::Operator(name), span) => (Name::Operator(name), *span),
+            (Token::UniversalName(name), span) => (Name::Universal(name), *span),
             _ => return None,
         };
 
