@@ -221,11 +221,12 @@ impl<'a> Solver<'a> {
         &mut self,
         pretty: &mut Prettifier,
         alloc: &'a Bump,
+        explicit: &[Generic],
         ty: &'a Type<'a>,
     ) -> Scheme<'a> {
         trace!("gen {}", pretty.ty(self.apply(alloc, ty)));
 
-        let mut subst = BTreeSet::new();
+        let mut subst = explicit.iter().copied().collect();
         let ty = self.gen_ty(alloc, &mut subst, ty);
         let params = subst.into_iter().collect();
         Scheme { params, ty }
@@ -249,7 +250,7 @@ impl<'a> Solver<'a> {
                 if let Some(ty) = self.subst.get(v) {
                     self.gen_ty(alloc, subst, ty)
                 } else if level.can_generalize(self.level) {
-                    let name = Generic(*v);
+                    let name = Generic::Implicit(*v);
                     subst.insert(name);
                     let ty = alloc.alloc(Type::Param(name));
                     let prev = self.subst.insert(*v, ty);
@@ -291,7 +292,7 @@ impl<'a> Solver<'a> {
                 if let Some(record) = self.row_subst.get(v) {
                     self.gen_row(alloc, subst, record)
                 } else if level.can_generalize(self.level) {
-                    let name = Generic(*v);
+                    let name = Generic::Implicit(*v);
                     subst.insert(name);
                     let row = alloc.alloc(Row::Param(name));
                     let prev = self.row_subst.insert(*v, row);

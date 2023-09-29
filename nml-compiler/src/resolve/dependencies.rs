@@ -127,7 +127,7 @@ impl Resolver<'_, '_, '_> {
         let _ = (self, &*ignore, &*out);
 
         match &ty.node {
-            TypeNode::Invalid(_) | TypeNode::Wildcard => {}
+            TypeNode::Invalid(_) | TypeNode::Wildcard | TypeNode::Universal(_) => {}
             TypeNode::Function([t, u]) => {
                 self.in_type(ignore, out, t);
                 self.in_type(ignore, out, u);

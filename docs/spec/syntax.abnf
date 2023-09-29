@@ -38,5 +38,5 @@ name          = SMALL / BIG / OPERATOR / UNIVERSAL
 SMALL         = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
 BIG           = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
 OPERATOR      = 1*(PUNCTUATION / SYMBOL)
-UNIVERSAL     = "'" (XID_CONTINUE / _) *(XID_CONTINUE / "'" / "_")
+UNIVERSAL     = "'" 1*(XID_CONTINUE / "'" / "_")
 NUMBER        = DIGIT *(DIGIT / "'" / "_")

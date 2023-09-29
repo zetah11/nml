@@ -39,8 +39,14 @@ pub enum VarKind {
     Row,
 }
 
+//#[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
+//pub struct Generic(pub TypeVar);
+
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
-pub struct Generic(pub TypeVar);
+pub enum Generic {
+    Implicit(TypeVar),
+    Ticked(Name),
+}
 
 #[derive(Clone, Debug)]
 pub struct Scheme<'a> {

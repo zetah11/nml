@@ -1,12 +1,19 @@
 use crate::trees::inferred::{MonoPattern, PolyPattern};
 use crate::trees::nodes::PatternNode;
 
-use super::{Checker, Scheme};
+use super::{Checker, Generic, Scheme};
 
 impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
-    pub(super) fn generalize(&mut self, pattern: &MonoPattern<'a, 'ids>) -> PolyPattern<'a, 'ids> {
+    pub(super) fn generalize(
+        &mut self,
+        explicit: &[Generic],
+        pattern: &MonoPattern<'a, 'ids>,
+    ) -> PolyPattern<'a, 'ids> {
         let mut pretty = self.pretty.build();
-        let scheme = self.solver.generalize(&mut pretty, self.alloc, pattern.ty);
+        let scheme = self
+            .solver
+            .generalize(&mut pretty, self.alloc, explicit, pattern.ty);
+
         self.gen_pattern(&scheme, pattern)
     }
 

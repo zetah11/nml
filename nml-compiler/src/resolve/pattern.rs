@@ -1,4 +1,6 @@
-use crate::names::{Label, Name};
+use std::collections::BTreeMap;
+
+use crate::names::{Ident, Label, Name};
 use crate::trees::{parsed, resolved};
 
 use super::{ItemId, Resolver};
@@ -7,6 +9,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
     pub fn pattern(
         &mut self,
         item: ItemId,
+        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         pattern: &parsed::Pattern<'_, 'lit>,
     ) -> resolved::Pattern<'a, 'lit> {
         let span = pattern.span;
@@ -42,20 +45,20 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 }, arg],
             ) if self.lookup_value(name).is_none() => {
                 let label = Label(*name);
-                let arg = self.pattern(item, arg);
+                let arg = self.pattern(item, gen_scope, arg);
                 let arg = self.alloc.alloc(arg);
                 resolved::PatternNode::Deconstruct(label, arg)
             }
 
             parsed::PatternNode::Apply([fun, arg]) => {
-                let fun = self.pattern(item, fun);
-                let arg = self.pattern(item, arg);
+                let fun = self.pattern(item, gen_scope, fun);
+                let arg = self.pattern(item, gen_scope, arg);
                 resolved::PatternNode::Apply(self.alloc.alloc([fun, arg]))
             }
 
             parsed::PatternNode::Anno(pattern, ty) => {
-                let pattern = self.alloc.alloc(self.pattern(item, pattern));
-                let ty = self.ty(ty);
+                let pattern = self.alloc.alloc(self.pattern(item, gen_scope, pattern));
+                let ty = self.ty(item, gen_scope, ty);
                 resolved::PatternNode::Anno(pattern, ty)
             }
 

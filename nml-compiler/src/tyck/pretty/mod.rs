@@ -53,7 +53,7 @@ impl<'a, 'lit> Pretty<'a, 'lit> {
                 "{}{name}",
                 match var.1 {
                     VarKind::Type => "$",
-                    VarKind::Row => "@",
+                    VarKind::Row => "%",
                 }
             )
         })
@@ -72,8 +72,9 @@ impl Prettifier<'_, '_, '_> {
             let subst: BTreeMap<_, _> = scheme
                 .params
                 .iter()
+                .filter(|generic| matches!(generic, Generic::Implicit(_)))
                 .enumerate()
-                .map(|(idx, generic)| (*generic, format!("'{}", to_name(idx))))
+                .map(|(idx, generic)| (*generic, format!("'{idx}")))
                 .collect();
 
             self.ty_with_subst(scheme.ty, &subst)
@@ -223,9 +224,13 @@ impl Prettifier<'_, '_, '_> {
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {
-        subst
-            .get(name)
-            .expect("attempted to pretty-print unbound generic")
-            .clone()
+        if let Generic::Ticked(name) = name {
+            self.name(name)
+        } else {
+            subst
+                .get(name)
+                .expect("attempted to pretty-print unbound generic")
+                .clone()
+        }
     }
 }

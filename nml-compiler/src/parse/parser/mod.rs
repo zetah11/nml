@@ -100,6 +100,7 @@ impl Matcher for Token<'_> {
             (Token::BigName(_), Token::BigName(_)) => true,
             (Token::SmallName(_), Token::SmallName(_)) => true,
             (Token::Operator(_), Token::Operator(_)) => true,
+            (Token::UniversalName(_), Token::UniversalName(_)) => true,
             (Token::Number(_), Token::Number(_)) => true,
 
             _ => self == token,

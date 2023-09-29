@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use super::{ItemId, Resolver};
-use crate::names::Name;
+use crate::names::{Ident, Name};
 use crate::trees::parsed::Affix;
 use crate::trees::{parsed, resolved};
 
@@ -7,13 +9,14 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
     pub(super) fn apply_run(
         &mut self,
         item: ItemId,
+        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &[parsed::Expr<'_, 'lit>],
     ) -> resolved::Expr<'a, 'lit> {
         let mut infix: Option<(Vec<resolved::Expr>, resolved::Expr, Name)> = None;
         let mut exprs: Vec<resolved::Expr> = Vec::with_capacity(terms.len());
 
         for term in terms {
-            let term = self.expr(item, term);
+            let term = self.expr(item, gen_scope, term);
 
             match &term.node {
                 resolved::ExprNode::Var(name) if self.affii.get(name) == Some(&Affix::Postfix) => {

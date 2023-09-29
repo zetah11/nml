@@ -25,6 +25,7 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type PatternName = (Affix, Ident<'lit>);
     type Var = Infallible;
     type Variant = Infallible;
+    type Universal = Ident<'lit>;
 
     type Apply = &'a [Self::Expr];
     type GenScope = ();

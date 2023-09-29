@@ -29,9 +29,10 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type PatternName = Infallible;
     type Var = Name;
     type Variant = Label<'lit>;
+    type Universal = Infallible;
 
     type Apply = &'a [Self::Expr; 2];
-    type GenScope = &'a [(Name, Generic)];
+    type GenScope = ();
 }
 
 impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
@@ -44,6 +45,7 @@ impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
     type PatternName = Infallible;
     type Var = Name;
     type Variant = Label<'lit>;
+    type Universal = Infallible;
 
     type Apply = Infallible;
     type GenScope = Infallible;
@@ -102,7 +104,8 @@ impl<'a, 'lit, T> nodes::Data for BoundData<'a, 'lit, T> {
     type PatternName = Infallible;
     type Var = Name;
     type Variant = Name;
+    type Universal = Infallible;
 
     type Apply = Infallible;
-    type GenScope = &'a [(Name, Generic)];
+    type GenScope = &'a [Generic];
 }

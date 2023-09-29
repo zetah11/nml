@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
 use std::convert::Infallible;
 
 use super::{nodes, parsed, resolved};
+use crate::names::{Ident, Name};
 use crate::resolve::ItemId;
 use crate::source::Span;
 
@@ -16,9 +18,10 @@ impl<'a, 'b, 'lit> nodes::Data for Data<'a, 'b, 'lit> {
     type PatternName = Infallible;
     type Var = Infallible;
     type Variant = Infallible;
+    type Universal = Infallible;
 
     type Apply = Infallible;
-    type GenScope = ();
+    type GenScope = BTreeMap<Ident<'lit>, Name>;
 }
 
 pub struct Item<'a, 'b, 'lit> {

@@ -16,6 +16,13 @@ pub(crate) struct NameErrors<'a> {
 }
 
 impl NameErrors<'_> {
+    pub fn redefined_type(&mut self, prev: Span, name: &str) -> ErrorId {
+        let error = self
+            .error(format!("redefinition of type `{name}`"))
+            .with_label(prev, "previous definition here");
+        self.errors.add(error)
+    }
+
     pub fn redefined_value(&mut self, prev: Span, name: &str) -> ErrorId {
         let error = self
             .error(format!("redefinition of value `{name}`"))

@@ -4,6 +4,7 @@ use log::trace;
 
 use super::{Checker, Row, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
+use crate::tyck::Generic;
 
 impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
     pub fn infer(&mut self, expr: &i::Expr<'_, 'ids>) -> o::Expr<'a, 'ids> {
@@ -315,21 +316,17 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                     (pattern, bound)
                 });
 
-                let scope = self.alloc.alloc_slice_fill_iter(scope.iter().map(|name| {
-                    let generic = self
-                        .explicit_generics
-                        .get(name)
-                        .expect("all generic names are defined");
-                    (*name, *generic)
-                }));
+                let scope = self
+                    .alloc
+                    .alloc_slice_fill_iter(scope.iter().copied().map(Generic::Ticked));
 
-                let pattern = self.generalize(&pattern);
+                let pattern = self.generalize(scope, &pattern);
 
                 trace!("done let");
                 let body = self.infer(body);
                 let ty = body.ty;
                 let terms = self.alloc.alloc([bound, body]);
-                (o::ExprNode::Let(pattern, terms, scope), ty)
+                (o::ExprNode::Let(pattern, terms, ()), ty)
             }
 
             i::ExprNode::Small(v) | i::ExprNode::Big(v) => match *v {},

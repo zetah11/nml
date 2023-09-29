@@ -120,8 +120,9 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let node = match &item.node {
             parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
             parsed::ItemNode::Let(pattern, expr, ()) => {
-                let pattern = self.pattern(id, pattern);
-                declared::ItemNode::Let(pattern, expr, ())
+                let mut this_scope = BTreeMap::new();
+                let pattern = self.pattern(id, &mut this_scope, pattern);
+                declared::ItemNode::Let(pattern, expr, this_scope)
             }
         };
 
@@ -133,13 +134,48 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let span = item.span;
         let node = match item.node {
             declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
-            declared::ItemNode::Let(pattern, expr, ()) => {
-                let expr = self.expr(id, expr);
-                resolved::ItemNode::Let(pattern, expr, self.alloc.alloc([]))
+            declared::ItemNode::Let(pattern, expr, mut this_scope) => {
+                let expr = self.expr(id, &mut this_scope, expr);
+                resolved::ItemNode::Let(
+                    pattern,
+                    expr,
+                    self.alloc.alloc_slice_fill_iter(this_scope.into_values()),
+                )
             }
         };
 
         resolved::Item { id, node, span }
+    }
+
+    fn define_type(
+        &mut self,
+        item: ItemId,
+        at: Span,
+        affix: Affix,
+        ident: Ident<'lit>,
+    ) -> Result<Name, ErrorId> {
+        let name = self.names.name(self.scopes.1.name, ident);
+        let prev = self.items.insert(name, item);
+        debug_assert!(prev.is_none());
+
+        let result = if let Some(prev) = self.scopes.1.types.insert(ident, name) {
+            let prev_span = self
+                .spans
+                .get(&prev)
+                .expect("all defined names have a defining span");
+            let name = self.names.get_ident(&ident);
+            Err(self.errors.name_error(at).redefined_type(*prev_span, name))
+        } else {
+            Ok(name)
+        };
+
+        self.spans.insert(name, at);
+
+        if result.is_ok() {
+            self.affii.insert(name, affix);
+        }
+
+        result
     }
 
     fn define_value(
@@ -150,7 +186,6 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         ident: Ident<'lit>,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
-
         let prev = self.items.insert(name, item);
         debug_assert!(prev.is_none());
 
@@ -166,7 +201,12 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         };
 
         self.spans.insert(name, at);
-        self.affii.insert(name, affix);
+
+        // Only insert the fixity definition if this isn't a redefinition, to
+        // avoid spurious errors complaining about prefix use of infix names &c
+        if result.is_ok() {
+            self.affii.insert(name, affix);
+        }
 
         result
     }
@@ -213,6 +253,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
 struct Scope<'lit> {
     name: ScopeName,
     values: BTreeMap<Ident<'lit>, Name>,
+    types: BTreeMap<Ident<'lit>, Name>,
 }
 
 impl Scope<'_> {
@@ -220,6 +261,7 @@ impl Scope<'_> {
         Self {
             name,
             values: BTreeMap::new(),
+            types: BTreeMap::new(),
         }
     }
 
@@ -227,6 +269,7 @@ impl Scope<'_> {
         Self {
             name: ScopeName::TopLevel(source),
             values: BTreeMap::new(),
+            types: BTreeMap::new(),
         }
     }
 }

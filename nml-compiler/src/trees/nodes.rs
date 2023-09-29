@@ -23,6 +23,8 @@ pub trait Data {
     type Var;
     /// A variant or label name.
     type Variant;
+    /// A universal type parameter (`'a`).
+    type Universal;
 
     /// The representation of an application expression.
     type Apply;
@@ -139,6 +141,9 @@ pub enum TypeNode<'a, 'lit, D: Data> {
     /// `_`
     Wildcard,
 
+    /// `'a`
+    Universal(D::Universal),
+
     /// `t -> u`
     Function(&'a [D::Type; 2]),
 
@@ -215,9 +220,12 @@ where
     }
 }
 
-impl<D: Data> Copy for TypeNode<'_, '_, D> {}
+impl<D: Data> Copy for TypeNode<'_, '_, D> where D::Universal: Copy {}
 
-impl<D: Data> Clone for TypeNode<'_, '_, D> {
+impl<D: Data> Clone for TypeNode<'_, '_, D>
+where
+    D::Universal: Copy,
+{
     fn clone(&self) -> Self {
         *self
     }
