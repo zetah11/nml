@@ -47,7 +47,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     ) -> (Result<Label<'lit>, ErrorId>, Span, ast::Type<'a, 'lit>) {
         let (name, ty) = self.anno(def.pattern);
         let (name, name_span) = match name {
-            (Ok(name), _) => self.small_name(name),
+            (Ok(name), _) => self.normal_name(name),
             (Err(e), name_span) => (Err(e), name_span),
         };
 
@@ -78,7 +78,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             cst::Node::Group(node) => self.anno(node),
             cst::Node::Anno(a, b) => ((Ok(a), a.span), (Ok(b), b.span)),
 
-            cst::Node::Name(cst::Name::Operator(name) | cst::Name::Small(name)) => {
+            cst::Node::Name(cst::Name::Normal(name) | cst::Name::Universal(name)) => {
                 let e = self.errors.parse_error(span).expected_annotation(name);
                 ((Ok(node), span), (Err(e), span))
             }

@@ -3,7 +3,7 @@ use std::convert::Infallible;
 
 use super::nodes;
 use crate::errors::{ErrorId, Errors};
-use crate::names::{Label, Name};
+use crate::names::Name;
 use crate::resolve::ItemId;
 use crate::source::Span;
 
@@ -27,7 +27,6 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Label<'lit>;
     type Universal = Name;
 
     type Apply = &'a [Self::Expr; 2];

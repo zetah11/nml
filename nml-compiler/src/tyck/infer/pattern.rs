@@ -1,4 +1,4 @@
-use super::{Checker, Row, Scheme, Type};
+use super::{Checker, Scheme, Type};
 use crate::trees::{inferred as o, resolved as i};
 
 impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
@@ -44,15 +44,6 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 return pattern;
             }
 
-            i::PatternNode::Deconstruct(label, pattern) => {
-                let pattern = self.infer_pattern(wildcards, pattern);
-                let pattern = self.alloc.alloc(pattern);
-                let row_ty = self.fresh_row();
-                let row_ty = self.alloc.alloc(Row::Extend(*label, pattern.ty, row_ty));
-                let ty = &*self.alloc.alloc(Type::Variant(row_ty));
-                (o::MonoPatternNode::Deconstruct(*label, pattern), ty)
-            }
-
             i::PatternNode::Apply([ctr, arg]) => {
                 let ctr = self.infer_pattern(wildcards, ctr);
                 let arg = self.infer_pattern(wildcards, arg);
@@ -68,7 +59,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 (o::MonoPatternNode::Apply(terms), res_ty)
             }
 
-            i::PatternNode::Small(v) | i::PatternNode::Big(v) => match *v {},
+            i::PatternNode::Name(v) => match *v {},
         };
 
         o::MonoPattern { node, span, ty }

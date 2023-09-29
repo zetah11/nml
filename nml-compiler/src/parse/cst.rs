@@ -51,9 +51,7 @@ pub enum Node<'a> {
 
 #[derive(Clone, Debug)]
 pub enum Name<'a> {
-    Big(&'a str),
-    Small(&'a str),
-    Operator(&'a str),
+    Normal(&'a str),
     Universal(&'a str),
 }
 

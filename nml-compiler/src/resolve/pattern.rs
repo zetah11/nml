@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::names::{Ident, Label, Name};
+use crate::names::{Ident, Name};
 use crate::trees::{parsed, resolved};
 
 use super::{ItemId, Resolver};
@@ -18,7 +18,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             parsed::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
             parsed::PatternNode::Unit => resolved::PatternNode::Unit,
 
-            parsed::PatternNode::Small((affix, name)) => {
+            parsed::PatternNode::Name((affix, name)) => {
                 match self.define_value(item, span, *affix, *name) {
                     Ok(name) => resolved::PatternNode::Bind(name),
                     Err(e) => resolved::PatternNode::Invalid(e),
@@ -38,18 +38,6 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 }
             }
 
-            parsed::PatternNode::Apply(
-                [parsed::Pattern {
-                    node: parsed::PatternNode::Big((_, name)),
-                    ..
-                }, arg],
-            ) if self.lookup_value(name).is_none() => {
-                let label = Label(*name);
-                let arg = self.pattern(item, gen_scope, arg);
-                let arg = self.alloc.alloc(arg);
-                resolved::PatternNode::Deconstruct(label, arg)
-            }
-
             parsed::PatternNode::Apply([fun, arg]) => {
                 let fun = self.pattern(item, gen_scope, fun);
                 let arg = self.pattern(item, gen_scope, arg);
@@ -64,7 +52,6 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
 
             parsed::PatternNode::Bind(x) => match *x {},
             parsed::PatternNode::Named(x) => match *x {},
-            parsed::PatternNode::Deconstruct(x, _) => match *x {},
         };
 
         resolved::Pattern { node, span }

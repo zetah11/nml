@@ -63,8 +63,6 @@ impl Resolver<'_, '_, '_> {
                 }
             }
 
-            ExprNode::Variant(_) => {}
-
             ExprNode::Apply([fun, arg]) => {
                 self.in_expr(ignore, out, fun);
                 self.in_expr(ignore, out, arg);
@@ -83,7 +81,7 @@ impl Resolver<'_, '_, '_> {
                 self.in_expr(ignore, out, body);
             }
 
-            ExprNode::Small(v) | ExprNode::Big(v) => match *v {},
+            ExprNode::Name(v) => match *v {},
         }
     }
 
@@ -110,16 +108,12 @@ impl Resolver<'_, '_, '_> {
                 self.in_type(ignore, out, ty);
             }
 
-            PatternNode::Deconstruct(_, pattern) => {
-                self.in_pattern(ignore, out, pattern);
-            }
-
             PatternNode::Apply([fun, arg]) => {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
             }
 
-            PatternNode::Small(v) | PatternNode::Big(v) => match *v {},
+            PatternNode::Name(v) => match *v {},
         }
     }
 

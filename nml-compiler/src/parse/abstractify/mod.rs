@@ -62,17 +62,11 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         (into.into_bump_slice(), self.parse_errors)
     }
 
-    fn small_name(&mut self, thing: &cst::Thing) -> (Result<Ident<'lit>, ErrorId>, Span) {
+    fn normal_name(&mut self, thing: &cst::Thing) -> (Result<Ident<'lit>, ErrorId>, Span) {
         let span = thing.span;
         let ident = match thing.node {
             cst::Node::Invalid(e) => Err(e),
-            cst::Node::Name(cst::Name::Small(name)) => Ok(self.names.intern(name)),
-            cst::Node::Name(cst::Name::Operator(name)) => Ok(self.names.intern(name)),
-
-            cst::Node::Name(cst::Name::Big(name)) => Err(self
-                .errors
-                .parse_error(span)
-                .expected_name_small(NonSmallName::Big(name))),
+            cst::Node::Name(cst::Name::Normal(name)) => Ok(self.names.intern(name)),
 
             cst::Node::Name(cst::Name::Universal(name)) => Err(self
                 .errors

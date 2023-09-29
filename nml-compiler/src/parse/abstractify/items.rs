@@ -53,7 +53,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
         let (pattern, body) = match pattern {
             AbstractPattern::Fun((affix, name, name_span), args, types, _) => {
-                let node = ast::PatternNode::Small((affix, name));
+                let node = ast::PatternNode::Name((affix, name));
                 let pattern = ast::Pattern {
                     node,
                     span: name_span,

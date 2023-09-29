@@ -210,20 +210,6 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 )
             }
 
-            i::ExprNode::Variant(name) => {
-                trace!("infer variant");
-                let arg_ty = self.fresh();
-                let row_ty = self.fresh_row();
-                let row_ty = self.alloc.alloc(Row::Extend(*name, arg_ty, row_ty));
-                let row_ty = self.alloc.alloc(Type::Variant(row_ty));
-                trace!("done variant");
-
-                (
-                    o::ExprNode::Variant(*name),
-                    &*self.alloc.alloc(Type::Fun(arg_ty, row_ty)),
-                )
-            }
-
             i::ExprNode::Lambda(arrows) => {
                 let mut wildcards = Vec::new();
                 let input_ty = self.fresh();
@@ -329,7 +315,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 (o::ExprNode::Let(pattern, terms, ()), ty)
             }
 
-            i::ExprNode::Small(v) | i::ExprNode::Big(v) => match *v {},
+            i::ExprNode::Name(v) => match *v {},
         };
 
         o::Expr { node, span, ty }

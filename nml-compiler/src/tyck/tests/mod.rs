@@ -110,11 +110,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Restrict(expr, label))
     }
 
-    pub fn variant(&self, label: impl AsRef<str>) -> Expr<'a, 'ids> {
-        let label = self.names.label(label);
-        self.expr(ExprNode::Variant(label))
-    }
-
     pub fn case<I>(&self, scrutinee: Expr<'a, 'ids>, cases: I) -> Expr<'a, 'ids>
     where
         I: IntoIterator<Item = (Pattern<'a, 'ids>, Expr<'a, 'ids>)>,
@@ -160,16 +155,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
     pub fn named(&self, name: impl Into<String>) -> Pattern<'a, 'ids> {
         let name = self.name(name);
         self.pattern(PatternNode::Named(name))
-    }
-
-    pub fn deconstruct(
-        &self,
-        label: impl AsRef<str>,
-        pattern: Pattern<'a, 'ids>,
-    ) -> Pattern<'a, 'ids> {
-        let label = self.names.label(label);
-        let pattern = self.alloc.alloc(pattern);
-        self.pattern(PatternNode::Deconstruct(label, pattern))
     }
 
     pub fn apply_pat(&self, ctr: Pattern<'a, 'ids>, arg: Pattern<'a, 'ids>) -> Pattern<'a, 'ids> {

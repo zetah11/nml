@@ -17,8 +17,8 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
 
     match token {
         Token::Comment => Some((types::COMMENT, mods::NONE)),
-        Token::BigName(_) | Token::SmallName(_) => None,
-        Token::UniversalName(_) => Some((types::TYPE_PARAMETER, mods::NONE)),
+        Token::Name(_) => None,
+        Token::Universal(_) => Some((types::TYPE_PARAMETER, mods::NONE)),
 
         Token::Number(_) => Some((types::NUMBER, mods::NONE)),
 
@@ -33,8 +33,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
         | Token::Let
         | Token::Postfix => Some((types::KEYWORD, mods::NONE)),
 
-        Token::Operator(_)
-        | Token::Comma
+        Token::Comma
         | Token::Dot
         | Token::Colon
         | Token::Equal

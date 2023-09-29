@@ -17,7 +17,6 @@ impl<'a, 'b, 'lit> nodes::Data for Data<'a, 'b, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Infallible;
-    type Variant = Infallible;
     type Universal = Infallible;
 
     type Apply = Infallible;

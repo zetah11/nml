@@ -12,19 +12,17 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
             cst::Node::Wildcard => ast::ExprNode::Hole,
 
-            cst::Node::Name(cst::Name::Small(name)) => {
+            cst::Node::Name(cst::Name::Normal(name)) => {
                 let name = self.names.intern(name);
-                ast::ExprNode::Small(name)
+                ast::ExprNode::Name(name)
             }
 
-            cst::Node::Name(cst::Name::Operator(name)) => {
-                let name = self.names.intern(name);
-                ast::ExprNode::Small(name)
-            }
-
-            cst::Node::Name(cst::Name::Big(name)) => {
-                let name = self.names.intern(name);
-                ast::ExprNode::Big(name)
+            cst::Node::Name(cst::Name::Universal(name)) => {
+                let e = self
+                    .errors
+                    .parse_error(span)
+                    .expected_name_small(NonSmallName::Universal(name));
+                ast::ExprNode::Invalid(e)
             }
 
             cst::Node::Number(lit) => {
@@ -64,13 +62,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 for (field, field_span) in fields {
                     let field_span = *field_span;
                     let name = match field {
-                        cst::Name::Small(name) => Ok(self.names.label(name)),
-                        cst::Name::Operator(name) => Ok(self.names.label(name)),
-
-                        cst::Name::Big(name) => Err(self
-                            .errors
-                            .parse_error(field_span)
-                            .expected_name_small(NonSmallName::Big(name))),
+                        cst::Name::Normal(name) => Ok(self.names.label(name)),
 
                         cst::Name::Universal(name) => Err(self
                             .errors
@@ -104,7 +96,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
                 let fields = self.alloc.alloc_slice_fill_with(defs.len(), |idx| {
                     let def = &defs[idx];
-                    let (name, name_span) = self.small_name(def.pattern);
+                    let (name, name_span) = self.normal_name(def.pattern);
                     let name = name.map(Label);
 
                     let body = if let Some(body) = def.definition {

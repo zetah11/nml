@@ -3,7 +3,7 @@ use std::convert::Infallible;
 
 use super::nodes;
 use crate::errors::{ErrorId, Errors};
-use crate::names::{Label, Name};
+use crate::names::Name;
 use crate::resolve::ItemId;
 use crate::source::Span;
 use crate::tyck::{Generic, Scheme, Type};
@@ -28,7 +28,6 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Label<'lit>;
     type Universal = Infallible;
 
     type Apply = &'a [Self::Expr; 2];
@@ -44,7 +43,6 @@ impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Label<'lit>;
     type Universal = Infallible;
 
     type Apply = Infallible;
@@ -103,7 +101,6 @@ impl<'a, 'lit, T> nodes::Data for BoundData<'a, 'lit, T> {
     type ExprName = Infallible;
     type PatternName = Infallible;
     type Var = Name;
-    type Variant = Name;
     type Universal = Infallible;
 
     type Apply = Infallible;

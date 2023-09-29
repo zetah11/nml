@@ -44,10 +44,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Let,
         Token::If,
         Token::Case,
-        Token::SmallName(""),
-        Token::BigName(""),
-        Token::Operator(""),
-        Token::UniversalName(""),
+        Token::Name(""),
+        Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
         Token::Infix,
@@ -113,10 +111,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     const DEF_STARTS: &'static [Token<'static>] = &[
-        Token::SmallName(""),
-        Token::BigName(""),
-        Token::Operator(""),
-        Token::UniversalName(""),
+        Token::Name(""),
+        Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
         Token::Infix,
@@ -226,10 +222,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     const LAMBDA_STARTS: &'static [Token<'static>] = &[
-        Token::SmallName(""),
-        Token::BigName(""),
-        Token::Operator(""),
-        Token::UniversalName(""),
+        Token::Name(""),
+        Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
         Token::Infix,
@@ -263,10 +257,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     const ARROW_STARTS: &'static [Token<'static>] = &[
-        Token::SmallName(""),
-        Token::BigName(""),
-        Token::Operator(""),
-        Token::UniversalName(""),
+        Token::Name(""),
+        Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
         Token::Infix,
@@ -333,10 +325,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     const FIELD_STARTS: &'static [Token<'static>] = &[
-        Token::SmallName(""),
-        Token::BigName(""),
-        Token::Operator(""),
-        Token::UniversalName(""),
+        Token::Name(""),
+        Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
         Token::Infix,
@@ -480,10 +470,8 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```
     fn name(&mut self) -> Option<(Name<'a>, Span)> {
         let (name, span) = match self.next.as_ref()? {
-            (Token::SmallName(name), span) => (Name::Small(name), *span),
-            (Token::BigName(name), span) => (Name::Big(name), *span),
-            (Token::Operator(name), span) => (Name::Operator(name), *span),
-            (Token::UniversalName(name), span) => (Name::Universal(name), *span),
+            (Token::Name(name), span) => (Name::Normal(name), *span),
+            (Token::Universal(name), span) => (Name::Universal(name), *span),
             _ => return None,
         };
 

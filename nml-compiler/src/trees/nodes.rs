@@ -21,8 +21,6 @@ pub trait Data {
     type PatternName;
     /// A variable name.
     type Var;
-    /// A variant or label name.
-    type Variant;
     /// A universal type parameter (`'a`).
     type Universal;
 
@@ -47,11 +45,8 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     /// Variable name
     Var(D::Var),
 
-    /// A name with a lowercase initial.
-    Small(D::ExprName),
-
-    /// A name with an uppercase initial.
-    Big(D::ExprName),
+    /// Some name.
+    Name(D::ExprName),
 
     /// `_`
     Hole,
@@ -87,10 +82,6 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     /// `x \ a`
     Restrict(&'a D::Expr, Label<'lit>),
 
-    /* Variants ------------------------------------------------------------- */
-    /// `A`
-    Variant(D::Variant),
-
     /* Functions ------------------------------------------------------------ */
     /// `x y`
     Apply(D::Apply),
@@ -112,11 +103,8 @@ pub enum PatternNode<'a, D: Data> {
     /// `()`
     Unit,
 
-    /// A name with a lowercase initial.
-    Small(D::PatternName),
-
-    /// A name with an uppercase initial.
-    Big(D::PatternName),
+    /// Some name.
+    Name(D::PatternName),
 
     /// A name binding
     Bind(D::Var),
@@ -126,9 +114,6 @@ pub enum PatternNode<'a, D: Data> {
 
     /// `a : t`
     Anno(&'a D::Pattern, D::Type),
-
-    /// An anonymous variant
-    Deconstruct(D::Variant, &'a D::Pattern),
 
     /// A pattern application
     Apply(&'a [D::Pattern; 2]),
@@ -178,7 +163,6 @@ where
     D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
-    D::Variant: Copy,
     D::Apply: Copy,
     D::GenScope: Copy,
 {
@@ -190,7 +174,6 @@ where
     D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
-    D::Variant: Copy,
     D::Apply: Copy,
     D::GenScope: Copy,
 {
@@ -204,7 +187,6 @@ where
     D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
-    D::Variant: Copy,
 {
 }
 
@@ -213,7 +195,6 @@ where
     D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
-    D::Variant: Copy,
 {
     fn clone(&self) -> Self {
         *self

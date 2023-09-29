@@ -33,10 +33,7 @@ base          = name / NUMBER / "_" / "infix" / "postfix"
 base         =/ "(" thing ")"
 base         =/ "{" *(def ",") [def] ["|" thing] "}"
 
-name          = SMALL / BIG / OPERATOR / UNIVERSAL
+name          = 1*NON_WHITESPACE / UNIVERSAL
 
-SMALL         = LETTER_LOWERCASE *(XID_CONTINUE / "'" / "_")
-BIG           = LETTER_UPPERCASE *(XID_CONTINUE / "'" / "_")
-OPERATOR      = 1*(PUNCTUATION / SYMBOL)
 UNIVERSAL     = "'" 1*(XID_CONTINUE / "'" / "_")
 NUMBER        = DIGIT *(DIGIT / "'" / "_")

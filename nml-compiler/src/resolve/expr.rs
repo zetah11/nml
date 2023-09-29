@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::names::{Ident, Label, Name};
+use crate::names::{Ident, Name};
 use crate::trees::{parsed, resolved};
 
 use super::{ItemId, Resolver};
@@ -21,20 +21,12 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
 
             parsed::ExprNode::Bool(v) => resolved::ExprNode::Bool(*v),
 
-            parsed::ExprNode::Small(name) => {
+            parsed::ExprNode::Name(name) => {
                 if let Some(name) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
                 } else {
                     let name = self.names.get_ident(name);
                     resolved::ExprNode::Invalid(self.errors.name_error(span).unknown_name(name))
-                }
-            }
-
-            parsed::ExprNode::Big(name) => {
-                if self.lookup_value(name).is_some() {
-                    todo!("non-anonymous variant")
-                } else {
-                    resolved::ExprNode::Variant(Label(*name))
                 }
             }
 
@@ -115,7 +107,6 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 })
             }
 
-            parsed::ExprNode::Variant(v) => match *v {},
             parsed::ExprNode::Var(v) => match *v {},
         };
 
