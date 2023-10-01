@@ -177,24 +177,19 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let prev = self.items.insert(name, item);
         debug_assert!(prev.is_none());
 
-        let result = if let Some(prev) = self.scopes.1.types.insert(ident, name) {
+        if let Some(prev) = self.scopes.1.types.get(&ident) {
             let prev_span = self
                 .spans
-                .get(&prev)
+                .get(prev)
                 .expect("all defined names have a defining span");
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_type(*prev_span, name))
         } else {
-            Ok(name)
-        };
-
-        self.spans.insert(name, at);
-
-        if result.is_ok() {
+            self.scopes.1.types.insert(ident, name);
+            self.spans.insert(name, at);
             self.affii.insert(name, affix);
+            Ok(name)
         }
-
-        result
     }
 
     fn define_value(
@@ -208,26 +203,22 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let prev = self.items.insert(name, item);
         debug_assert!(prev.is_none());
 
-        let result = if let Some(prev) = self.scopes.1.values.insert(ident, name) {
+        // Note that, if this is a redefinition, we will return an error. To
+        // ensure that the redefined name still has an associated definition,
+        // check with `get` before actually inserting the new name.
+        if let Some(prev) = self.scopes.1.values.get(&ident) {
             let prev_span = self
                 .spans
-                .get(&prev)
+                .get(prev)
                 .expect("all defined names have a defining span");
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
-            Ok(name)
-        };
-
-        self.spans.insert(name, at);
-
-        // Only insert the fixity definition if this isn't a redefinition, to
-        // avoid spurious errors complaining about prefix use of infix names &c
-        if result.is_ok() {
+            self.scopes.1.values.insert(ident, name);
+            self.spans.insert(name, at);
             self.affii.insert(name, affix);
+            Ok(name)
         }
-
-        result
     }
 
     fn lookup_value(&mut self, name: &Ident) -> Option<Name> {

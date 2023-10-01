@@ -1,1 +1,1 @@
-let f f' = f' 5
+let f f = f 5
