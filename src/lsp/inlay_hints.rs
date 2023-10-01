@@ -55,7 +55,7 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
             PolyPatternNode::Invalid(_)
             | PolyPatternNode::Wildcard
             | PolyPatternNode::Unit
-            | PolyPatternNode::Named(_) => {}
+            | PolyPatternNode::Constructor(_) => {}
 
             PolyPatternNode::Bind(_) => {
                 self.hint_scheme(pattern.span, &pattern.scheme);
@@ -63,16 +63,14 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
 
             PolyPatternNode::Anno(..) => {}
 
-            PolyPatternNode::Deconstruct(_, pattern) => {
-                self.pattern(pattern);
-            }
+            PolyPatternNode::Group(pattern) => self.pattern(pattern),
 
             PolyPatternNode::Apply([fun, arg]) => {
                 self.pattern(fun);
                 self.pattern(arg);
             }
 
-            PolyPatternNode::Small(v) | PolyPatternNode::Big(v) => match *v {},
+            PolyPatternNode::Name(v) => match *v {},
         }
     }
 

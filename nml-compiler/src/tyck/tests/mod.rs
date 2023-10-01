@@ -143,10 +143,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Let(pattern, terms, self.alloc.alloc([])))
     }
 
-    pub fn wildcard(&self) -> Pattern<'a, 'ids> {
-        self.pattern(PatternNode::Wildcard)
-    }
-
     pub fn bind(&self, name: impl Into<String>) -> Pattern<'a, 'ids> {
         let name = self.name(name);
         self.pattern(PatternNode::Bind(name))
@@ -154,7 +150,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     pub fn named(&self, name: impl Into<String>) -> Pattern<'a, 'ids> {
         let name = self.name(name);
-        self.pattern(PatternNode::Named(name))
+        self.pattern(PatternNode::Constructor(name))
     }
 
     pub fn apply_pat(&self, ctr: Pattern<'a, 'ids>, arg: Pattern<'a, 'ids>) -> Pattern<'a, 'ids> {
@@ -182,16 +178,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
     {
         let row = self.row(fields, rest);
         self.alloc.alloc(Type::Record(row))
-    }
-
-    pub fn sum<L, I, Ii>(&self, cases: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
-    where
-        L: AsRef<str>,
-        I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
-        Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
-    {
-        let row = self.row(cases, rest);
-        self.alloc.alloc(Type::Variant(row))
     }
 
     pub fn nominal(&self, name: impl Into<String>) -> &'a Type<'a> {

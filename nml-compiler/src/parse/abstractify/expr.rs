@@ -135,7 +135,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             }
 
             cst::Node::Arrow(pattern, body) => {
-                let pattern = self.single_pattern(pattern);
+                let pattern = self.pattern(pattern);
                 let body = self.expr(body);
                 ast::ExprNode::Lambda(
                     self.alloc
@@ -163,7 +163,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 };
 
                 for def in defs.1.iter().rev().chain(std::iter::once(&defs.0)) {
-                    let binding = self.single_pattern(def.pattern);
+                    let binding = self.pattern(def.pattern);
                     let bound = if let Some(bound) = def.definition {
                         self.expr(bound)
                     } else {

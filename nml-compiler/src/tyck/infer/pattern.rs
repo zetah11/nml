@@ -26,11 +26,11 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 (o::MonoPatternNode::Bind(*name), ty)
             }
 
-            i::PatternNode::Named(name) => {
+            i::PatternNode::Constructor(name) => {
                 let scheme = self.env.lookup(name);
                 let mut pretty = self.pretty.build();
                 let ty = self.solver.instantiate(&mut pretty, self.alloc, scheme);
-                (o::MonoPatternNode::Named(*name), ty)
+                (o::MonoPatternNode::Constructor(*name), ty)
             }
 
             i::PatternNode::Anno(pattern, ty) => {
@@ -43,6 +43,8 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
 
                 return pattern;
             }
+
+            i::PatternNode::Group(pattern) => return self.infer_pattern(wildcards, pattern),
 
             i::PatternNode::Apply([ctr, arg]) => {
                 let ctr = self.infer_pattern(wildcards, ctr);

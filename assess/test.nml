@@ -1,1 +1,1 @@
-let f x = x : 'a
+let f = x => 5

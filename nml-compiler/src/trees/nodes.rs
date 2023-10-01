@@ -4,33 +4,49 @@ use crate::errors::ErrorId;
 use crate::names::Label;
 use crate::source::Span;
 
-pub trait Data {
+/// The associated types should all outlive the `'bound` lifetime; this is
+/// necessary to make the GAT [`Data::Apply`] usable.
+pub trait Data<'bound> {
+    /* Nodes ---------------------------------------------------------------- */
+
     /// An item node in the syntax tree.
-    type Item;
+    type Item: 'bound;
+
     /// An expression node in the syntax tree.
-    type Expr;
+    type Expr: 'bound;
+
     /// A pattern node in the syntax tree.
-    type Pattern;
+    type Pattern: 'bound;
+
     /// A type node in the syntax tree (i.e. a type as it appears in the source,
     /// not an inferred type).
-    type Type;
+    type Type: 'bound;
 
-    /// A small or big name within an expression.
-    type ExprName;
-    /// A small or big name within a pattern.
-    type PatternName;
-    /// A variable name.
-    type Var;
-    /// A universal type parameter (`'a`).
-    type Universal;
+    /* Names ---------------------------------------------------------------- */
 
-    /// The representation of an application expression.
-    type Apply;
+    /// An unresolved name used in an expression.
+    type ExprName: 'bound;
+
+    /// An unresolved name used in a pattern.
+    type PatternName: 'bound;
+
+    /// A resolved value-level variable name.
+    type Var: 'bound;
+
+    /// A resolved implicitly defined universal type parameter, like `'a`.
+    type Universal: 'bound;
+
+    /* Associated data ------------------------------------------------------ */
+
+    /// The representation of an application (such as in an expression or a
+    /// pattern).
+    type Apply<T: 'bound>: 'bound;
+
     /// Additional data bound at a generalization scope.
-    type GenScope;
+    type GenScope: 'bound;
 }
 
-pub enum ItemNode<D: Data> {
+pub enum ItemNode<'bound, D: Data<'bound>> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -38,7 +54,7 @@ pub enum ItemNode<D: Data> {
     Let(D::Pattern, D::Expr, D::GenScope),
 }
 
-pub enum ExprNode<'a, 'lit, D: Data> {
+pub enum ExprNode<'a, 'lit, 'bound, D: Data<'bound>> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -84,7 +100,7 @@ pub enum ExprNode<'a, 'lit, D: Data> {
 
     /* Functions ------------------------------------------------------------ */
     /// `x y`
-    Apply(D::Apply),
+    Apply(D::Apply<D::Expr>),
 
     /// `a => x | b => y`
     Lambda(&'a [(D::Pattern, D::Expr)]),
@@ -93,7 +109,7 @@ pub enum ExprNode<'a, 'lit, D: Data> {
     Let(D::Pattern, &'a [D::Expr; 2], D::GenScope),
 }
 
-pub enum PatternNode<'a, D: Data> {
+pub enum PatternNode<'a, 'bound, D: Data<'bound>> {
     /// Something fishy.
     Invalid(ErrorId),
 
@@ -109,17 +125,20 @@ pub enum PatternNode<'a, D: Data> {
     /// A name binding
     Bind(D::Var),
 
-    /// A named pattern (e.g. a defined constructor)
-    Named(D::Var),
+    /// A constructor name
+    Constructor(D::Var),
 
     /// `a : t`
     Anno(&'a D::Pattern, D::Type),
 
+    /// `(a)`
+    Group(&'a D::Pattern),
+
     /// A pattern application
-    Apply(&'a [D::Pattern; 2]),
+    Apply(D::Apply<D::Pattern>),
 }
 
-pub enum TypeNode<'a, 'lit, D: Data> {
+pub enum TypeNode<'a, 'lit, 'bound, D: Data<'bound>> {
     /// Bad stuff.
     Invalid(ErrorId),
 
@@ -138,7 +157,7 @@ pub enum TypeNode<'a, 'lit, D: Data> {
 
 /* Copy and Clone impls ----------------------------------------------------- */
 
-impl<D: Data> Copy for ItemNode<D>
+impl<'bound, D: Data<'bound>> Copy for ItemNode<'bound, D>
 where
     D::Pattern: Copy,
     D::Expr: Copy,
@@ -146,7 +165,7 @@ where
 {
 }
 
-impl<D: Data> Clone for ItemNode<D>
+impl<'bound, D: Data<'bound>> Clone for ItemNode<'bound, D>
 where
     D::Pattern: Copy,
     D::Expr: Copy,
@@ -157,24 +176,24 @@ where
     }
 }
 
-impl<D: Data> Copy for ExprNode<'_, '_, D>
+impl<'bound, D: Data<'bound>> Copy for ExprNode<'_, '_, 'bound, D>
 where
     D::Pattern: Copy,
     D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
-    D::Apply: Copy,
+    D::Apply<D::Expr>: Copy,
     D::GenScope: Copy,
 {
 }
 
-impl<D: Data> Clone for ExprNode<'_, '_, D>
+impl<'bound, D: Data<'bound>> Clone for ExprNode<'_, '_, 'bound, D>
 where
     D::Pattern: Copy,
     D::Type: Copy,
     D::ExprName: Copy,
     D::Var: Copy,
-    D::Apply: Copy,
+    D::Apply<D::Expr>: Copy,
     D::GenScope: Copy,
 {
     fn clone(&self) -> Self {
@@ -182,28 +201,30 @@ where
     }
 }
 
-impl<D: Data> Copy for PatternNode<'_, D>
+impl<'bound, D: Data<'bound>> Copy for PatternNode<'_, 'bound, D>
 where
     D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
+    D::Apply<D::Pattern>: Copy,
 {
 }
 
-impl<D: Data> Clone for PatternNode<'_, D>
+impl<'bound, D: Data<'bound>> Clone for PatternNode<'_, 'bound, D>
 where
     D::Type: Copy,
     D::PatternName: Copy,
     D::Var: Copy,
+    D::Apply<D::Pattern>: Copy,
 {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<D: Data> Copy for TypeNode<'_, '_, D> where D::Universal: Copy {}
+impl<'bound, D: Data<'bound>> Copy for TypeNode<'_, '_, 'bound, D> where D::Universal: Copy {}
 
-impl<D: Data> Clone for TypeNode<'_, '_, D>
+impl<'bound, D: Data<'bound>> Clone for TypeNode<'_, '_, 'bound, D>
 where
     D::Universal: Copy,
 {

@@ -1,146 +1,90 @@
 use super::Abstractifier;
-use crate::names::Ident;
+use crate::messages::parse::NonSmallName;
 use crate::parse::cst;
-use crate::source::Span;
 use crate::trees::parsed as ast;
 
-/// Pattern parsing may result in a _function definition spine_ such as `f x y`,
-/// which isn't itself a pattern but a name followed by arguments which are
-/// individually patterns.
-pub enum AbstractPattern<'a, 'lit> {
-    Fun(
-        (ast::Affix, Ident<'lit>, Span),
-        Vec<ast::Pattern<'a, 'lit>>,
-        Vec<ast::Type<'a, 'lit>>,
-        Span,
-    ),
-    Single(ast::Pattern<'a, 'lit>),
-}
-
-impl AbstractPattern<'_, '_> {
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Fun(.., span) => *span,
-            Self::Single(pat) => pat.span,
-        }
-    }
-}
-
 impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
-    pub fn single_pattern(&mut self, node: &cst::Thing) -> ast::Pattern<'a, 'lit> {
-        match self.pattern(node) {
-            AbstractPattern::Fun(.., span) => {
-                let e = self
-                    .errors
-                    .parse_error(span)
-                    .unexpected_function_definition();
-                let node = ast::PatternNode::Invalid(e);
-                ast::Pattern { node, span }
-            }
-
-            AbstractPattern::Single(pattern) => pattern,
-        }
-    }
-
-    pub fn pattern(&mut self, node: &cst::Thing) -> AbstractPattern<'a, 'lit> {
+    /// Abstract an applied sequence of patterns. A resulting slice with a
+    /// length longer than 1 does _not_ mean that this is a function definition.
+    /// Any type annotations "outside" the spine are collected and returned
+    /// separately.
+    pub fn pattern(&mut self, node: &cst::Thing) -> ast::Pattern<'a, 'lit> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::PatternNode::Invalid(*e),
             cst::Node::Wildcard => ast::PatternNode::Wildcard,
-            cst::Node::Name(_) => {
-                return AbstractPattern::Single(self.name(ast::Affix::Prefix, node))
-            }
 
-            cst::Node::Anno(pattern, ty) => {
-                let pattern = self.pattern(pattern);
+            cst::Node::Name(_) => return self.affixed_name(ast::Affix::Prefix, node),
+
+            cst::Node::Anno(pat, ty) => {
+                let pat = self.alloc.alloc(self.pattern(pat));
                 let ty = self.ty(ty);
-                return match pattern {
-                    AbstractPattern::Single(pattern) => {
-                        let pattern = self.alloc.alloc(pattern);
-                        let span = pattern.span + ty.span;
-                        let node = ast::PatternNode::Anno(pattern, ty);
-                        AbstractPattern::Single(ast::Pattern { node, span })
-                    }
-
-                    AbstractPattern::Fun(head, args, mut types, span) => {
-                        let span = span + ty.span;
-                        types.push(ty);
-                        AbstractPattern::Fun(head, args, types, span)
-                    }
-                };
+                ast::PatternNode::Anno(pat, ty)
             }
 
-            cst::Node::Apply(things) => {
-                let mut nodes = Vec::with_capacity(things.len());
+            cst::Node::Apply(terms) => {
+                let mut nodes = Vec::with_capacity(terms.len());
                 let mut affix = None;
 
-                for node in things {
+                for node in terms {
                     if let Some((_, affix)) = affix.take() {
-                        nodes.push(self.name(affix, node));
+                        nodes.push(self.affixed_name(affix, node));
                     } else {
                         match &node.node {
                             cst::Node::Infix => affix = Some((node, ast::Affix::Infix)),
                             cst::Node::Postfix => affix = Some((node, ast::Affix::Postfix)),
-                            _ => nodes.push(self.single_pattern(node)),
+                            _ => nodes.push(self.pattern(node)),
                         }
                     }
                 }
 
                 if let Some((node, _)) = affix {
-                    nodes.push(self.single_pattern(node));
+                    nodes.push(self.pattern(node));
                 }
 
-                let mut nodes = nodes.into_iter();
-                let mut fun = nodes.next().expect("`apply` contains at least one node");
-
-                if let Some(name) = Self::fun_name(&fun) {
-                    let args: Vec<_> = nodes.collect();
-                    return AbstractPattern::Fun(name, args, vec![], span);
-                } else {
-                    for arg in nodes {
-                        let span = fun.span + arg.span;
-                        let node = ast::PatternNode::Apply(self.alloc.alloc([fun, arg]));
-                        fun = ast::Pattern { node, span };
-                    }
-
-                    return AbstractPattern::Single(fun);
+                if nodes.len() == 1 {
+                    return nodes.remove(0);
                 }
+
+                let terms = self.alloc.alloc_slice_fill_iter(nodes);
+                ast::PatternNode::Apply(terms)
             }
 
-            _ => ast::PatternNode::Invalid(self.errors.parse_error(span).expected_pattern()),
+            _ => {
+                let e = self.errors.parse_error(span).expected_pattern();
+                ast::PatternNode::Invalid(e)
+            }
         };
 
-        let pattern = ast::Pattern { node, span };
-        AbstractPattern::Single(pattern)
+        ast::Pattern { node, span }
     }
 
-    fn fun_name(pattern: &ast::Pattern<'a, 'lit>) -> Option<(ast::Affix, Ident<'lit>, Span)> {
-        if let ast::PatternNode::Small((affix, name)) = &pattern.node {
-            Some((*affix, *name, pattern.span))
-        } else {
-            None
-        }
-    }
-
-    fn name<'b>(&mut self, affix: ast::Affix, node: &cst::Thing) -> ast::Pattern<'b, 'lit> {
-        let span = node.span;
-        let node = match &node.node {
-            cst::Node::Name(cst::Name::Small(name)) => {
-                let name = self.names.intern(name);
-                ast::PatternNode::Small((affix, name))
-            }
-
-            cst::Node::Name(cst::Name::Operator(name)) => {
-                let name = self.names.intern(name);
-                ast::PatternNode::Small((affix, name))
-            }
-
-            cst::Node::Name(cst::Name::Big(name)) => {
-                let name = self.names.intern(name);
-                ast::PatternNode::Big((affix, name))
-            }
-
+    fn affixed_name(
+        &mut self,
+        affix: ast::Affix,
+        suspected_name: &cst::Thing,
+    ) -> ast::Pattern<'a, 'lit> {
+        let span = suspected_name.span;
+        let node = match &suspected_name.node {
             cst::Node::Invalid(e) => ast::PatternNode::Invalid(*e),
+
+            cst::Node::Name(cst::Name::Normal(name)) => {
+                let name = self.names.intern(name);
+                ast::PatternNode::Name((affix, name))
+            }
+
+            cst::Node::Name(cst::Name::Universal(name)) => {
+                let e = self
+                    .errors
+                    .parse_error(span)
+                    .expected_name_small(NonSmallName::Universal(name));
+                ast::PatternNode::Invalid(e)
+            }
+
+            cst::Node::Group(inner) => {
+                let pattern = self.alloc.alloc(self.affixed_name(affix, inner));
+                ast::PatternNode::Group(pattern)
+            }
 
             _ => {
                 let e = self.errors.parse_error(span).expected_name();

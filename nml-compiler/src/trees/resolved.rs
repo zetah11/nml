@@ -18,7 +18,7 @@ pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
 pub struct TypeData<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
-impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
+impl<'a, 'lit> nodes::Data<'a> for Data<'a, 'lit> {
     type Item = Item<'a, 'lit>;
     type Expr = Expr<'a, 'lit>;
     type Pattern = Pattern<'a, 'lit>;
@@ -29,7 +29,7 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type Var = Name;
     type Universal = Name;
 
-    type Apply = &'a [Self::Expr; 2];
+    type Apply<T: 'a> = &'a [T; 2];
     type GenScope = &'a [Name];
 }
 
@@ -54,7 +54,7 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<Data<'a, 'lit>>;
-pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, Data<'a, 'lit>>;
-pub type PatternNode<'a, 'lit> = nodes::PatternNode<'a, Data<'a, 'lit>>;
-pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Data<'a, 'lit>>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<'a, Data<'a, 'lit>>;
+pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, 'a, Data<'a, 'lit>>;
+pub type PatternNode<'a, 'lit> = nodes::PatternNode<'a, 'a, Data<'a, 'lit>>;
+pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, 'a, Data<'a, 'lit>>;

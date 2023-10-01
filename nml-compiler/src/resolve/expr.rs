@@ -76,7 +76,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::ExprNode::Restrict(of, *label)
             }
 
-            parsed::ExprNode::Apply(terms) => return self.apply_run(item, gen_scope, terms),
+            parsed::ExprNode::Apply(terms) => return self.apply_expr_run(item, gen_scope, terms),
 
             parsed::ExprNode::Lambda(arrows) => {
                 let arrows =

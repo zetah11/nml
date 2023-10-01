@@ -98,8 +98,8 @@ impl Resolver<'_, '_, '_> {
                 ignore.insert(*name);
             }
 
-            PatternNode::Named(name) if ignore.contains(name) => {}
-            PatternNode::Named(name) => {
+            PatternNode::Constructor(name) if ignore.contains(name) => {}
+            PatternNode::Constructor(name) => {
                 out.extend(self.items.get(name).copied());
             }
 
@@ -107,6 +107,8 @@ impl Resolver<'_, '_, '_> {
                 self.in_pattern(ignore, out, pattern);
                 self.in_type(ignore, out, ty);
             }
+
+            PatternNode::Group(pattern) => self.in_pattern(ignore, out, pattern),
 
             PatternNode::Apply([fun, arg]) => {
                 self.in_pattern(ignore, out, fun);

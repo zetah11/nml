@@ -17,7 +17,6 @@ pub(crate) struct ParseErrors<'a> {
 
 pub enum NonSmallName<'a> {
     None,
-    Big(&'a str),
     Universal(&'a str),
 }
 
@@ -77,19 +76,6 @@ impl ParseErrors<'_> {
 
         match got {
             NonSmallName::None => {}
-            NonSmallName::Big(big) => {
-                let mut chars = big.chars();
-                let fixed: String = chars
-                    .next()
-                    .expect("names are at least one character long")
-                    .to_lowercase()
-                    .chain(chars)
-                    .collect();
-
-                error = error
-                    .with_note("the case of the first letter determines what kind of name it is")
-                    .with_help(format!("try making the first letter lowercase: `{fixed}`"));
-            }
 
             NonSmallName::Universal(name) => {
                 let fixed = &name[1..]; // the first character is always '\''

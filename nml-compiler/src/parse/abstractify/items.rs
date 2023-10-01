@@ -1,6 +1,5 @@
 use bumpalo::collections::Vec;
 
-use super::pattern::AbstractPattern;
 use super::Abstractifier;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
@@ -45,44 +44,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             .definition
             .map(|node| self.expr(node))
             .unwrap_or_else(|| {
-                let span = pattern.span();
+                let span = pattern.span;
                 let e = self.errors.parse_error(span).missing_definition();
                 let node = ast::ExprNode::Invalid(e);
                 ast::Expr { node, span }
             });
-
-        let (pattern, body) = match pattern {
-            AbstractPattern::Fun((affix, name, name_span), args, types, _) => {
-                let node = ast::PatternNode::Name((affix, name));
-                let pattern = ast::Pattern {
-                    node,
-                    span: name_span,
-                };
-
-                let mut body = body;
-
-                for ty in types.into_iter() {
-                    let span = body.span + ty.span;
-                    let annee = self.alloc.alloc(body);
-                    let node = ast::ExprNode::Anno(annee, ty);
-                    body = ast::Expr { node, span };
-                }
-
-                // Iterate over the names in _reverse_ order since they range
-                // outermost to innermost (e.g. `a => b => ...` is
-                // `(a, (b, ...))`).
-                for arg in args.into_iter().rev() {
-                    let span = arg.span + body.span;
-                    let terms = self.alloc.alloc([(arg, body)]);
-                    let node = ast::ExprNode::Lambda(terms);
-                    body = ast::Expr { node, span };
-                }
-
-                (pattern, body)
-            }
-
-            AbstractPattern::Single(pattern) => (pattern, body),
-        };
 
         let span = def.span;
         let node = ast::ItemNode::Let(pattern, body, ());

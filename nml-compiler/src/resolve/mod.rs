@@ -100,7 +100,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         'a: 'b,
     {
         debug!("declaring {} items", items.len());
-        let items: Vec<declared::Item<'a, 'b, 'lit>> =
+        let items: Vec<declared::Item<'a, 'b, 'lit, 'b>> =
             items.iter().map(|item| self.declare_item(item)).collect();
 
         debug!("resolving {} items", items.len());
@@ -110,7 +110,10 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             .collect()
     }
 
-    fn declare_item<'b>(&mut self, item: &'b parsed::Item<'b, 'lit>) -> declared::Item<'a, 'b, 'lit>
+    fn declare_item<'b>(
+        &mut self,
+        item: &'b parsed::Item<'b, 'lit>,
+    ) -> declared::Item<'a, 'b, 'lit, 'b>
     where
         'a: 'b,
     {
@@ -129,7 +132,10 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         declared::Item { node, span, id }
     }
 
-    fn resolve_item<'b>(&mut self, item: declared::Item<'a, 'b, 'lit>) -> resolved::Item<'a, 'lit> {
+    fn resolve_item<'b>(
+        &mut self,
+        item: declared::Item<'a, 'b, 'lit, 'b>,
+    ) -> resolved::Item<'a, 'lit> {
         let id = item.id;
         let span = item.span;
         let node = match item.node {

@@ -31,12 +31,14 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Bind(*name)
             }
 
-            PatternNode::Named(name) => PatternNode::Named(*name),
+            PatternNode::Constructor(name) => PatternNode::Constructor(*name),
+            PatternNode::Group(pattern) => return self.monomorphic(pattern),
 
             PatternNode::Apply([fun, arg]) => {
                 let fun = self.monomorphic(fun);
                 let arg = self.monomorphic(arg);
-                PatternNode::Apply(self.alloc.alloc([fun, arg]))
+                let terms: &'a [PolyPattern<'a, 'ids>; 2] = self.alloc.alloc([fun, arg]);
+                PatternNode::Apply(terms)
             }
 
             PatternNode::Name(v) | PatternNode::Anno(_, v) => match *v {},
@@ -63,12 +65,15 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Bind(*name)
             }
 
-            PatternNode::Named(name) => PatternNode::Named(*name),
+            PatternNode::Constructor(name) => PatternNode::Constructor(*name),
+
+            PatternNode::Group(pattern) => return self.gen_pattern(&scheme, pattern),
 
             PatternNode::Apply([fun, arg]) => {
                 let fun = self.gen_pattern(&scheme, fun);
                 let arg = self.gen_pattern(&scheme, arg);
-                PatternNode::Apply(self.alloc.alloc([fun, arg]))
+                let terms: &'a [PolyPattern<'a, 'ids>; 2] = self.alloc.alloc([fun, arg]);
+                PatternNode::Apply(terms)
             }
 
             PatternNode::Name(v) | PatternNode::Anno(_, v) => match *v {},

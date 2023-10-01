@@ -25,23 +25,8 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 }
             }
 
-            parsed::PatternNode::Big((_, name)) => {
-                if self.lookup_value(name).is_some() {
-                    todo!("non-anonymous variant")
-                } else {
-                    let name = self.names.get_ident(name);
-                    resolved::PatternNode::Invalid(
-                        self.errors
-                            .name_error(span)
-                            .unapplied_anonymous_variant(name),
-                    )
-                }
-            }
-
-            parsed::PatternNode::Apply([fun, arg]) => {
-                let fun = self.pattern(item, gen_scope, fun);
-                let arg = self.pattern(item, gen_scope, arg);
-                resolved::PatternNode::Apply(self.alloc.alloc([fun, arg]))
+            parsed::PatternNode::Apply(terms) => {
+                return self.apply_pattern_run(item, gen_scope, terms);
             }
 
             parsed::PatternNode::Anno(pattern, ty) => {
@@ -50,8 +35,13 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 resolved::PatternNode::Anno(pattern, ty)
             }
 
+            parsed::PatternNode::Group(pattern) => {
+                let pattern = self.alloc.alloc(self.pattern(item, gen_scope, pattern));
+                resolved::PatternNode::Group(pattern)
+            }
+
             parsed::PatternNode::Bind(x) => match *x {},
-            parsed::PatternNode::Named(x) => match *x {},
+            parsed::PatternNode::Constructor(x) => match *x {},
         };
 
         resolved::Pattern { node, span }

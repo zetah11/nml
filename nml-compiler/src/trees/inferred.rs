@@ -19,7 +19,7 @@ pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
 pub struct MonoData<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
-impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
+impl<'a, 'lit> nodes::Data<'a> for Data<'a, 'lit> {
     type Item = Item<'a, 'lit>;
     type Expr = Expr<'a, 'lit>;
     type Pattern = PolyPattern<'a, 'lit>;
@@ -30,11 +30,11 @@ impl<'a, 'lit> nodes::Data for Data<'a, 'lit> {
     type Var = Name;
     type Universal = Infallible;
 
-    type Apply = &'a [Self::Expr; 2];
+    type Apply<T: 'a> = &'a [T; 2];
     type GenScope = ();
 }
 
-impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
+impl<'a, 'lit> nodes::Data<'a> for MonoData<'a, 'lit> {
     type Item = Infallible;
     type Expr = Infallible;
     type Pattern = MonoPattern<'a, 'lit>;
@@ -45,7 +45,7 @@ impl<'a, 'lit> nodes::Data for MonoData<'a, 'lit> {
     type Var = Name;
     type Universal = Infallible;
 
-    type Apply = Infallible;
+    type Apply<T: 'a> = &'a [T; 2];
     type GenScope = Infallible;
 }
 
@@ -75,26 +75,33 @@ pub struct MonoPattern<'a, 'lit> {
     pub ty: &'a Type<'a>,
 }
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<Data<'a, 'lit>>;
-pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, Data<'a, 'lit>>;
-pub type PolyPatternNode<'a, 'lit> = nodes::PatternNode<'a, Data<'a, 'lit>>;
-pub type MonoPatternNode<'a, 'lit> = nodes::PatternNode<'a, MonoData<'a, 'lit>>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<'a, Data<'a, 'lit>>;
+pub type ExprNode<'a, 'lit> = nodes::ExprNode<'a, 'lit, 'a, Data<'a, 'lit>>;
+pub type PolyPatternNode<'a, 'lit> = nodes::PatternNode<'a, 'a, Data<'a, 'lit>>;
+pub type MonoPatternNode<'a, 'lit> = nodes::PatternNode<'a, 'a, MonoData<'a, 'lit>>;
 
-pub(crate) struct BoundItem<'a, 'lit, T> {
-    pub node: BoundItemNode<'a, 'lit, T>,
+pub(crate) struct BoundItem<'a, 'b, 'lit, 'sub, E: 'b> {
+    pub node: BoundItemNode<'a, 'b, 'lit, 'sub, E>,
     pub span: Span,
     pub id: ItemId,
 }
 
-pub(crate) type BoundItemNode<'a, 'lit, T> = nodes::ItemNode<BoundData<'a, 'lit, T>>;
+pub(crate) type BoundItemNode<'a, 'b, 'lit, 'sub, E> =
+    nodes::ItemNode<'sub, BoundData<'a, 'b, 'lit, 'sub, E>>;
 
 /// The syntax tree of an item _after_ its pattern has been bound a type but_
 /// _before_ its body has been inferred.
-pub(crate) struct BoundData<'a, 'lit, T>(std::marker::PhantomData<(&'a &'lit (), T)>);
+pub(crate) struct BoundData<'a, 'b, 'lit, 'sub, T>(
+    std::marker::PhantomData<(&'sub &'a &'lit (), &'sub &'b &'lit (), T)>,
+);
 
-impl<'a, 'lit, T> nodes::Data for BoundData<'a, 'lit, T> {
-    type Item = BoundItem<'a, 'lit, T>;
-    type Expr = T;
+impl<'a, 'b, 'lit, 'sub, E: 'b> nodes::Data<'sub> for BoundData<'a, 'b, 'lit, 'sub, E>
+where
+    'a: 'sub,
+    'b: 'sub,
+{
+    type Item = BoundItem<'a, 'b, 'lit, 'sub, E>;
+    type Expr = E;
     type Pattern = MonoPattern<'a, 'lit>;
     type Type = Infallible;
 
@@ -103,6 +110,6 @@ impl<'a, 'lit, T> nodes::Data for BoundData<'a, 'lit, T> {
     type Var = Name;
     type Universal = Infallible;
 
-    type Apply = Infallible;
+    type Apply<T: 'sub> = Infallible;
     type GenScope = &'a [Generic];
 }

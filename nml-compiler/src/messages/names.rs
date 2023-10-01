@@ -30,15 +30,6 @@ impl NameErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn unapplied_anonymous_variant(&mut self, name: &str) -> ErrorId {
-        let error = self
-            .error(format!(
-                "anonymous variant `{name}` must be applied to a single argument"
-            ))
-            .with_note("all anonymous variants must take a single argument");
-        self.errors.add(error)
-    }
-
     pub fn unknown_name(&mut self, name: &str) -> ErrorId {
         let error = self.error(format!("unknown name `{name}`"));
         self.errors.add(error)
