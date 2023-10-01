@@ -124,8 +124,8 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
             parsed::ItemNode::Let(pattern, expr, ()) => {
                 let mut this_scope = BTreeMap::new();
-                let pattern = self.pattern(id, &mut this_scope, pattern);
-                declared::ItemNode::Let(pattern, expr, this_scope)
+                let spine = self.function_spine(id, &mut this_scope, pattern);
+                declared::ItemNode::Let(spine, expr, this_scope)
             }
         };
 
@@ -140,8 +140,21 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let span = item.span;
         let node = match item.node {
             declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
-            declared::ItemNode::Let(pattern, expr, mut this_scope) => {
-                let expr = self.expr(id, &mut this_scope, expr);
+            declared::ItemNode::Let(spine, expr, mut this_scope) => {
+                let mut expr = self.expr(id, &mut this_scope, expr);
+                let pattern = match spine {
+                    declared::Spine::Single(pattern) => pattern,
+                    declared::Spine::Fun { head, args } => {
+                        for arg in args.into_iter().rev() {
+                            let span = arg.span + expr.span;
+                            let node = resolved::ExprNode::Lambda(self.alloc.alloc([(arg, expr)]));
+                            expr = resolved::Expr { node, span };
+                        }
+
+                        head
+                    }
+                };
+
                 resolved::ItemNode::Let(
                     pattern,
                     expr,

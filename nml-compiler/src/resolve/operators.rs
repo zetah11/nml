@@ -6,8 +6,14 @@ use super::{ItemId, Resolver};
 use crate::errors::ErrorId;
 use crate::names::{Ident, Name};
 use crate::source::Span;
+use crate::trees::declared::Spine;
 use crate::trees::parsed::Affix;
 use crate::trees::{parsed, resolved};
+
+enum OneOrMany<T> {
+    Single(T),
+    Many(T, Vec<T>),
+}
 
 impl<'a, 'lit> Resolver<'a, 'lit, '_> {
     pub(super) fn apply_expr_run(
@@ -21,7 +27,10 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             .map(|expr| self.expr(item_id, gen_scope, expr))
             .collect();
 
-        Precedencer::new(self).unflatten(terms)
+        match Precedencer::new(self).unflatten(terms) {
+            OneOrMany::Single(expr) => expr,
+            OneOrMany::Many(fun, args) => self.prefixes(fun, args),
+        }
     }
 
     pub(super) fn apply_pattern_run(
@@ -29,13 +38,16 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &[parsed::Pattern<'_, 'lit>],
-    ) -> resolved::Pattern<'a, 'lit> {
+    ) -> Spine<'a, 'lit> {
         let terms = terms
             .iter()
-            .map(|pattern| self.pattern(item_id, gen_scope, pattern))
+            .map(|pattern| self.single_pattern(item_id, gen_scope, pattern))
             .collect();
 
-        Precedencer::new(self).unflatten(terms)
+        match Precedencer::new(self).unflatten(terms) {
+            OneOrMany::Single(pattern) => Spine::Single(pattern),
+            OneOrMany::Many(head, args) => Spine::Fun { head, args },
+        }
     }
 
     fn prefixes<A: Affixable<'a>>(&self, mut fun: A, args: Vec<A>) -> A {
@@ -65,7 +77,7 @@ where
         }
     }
 
-    pub fn unflatten(mut self, terms: Vec<A>) -> A {
+    pub fn unflatten(mut self, terms: Vec<A>) -> OneOrMany<A> {
         for term in terms {
             self.term(term);
         }
@@ -88,10 +100,10 @@ where
             };
 
             let fun = A::apply(self.resolver.alloc, op, lhs);
-            A::apply(self.resolver.alloc, fun, rhs)
+            OneOrMany::Single(A::apply(self.resolver.alloc, fun, rhs))
         } else {
             let fun = self.exprs.remove(0);
-            self.resolver.prefixes(fun, self.exprs)
+            OneOrMany::Many(fun, self.exprs)
         }
     }
 

@@ -98,6 +98,7 @@ impl Matcher for Token<'_> {
     fn matches(&self, token: &Token) -> bool {
         match (self, token) {
             (Token::Name(_), Token::Name(_)) => true,
+            (Token::Symbol(_), Token::Symbol(_)) => true,
             (Token::Universal(_), Token::Universal(_)) => true,
             (Token::Number(_), Token::Number(_)) => true,
 

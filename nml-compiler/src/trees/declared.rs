@@ -30,7 +30,7 @@ where
 {
     type Item = Item<'a, 'b, 'lit, 'sub>;
     type Expr = &'b parsed::Expr<'b, 'lit>;
-    type Pattern = resolved::Pattern<'a, 'lit>;
+    type Pattern = Spine<'a, 'lit>;
     type Type = &'b parsed::Type<'b, 'lit>;
 
     type ExprName = Infallible;
@@ -53,3 +53,12 @@ where
 }
 
 pub type ItemNode<'a, 'b, 'lit, 'sub> = nodes::ItemNode<'sub, Data<'a, 'b, 'lit, 'sub>>;
+
+pub enum Spine<'a, 'lit> {
+    Fun {
+        head: resolved::Pattern<'a, 'lit>,
+        args: Vec<resolved::Pattern<'a, 'lit>>,
+    },
+
+    Single(resolved::Pattern<'a, 'lit>),
+}

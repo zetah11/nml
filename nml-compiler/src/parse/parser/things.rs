@@ -45,6 +45,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::If,
         Token::Case,
         Token::Name(""),
+        Token::Symbol(""),
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
@@ -112,6 +113,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
     const DEF_STARTS: &'static [Token<'static>] = &[
         Token::Name(""),
+        Token::Symbol(""),
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
@@ -223,6 +225,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
     const LAMBDA_STARTS: &'static [Token<'static>] = &[
         Token::Name(""),
+        Token::Symbol(""),
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
@@ -326,6 +329,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
     const FIELD_STARTS: &'static [Token<'static>] = &[
         Token::Name(""),
+        Token::Symbol(""),
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
@@ -471,6 +475,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn name(&mut self) -> Option<(Name<'a>, Span)> {
         let (name, span) = match self.next.as_ref()? {
             (Token::Name(name), span) => (Name::Normal(name), *span),
+            (Token::Symbol(name), span) => (Name::Normal(name), *span),
             (Token::Universal(name), span) => (Name::Universal(name), *span),
             _ => return None,
         };

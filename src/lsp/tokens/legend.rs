@@ -17,7 +17,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
 
     match token {
         Token::Comment => Some((types::COMMENT, mods::NONE)),
-        Token::Name(_) => None,
+        Token::Name(_) | Token::Symbol(_) => None,
         Token::Universal(_) => Some((types::TYPE_PARAMETER, mods::NONE)),
 
         Token::Number(_) => Some((types::NUMBER, mods::NONE)),

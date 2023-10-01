@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::names::{Ident, Name};
-use crate::trees::{parsed, resolved};
-
 use super::{ItemId, Resolver};
+use crate::names::{Ident, Name};
+use crate::trees::declared::Spine;
+use crate::trees::{parsed, resolved};
 
 impl<'a, 'lit> Resolver<'a, 'lit, '_> {
     pub fn expr(
@@ -83,7 +83,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                     self.alloc
                         .alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
                             self.scope(None, |this| {
-                                let pattern = this.pattern(item, gen_scope, pattern);
+                                let pattern = this.single_pattern(item, gen_scope, pattern);
                                 let body = this.expr(item, gen_scope, body);
                                 (pattern, body)
                             })
@@ -95,12 +95,26 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             parsed::ExprNode::Let(binding, [bound, body], ()) => {
                 let mut this_scope = BTreeMap::new();
 
-                let binding = self.pattern(item, &mut this_scope, binding);
-                let bound = self.expr(item, &mut this_scope, bound);
-                self.scope(Self::name_of(&binding), |this| {
+                let binding = self.function_spine(item, &mut this_scope, binding);
+                let mut bound = self.expr(item, &mut this_scope, bound);
+
+                let pattern = match binding {
+                    Spine::Single(pattern) => pattern,
+                    Spine::Fun { head, args } => {
+                        for arg in args.into_iter().rev() {
+                            let span = arg.span + bound.span;
+                            let node = resolved::ExprNode::Lambda(self.alloc.alloc([(arg, bound)]));
+                            bound = resolved::Expr { node, span };
+                        }
+
+                        head
+                    }
+                };
+
+                self.scope(Self::name_of(&pattern), |this| {
                     let body = this.expr(item, &mut this_scope, body);
                     resolved::ExprNode::Let(
-                        binding,
+                        pattern,
                         self.alloc.alloc([bound, body]),
                         self.alloc.alloc_slice_fill_iter(this_scope.into_values()),
                     )

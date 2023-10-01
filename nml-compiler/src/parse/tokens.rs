@@ -3,13 +3,16 @@ use logos::Logos;
 #[derive(Logos, Debug, Eq, PartialEq)]
 #[logos(skip r"\s+")]
 pub enum Token<'src> {
-    #[regex(r"\S+", |lexer| lexer.slice())]
+    #[regex(r"[\p{XID_Start}][\p{XID_Continue}_']*", |lexer| lexer.slice(), priority = 2)]
     Name(&'src str),
 
-    #[regex(r"'\S+", |lexer| lexer.slice())]
+    #[regex(r"[\p{Symbol}\p{Punctuation}]+", |lexer| lexer.slice())]
+    Symbol(&'src str),
+
+    #[regex(r"'[\p{XID_Start}][\p{XID_Continue}_']*", |lexer| lexer.slice())]
     Universal(&'src str),
 
-    #[regex(r"[0-9][0-9_']*", |lexer| lexer.slice(), priority = 2)]
+    #[regex(r"[0-9][0-9_]*", |lexer| lexer.slice())]
     Number(&'src str),
 
     #[token("and")]
