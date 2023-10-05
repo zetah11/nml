@@ -5,12 +5,12 @@ use crate::names::{Ident, Name};
 use crate::trees::declared;
 use crate::trees::{parsed, resolved};
 
-impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn expr(
         &mut self,
         item: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        expr: &parsed::Expr<'_, 'lit>,
+        expr: &'scratch parsed::Expr<'scratch, 'lit>,
     ) -> resolved::Expr<'a, 'lit> {
         let span = expr.span;
         let node = match &expr.node {
@@ -142,7 +142,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         params: &[T],
-        body: &parsed::Expr<'_, 'lit>,
+        body: &'scratch parsed::Expr<'_, 'lit>,
         mut f: impl FnMut(
             &mut Self,
             &mut BTreeMap<Ident<'lit>, Name>,

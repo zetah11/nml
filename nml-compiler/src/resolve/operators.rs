@@ -15,21 +15,21 @@ enum OneOrMany<T> {
     Many(T, Vec<T>),
 }
 
-impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub(super) fn apply_expr_run(
         &mut self,
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        terms: &[parsed::Expr<'_, 'lit>],
+        terms: &'scratch [parsed::Expr<'scratch, 'lit>],
     ) -> resolved::Expr<'a, 'lit> {
         let terms = terms
             .iter()
             .map(|expr| self.expr(item_id, gen_scope, expr))
             .collect();
 
-        match Precedencer::new(self, item_id).unflatten(terms) {
+        match Precedencer::new(self, self.alloc, item_id).unflatten(terms) {
             OneOrMany::Single(expr) => expr,
-            OneOrMany::Many(fun, args) => self.prefixes(item_id, fun, args),
+            OneOrMany::Many(fun, args) => Precedencer::prefixes(self.alloc, item_id, fun, args),
         }
     }
 
@@ -37,42 +37,41 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         &mut self,
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        terms: &[parsed::Pattern<'_, 'lit>],
-    ) -> declared::Spine<'a, 'lit, declared::SpinedPattern<'a, 'lit>> {
+        terms: &'scratch [parsed::Pattern<'scratch, 'lit>],
+    ) -> declared::Spine<'scratch, 'lit, declared::SpinedPattern<'scratch, 'lit>> {
         let terms = terms
             .iter()
             .map(|pattern| self.single_pattern(item_id, gen_scope, pattern))
             .collect();
 
-        match Precedencer::new(self, item_id).unflatten(terms) {
+        match Precedencer::new(self, self.scratch, item_id).unflatten(terms) {
             OneOrMany::Single(pattern) => declared::Spine::Single(pattern),
             OneOrMany::Many(head, args) => declared::Spine::Fun { head, args },
         }
     }
-
-    fn prefixes<A: Affixable<'a>>(&self, item_id: ItemId, mut fun: A, args: Vec<A>) -> A {
-        for arg in args {
-            fun = A::apply(self.alloc, item_id, fun, arg);
-        }
-
-        fun
-    }
 }
 
-struct Precedencer<'a, 'lit, 'err, 'resolver, A> {
-    resolver: &'resolver mut Resolver<'a, 'lit, 'err>,
+struct Precedencer<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A> {
+    resolver: &'resolver mut Resolver<'a, 'scratch, 'lit, 'err>,
+    alloc: &'alloc Bump,
     item_id: ItemId,
     infix: Option<(Vec<A>, A, Name)>,
     exprs: Vec<A>,
 }
 
-impl<'a, 'lit, 'err, 'resolver, A> Precedencer<'a, 'lit, 'err, 'resolver, A>
+impl<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A>
+    Precedencer<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A>
 where
-    A: Affixable<'a>,
+    A: Affixable<'alloc>,
 {
-    pub fn new(resolver: &'resolver mut Resolver<'a, 'lit, 'err>, item_id: ItemId) -> Self {
+    pub fn new(
+        resolver: &'resolver mut Resolver<'a, 'scratch, 'lit, 'err>,
+        alloc: &'alloc Bump,
+        item_id: ItemId,
+    ) -> Self {
         Self {
             resolver,
+            alloc,
             item_id,
             infix: None,
             exprs: Vec::new(),
@@ -87,7 +86,7 @@ where
         if let Some((mut lhs, op, name)) = self.infix {
             let lhs = {
                 let fun = lhs.remove(0);
-                self.resolver.prefixes(self.item_id, fun, lhs)
+                Self::prefixes(self.alloc, self.item_id, fun, lhs)
             };
 
             let rhs = if self.exprs.is_empty() {
@@ -98,11 +97,11 @@ where
                 A::invalid(self.item_id, error, span)
             } else {
                 let fun = self.exprs.remove(0);
-                self.resolver.prefixes(self.item_id, fun, self.exprs)
+                Self::prefixes(self.alloc, self.item_id, fun, self.exprs)
             };
 
-            let fun = A::apply(self.resolver.alloc, self.item_id, op, lhs);
-            OneOrMany::Single(A::apply(self.resolver.alloc, self.item_id, fun, rhs))
+            let fun = A::apply(self.alloc, self.item_id, op, lhs);
+            OneOrMany::Single(A::apply(self.alloc, self.item_id, fun, rhs))
         } else {
             let fun = self.exprs.remove(0);
             OneOrMany::Many(fun, self.exprs)
@@ -147,7 +146,7 @@ where
 
     fn postfix_term(&mut self, term: A, name: Name) {
         if let Some(prev) = self.exprs.pop() {
-            let expr = A::apply(self.resolver.alloc, self.item_id, term, prev);
+            let expr = A::apply(self.alloc, self.item_id, term, prev);
             self.exprs.push(expr);
         } else {
             let span = term.span();
@@ -161,6 +160,14 @@ where
             let expr = A::invalid(self.item_id, error, span);
             self.exprs.push(expr);
         }
+    }
+
+    fn prefixes(alloc: &'alloc Bump, item_id: ItemId, mut fun: A, args: Vec<A>) -> A {
+        for arg in args {
+            fun = A::apply(alloc, item_id, fun, arg);
+        }
+
+        fun
     }
 }
 

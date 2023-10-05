@@ -25,11 +25,23 @@ pub fn resolve<'a, 'b, 'lit>(
     program: &'b parsed::Source<'b, 'lit>,
 ) -> resolved::Program<'a, 'lit>
 where
-    'lit: 'a + 'b,
-    'a: 'b,
+    'lit: 'a,
+{
+    let scratch = Bump::new();
+    resolve_program::<'a, '_, 'lit>(names, alloc, &scratch, program)
+}
+
+fn resolve_program<'a, 'b: 'b, 'lit>(
+    names: &'a Names<'lit>,
+    alloc: &'a Bump,
+    scratch: &'b Bump,
+    program: &'b parsed::Source<'b, 'lit>,
+) -> resolved::Program<'a, 'lit>
+where
+    'lit: 'a,
 {
     let mut errors = program.errors.clone();
-    let mut resolver = Resolver::new(names, alloc, &mut errors, program.source);
+    let mut resolver = Resolver::new(names, alloc, scratch, &mut errors, program.source);
 
     let mut items = resolver.items(program.items);
     let graph = items
@@ -54,9 +66,10 @@ where
     }
 }
 
-struct Resolver<'a, 'lit, 'err> {
+struct Resolver<'a, 'scratch, 'lit, 'err> {
     names: &'a Names<'lit>,
     alloc: &'a Bump,
+    scratch: &'scratch Bump,
     errors: &'err mut Errors,
 
     items: BTreeMap<Name, ItemId>,
@@ -68,10 +81,11 @@ struct Resolver<'a, 'lit, 'err> {
     item_ids: usize,
 }
 
-impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
+impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
     pub fn new(
         names: &'a Names<'lit>,
         alloc: &'a Bump,
+        scratch: &'scratch Bump,
         errors: &'err mut Errors,
         source: SourceId,
     ) -> Self {
@@ -80,6 +94,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         Self {
             names,
             alloc,
+            scratch,
             errors,
 
             items: BTreeMap::new(),
@@ -92,15 +107,12 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         }
     }
 
-    pub fn items<'b>(
+    pub fn items(
         &mut self,
-        items: &'b [parsed::Item<'b, 'lit>],
-    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>>
-    where
-        'a: 'b,
-    {
+        items: &'scratch [parsed::Item<'scratch, 'lit>],
+    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
         debug!("declaring {} items", items.len());
-        let items: Vec<declared::Item<'a, 'b, 'lit, 'b>> =
+        let items: Vec<declared::Item<'a, 'scratch, 'lit>> =
             items.iter().map(|item| self.declare_item(item)).collect();
 
         debug!("resolving {} items", items.len());
@@ -110,13 +122,10 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             .collect()
     }
 
-    fn declare_item<'b>(
+    fn declare_item(
         &mut self,
-        item: &'b parsed::Item<'b, 'lit>,
-    ) -> declared::Item<'a, 'b, 'lit, 'b>
-    where
-        'a: 'b,
-    {
+        item: &'scratch parsed::Item<'scratch, 'lit>,
+    ) -> declared::Item<'a, 'scratch, 'lit> {
         let id = ItemId(self.item_ids);
         self.item_ids += 1;
         let span = item.span;
@@ -125,7 +134,9 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             parsed::ItemNode::Let(pattern, expr, ()) => {
                 let mut this_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut this_scope, pattern);
-                let spine = spine.map(|pattern| self.pattern(&mut this_scope, &pattern));
+                let spine: declared::Spine<'scratch, 'lit, resolved::Pattern<'a, 'lit>> =
+                    spine.map(|pattern| self.pattern(&mut this_scope, &pattern));
+
                 declared::ItemNode::Let(spine, expr, this_scope)
             }
         };
@@ -133,9 +144,9 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         declared::Item { node, span, id }
     }
 
-    fn resolve_item<'b>(
+    fn resolve_item(
         &mut self,
-        item: declared::Item<'a, 'b, 'lit, 'b>,
+        item: declared::Item<'a, 'scratch, 'lit>,
     ) -> resolved::Item<'a, 'lit> {
         let id = item.id;
         let span = item.span;

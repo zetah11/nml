@@ -5,7 +5,7 @@ use crate::names::{Ident, Name};
 use crate::trees::declared;
 use crate::trees::{parsed, resolved};
 
-impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn name_of(pattern: &resolved::Pattern) -> Option<Name> {
         if let resolved::PatternNode::Bind(name) = &pattern.node {
             Some(*name)
@@ -18,8 +18,8 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         &mut self,
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &parsed::Pattern<'_, 'lit>,
-    ) -> declared::Spine<'a, 'lit, declared::SpinedPattern<'a, 'lit>> {
+        pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
+    ) -> declared::Spine<'scratch, 'lit, declared::SpinedPattern<'scratch, 'lit>> {
         match &pattern.node {
             parsed::PatternNode::Anno(_, _) => todo!(),
             parsed::PatternNode::Apply(terms) => self.apply_pattern_run(item_id, gen_scope, terms),
@@ -31,8 +31,8 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         &mut self,
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &parsed::Pattern<'_, 'lit>,
-    ) -> declared::SpinedPattern<'a, 'lit> {
+        pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
+    ) -> declared::SpinedPattern<'scratch, 'lit> {
         let span = pattern.span;
         let node = match &pattern.node {
             parsed::PatternNode::Invalid(e) => declared::SpinedPatternNode::Invalid(*e),
@@ -47,11 +47,16 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                 }
             }
 
-            parsed::PatternNode::Anno(..) => todo!(),
+            parsed::PatternNode::Anno(pattern, ty) => {
+                let pattern = self
+                    .scratch
+                    .alloc(self.single_pattern(item_id, gen_scope, pattern));
+                declared::SpinedPatternNode::Anno(pattern, ty)
+            }
 
             parsed::PatternNode::Group(pattern) => {
                 let pattern = self
-                    .alloc
+                    .scratch
                     .alloc(self.single_pattern(item_id, gen_scope, pattern));
                 declared::SpinedPatternNode::Group(pattern)
             }
@@ -82,7 +87,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
     pub fn pattern(
         &mut self,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &declared::SpinedPattern<'_, 'lit>,
+        pattern: &declared::SpinedPattern<'scratch, 'lit>,
     ) -> resolved::Pattern<'a, 'lit> {
         let item_id = pattern.item_id;
         let span = pattern.span;

@@ -5,7 +5,7 @@ use crate::trees::{parsed as i, resolved as o};
 
 use super::{ItemId, Resolver};
 
-impl<'a, 'lit> Resolver<'a, 'lit, '_> {
+impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn ty(
         &mut self,
         item: ItemId,

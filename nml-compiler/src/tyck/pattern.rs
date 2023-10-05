@@ -7,8 +7,8 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
     pub(super) fn generalize(
         &mut self,
         explicit: &[Generic],
-        pattern: &MonoPattern<'a, 'ids>,
-    ) -> PolyPattern<'a, 'ids> {
+        pattern: &MonoPattern<'a>,
+    ) -> PolyPattern<'a> {
         let mut pretty = self.pretty.build();
         let scheme = self
             .solver
@@ -17,7 +17,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
         self.gen_pattern(&scheme, pattern)
     }
 
-    pub(super) fn monomorphic(&mut self, pattern: &MonoPattern<'a, 'ids>) -> PolyPattern<'a, 'ids> {
+    pub(super) fn monomorphic(&mut self, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
         let span = pattern.span;
         let scheme = Scheme::mono(pattern.ty);
 
@@ -37,7 +37,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
             PatternNode::Apply([fun, arg]) => {
                 let fun = self.monomorphic(fun);
                 let arg = self.monomorphic(arg);
-                let terms: &'a [PolyPattern<'a, 'ids>; 2] = self.alloc.alloc([fun, arg]);
+                let terms: &'a [PolyPattern<'a>; 2] = self.alloc.alloc([fun, arg]);
                 PatternNode::Apply(terms)
             }
 
@@ -47,11 +47,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
         PolyPattern { node, span, scheme }
     }
 
-    fn gen_pattern(
-        &mut self,
-        scheme: &Scheme<'a>,
-        pattern: &MonoPattern<'a, 'ids>,
-    ) -> PolyPattern<'a, 'ids> {
+    fn gen_pattern(&mut self, scheme: &Scheme<'a>, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
         let span = pattern.span;
         let ty = self.solver.apply(self.alloc, pattern.ty);
         let scheme = scheme.onto(ty);
@@ -72,7 +68,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
             PatternNode::Apply([fun, arg]) => {
                 let fun = self.gen_pattern(&scheme, fun);
                 let arg = self.gen_pattern(&scheme, arg);
-                let terms: &'a [PolyPattern<'a, 'ids>; 2] = self.alloc.alloc([fun, arg]);
+                let terms: &'a [PolyPattern<'a>; 2] = self.alloc.alloc([fun, arg]);
                 PatternNode::Apply(terms)
             }
 

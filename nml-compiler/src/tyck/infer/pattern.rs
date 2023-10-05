@@ -6,7 +6,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
         &mut self,
         wildcards: &mut Vec<&'a Type<'a>>,
         pattern: &i::Pattern<'_, 'lit>,
-    ) -> o::MonoPattern<'a, 'lit> {
+    ) -> o::MonoPattern<'a> {
         let span = pattern.span;
         let (node, ty) = match &pattern.node {
             i::PatternNode::Invalid(e) => (
