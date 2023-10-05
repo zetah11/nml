@@ -61,8 +61,6 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
                 self.hint_scheme(pattern.span, &pattern.scheme);
             }
 
-            PolyPatternNode::Anno(..) => {}
-
             PolyPatternNode::Group(pattern) => self.pattern(pattern),
 
             PolyPatternNode::Apply([fun, arg]) => {
@@ -70,7 +68,7 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
                 self.pattern(arg);
             }
 
-            PolyPatternNode::Name(v) => match *v {},
+            PolyPatternNode::Anno(_, v) => match *v {},
         }
     }
 

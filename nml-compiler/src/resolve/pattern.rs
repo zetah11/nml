@@ -39,11 +39,11 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             parsed::PatternNode::Wildcard => declared::SpinedPatternNode::Wildcard,
             parsed::PatternNode::Unit => declared::SpinedPatternNode::Unit,
 
-            parsed::PatternNode::Name(name) => {
+            parsed::PatternNode::Bind(name) => {
                 if let Some((name, ValueNamespace::Pattern)) = self.lookup_value(&name.1) {
                     declared::SpinedPatternNode::Constructor(name)
                 } else {
-                    declared::SpinedPatternNode::Name(*name)
+                    declared::SpinedPatternNode::Bind(*name)
                 }
             }
 
@@ -74,7 +74,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 }
             }
 
-            parsed::PatternNode::Constructor(v) | parsed::PatternNode::Bind(v) => match *v {},
+            parsed::PatternNode::Constructor(v) => match *v {},
         };
 
         declared::SpinedPattern {
@@ -96,14 +96,13 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             declared::SpinedPatternNode::Wildcard => resolved::PatternNode::Wildcard,
             declared::SpinedPatternNode::Unit => resolved::PatternNode::Unit,
 
-            declared::SpinedPatternNode::Name((affix, ident)) => {
+            declared::SpinedPatternNode::Bind((affix, ident)) => {
                 match self.define_value(item_id, span, *affix, *ident, ValueNamespace::Value) {
                     Ok(name) => resolved::PatternNode::Bind(name),
                     Err(e) => resolved::PatternNode::Invalid(e),
                 }
             }
 
-            declared::SpinedPatternNode::Bind(name) => resolved::PatternNode::Bind(*name),
             declared::SpinedPatternNode::Constructor(name) => {
                 resolved::PatternNode::Constructor(*name)
             }

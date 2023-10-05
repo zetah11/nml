@@ -80,8 +80,6 @@ impl Resolver<'_, '_, '_, '_> {
                 self.in_expr(ignore, out, bound);
                 self.in_expr(ignore, out, body);
             }
-
-            ExprNode::Name(v) => match *v {},
         }
     }
 
@@ -114,8 +112,6 @@ impl Resolver<'_, '_, '_, '_> {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
             }
-
-            PatternNode::Name(v) => match *v {},
         }
     }
 

@@ -70,7 +70,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
             cst::Node::Name(cst::Name::Normal(name)) => {
                 let name = self.names.intern(name);
-                ast::PatternNode::Name((affix, name))
+                ast::PatternNode::Bind((affix, name))
             }
 
             cst::Node::Name(cst::Name::Universal(name)) => {

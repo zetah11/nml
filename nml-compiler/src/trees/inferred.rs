@@ -1,3 +1,6 @@
+//! An inferred program is one where each node in the syntax tree is annotated
+//! with its type.
+
 use std::collections::BTreeMap;
 use std::convert::Infallible;
 
@@ -18,12 +21,6 @@ pub struct Program<'a, 'lit> {
 pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
 
 pub struct MonoData<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
-type Var = Name;
-type GenScope = ();
-type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
-type ApplyPolyPattern<'a> = &'a [PolyPattern<'a>; 2];
-type ApplyMonoPattern<'a> = &'a [MonoPattern<'a>; 2];
 
 pub struct Item<'a, 'lit> {
     pub node: ItemNode<'a, 'lit>,
@@ -51,6 +48,14 @@ pub struct MonoPattern<'a> {
     pub ty: &'a Type<'a>,
 }
 
+type TypeSyntax = Infallible;
+type Var = Name;
+type Constructor = Name;
+type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
+type ApplyPolyPattern<'a> = &'a [PolyPattern<'a>; 2];
+type ApplyMonoPattern<'a> = &'a [MonoPattern<'a>; 2];
+type GenScope = ();
+
 pub type ItemNode<'a, 'lit> = nodes::ItemNode<Expr<'a, 'lit>, PolyPattern<'a>, GenScope>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
@@ -58,18 +63,17 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'lit,
     Expr<'a, 'lit>,
     PolyPattern<'a>,
-    Infallible,
-    Infallible,
+    TypeSyntax,
     Var,
     ApplyExpr<'a, 'lit>,
     GenScope,
 >;
 
 pub type PolyPatternNode<'a> =
-    nodes::PatternNode<'a, PolyPattern<'a>, Infallible, Infallible, Var, ApplyPolyPattern<'a>>;
+    nodes::PatternNode<'a, PolyPattern<'a>, TypeSyntax, Var, Constructor, ApplyPolyPattern<'a>>;
 
 pub type MonoPatternNode<'a> =
-    nodes::PatternNode<'a, MonoPattern<'a>, Infallible, Infallible, Var, ApplyMonoPattern<'a>>;
+    nodes::PatternNode<'a, MonoPattern<'a>, TypeSyntax, Var, Constructor, ApplyMonoPattern<'a>>;
 
 pub(crate) struct BoundItem<'a, E> {
     pub node: BoundItemNode<'a, E>,
@@ -80,7 +84,3 @@ pub(crate) struct BoundItem<'a, E> {
 type BoundGenScope<'a> = &'a [Generic];
 
 pub(crate) type BoundItemNode<'a, E> = nodes::ItemNode<E, MonoPattern<'a>, BoundGenScope<'a>>;
-
-/// The syntax tree of an item _after_ its pattern has been bound a type but_
-/// _before_ its body has been inferred.
-pub(crate) struct BoundData<'a, T>(std::marker::PhantomData<(&'a (), T)>);

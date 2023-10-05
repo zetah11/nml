@@ -41,7 +41,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Apply(terms)
             }
 
-            PatternNode::Name(v) | PatternNode::Anno(_, v) => match *v {},
+            PatternNode::Anno(_, v) => match *v {},
         };
 
         PolyPattern { node, span, scheme }
@@ -72,7 +72,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Apply(terms)
             }
 
-            PatternNode::Name(v) | PatternNode::Anno(_, v) => match *v {},
+            PatternNode::Anno(_, v) => match *v {},
         };
 
         PolyPattern { node, span, scheme }

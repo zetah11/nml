@@ -21,7 +21,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
             parsed::ExprNode::Bool(v) => resolved::ExprNode::Bool(*v),
 
-            parsed::ExprNode::Name(name) => {
+            parsed::ExprNode::Var(name) => {
                 if let Some((name, _)) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
                 } else {
@@ -130,8 +130,6 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                     )
                 })
             }
-
-            parsed::ExprNode::Var(v) => match *v {},
         };
 
         resolved::Expr { node, span }

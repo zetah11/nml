@@ -60,8 +60,6 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 let terms = self.alloc.alloc([ctr, arg]);
                 (o::MonoPatternNode::Apply(terms), res_ty)
             }
-
-            i::PatternNode::Name(v) => match *v {},
         };
 
         o::MonoPattern { node, span, ty }

@@ -36,9 +36,9 @@ pub struct Type<'a, 'lit> {
 }
 
 type GenScope = ();
-type ExprName<'lit> = Ident<'lit>;
-type PatternName<'lit> = (Affix, Ident<'lit>);
-type Var = Infallible;
+type Var<'lit> = Ident<'lit>;
+type PatternVar<'lit> = (Affix, Ident<'lit>);
+type Constrcutor = Infallible;
 type Universal<'lit> = Ident<'lit>;
 
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>];
@@ -52,8 +52,7 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     Expr<'a, 'lit>,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    ExprName<'lit>,
-    Var,
+    Var<'lit>,
     ApplyExpr<'a, 'lit>,
     GenScope,
 >;
@@ -62,8 +61,8 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     'a,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    PatternName<'lit>,
-    Var,
+    PatternVar<'lit>,
+    Constrcutor,
     ApplyPattern<'a, 'lit>,
 >;
 

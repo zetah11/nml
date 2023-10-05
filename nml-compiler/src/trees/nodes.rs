@@ -1,3 +1,20 @@
+//! Defines the various syntax tree variants or "nodes".
+//!
+//! The types are parameterized by:
+//!
+//! - `Item` - item trees
+//! - `Expr` - expression trees
+//! - `Pattern` - pattern trees
+//! - `Type` - type trees (but not the _semantic objects_ of types, themselves)
+//! - `Var` - a value name
+//! - `Constructor` - a resolved constrcutor name
+//! - `Universal` - a resolved, implicitly defined universal type parameter,
+//!   such as `'a`
+//! - `ApplyExpr` - an expression application tree
+//! - `ApplyPattern` - a pattern application tree
+//! - `GenScope` - data bound at generalizing nodes, like `let` items and
+//!   expressions.
+
 use malachite::Integer;
 
 use crate::errors::ErrorId;
@@ -12,15 +29,12 @@ pub enum ItemNode<Expr, Pattern, GenScope> {
     Let(Pattern, Expr, GenScope),
 }
 
-pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenScope> {
+pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Var, ApplyExpr, GenScope> {
     /// Something fishy
     Invalid(ErrorId),
 
     /// Variable name
     Var(Var),
-
-    /// Some name.
-    Name(ExprName),
 
     /// `_`
     Hole,
@@ -67,7 +81,7 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenSc
     Let(Pattern, &'a [Expr; 2], GenScope),
 }
 
-pub enum PatternNode<'a, Pattern, Type, PatternName, Var, ApplyPattern> {
+pub enum PatternNode<'a, Pattern, Type, Var, Constructor, ApplyPattern> {
     /// Something fishy.
     Invalid(ErrorId),
 
@@ -77,14 +91,11 @@ pub enum PatternNode<'a, Pattern, Type, PatternName, Var, ApplyPattern> {
     /// `()`
     Unit,
 
-    /// Some name.
-    Name(PatternName),
-
     /// A name binding
     Bind(Var),
 
     /// A constructor name
-    Constructor(Var),
+    Constructor(Constructor),
 
     /// `a : t`
     Anno(&'a Pattern, Type),
@@ -134,24 +145,22 @@ where
     }
 }
 
-impl<Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenScope> Copy
-    for ExprNode<'_, '_, Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenScope>
+impl<Expr, Pattern, Type, Var, ApplyExpr, GenScope> Copy
+    for ExprNode<'_, '_, Expr, Pattern, Type, Var, ApplyExpr, GenScope>
 where
     Pattern: Copy,
     Type: Copy,
-    ExprName: Copy,
     Var: Copy,
     ApplyExpr: Copy,
     GenScope: Copy,
 {
 }
 
-impl<Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenScope> Clone
-    for ExprNode<'_, '_, Expr, Pattern, Type, ExprName, Var, ApplyExpr, GenScope>
+impl<Expr, Pattern, Type, Var, ApplyExpr, GenScope> Clone
+    for ExprNode<'_, '_, Expr, Pattern, Type, Var, ApplyExpr, GenScope>
 where
     Pattern: Copy,
     Type: Copy,
-    ExprName: Copy,
     Var: Copy,
     ApplyExpr: Copy,
     GenScope: Copy,
@@ -218,7 +227,6 @@ mod variance_checking {
             Self,
             Pattern<'a, 'lit>,
             Type<'a, 'lit>,
-            Infallible,
             Infallible,
             Infallible,
             Infallible,

@@ -14,7 +14,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
             cst::Node::Name(cst::Name::Normal(name)) => {
                 let name = self.names.intern(name);
-                ast::ExprNode::Name(name)
+                ast::ExprNode::Var(name)
             }
 
             cst::Node::Name(cst::Name::Universal(name)) => {

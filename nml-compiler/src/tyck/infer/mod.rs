@@ -314,8 +314,6 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 let terms = self.alloc.alloc([bound, body]);
                 (o::ExprNode::Let(pattern, terms, ()), ty)
             }
-
-            i::ExprNode::Name(v) => match *v {},
         };
 
         o::Expr { node, span, ty }

@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::convert::Infallible;
 
 use super::nodes;
 use crate::errors::{ErrorId, Errors};
@@ -39,11 +38,12 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
-type GenScope<'a> = &'a [Name];
 type Var = Name;
+type Constructor = Name;
 type Universal = Name;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
+type GenScope<'a> = &'a [Name];
 
 pub type ItemNode<'a, 'lit> = nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, GenScope<'a>>;
 
@@ -53,7 +53,6 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     Expr<'a, 'lit>,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    Infallible,
     Var,
     ApplyExpr<'a, 'lit>,
     GenScope<'a>,
@@ -63,8 +62,8 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     'a,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    Infallible,
     Var,
+    Constructor,
     ApplyPattern<'a, 'lit>,
 >;
 
