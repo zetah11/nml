@@ -106,10 +106,19 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                         (pattern, bound)
                     }
 
-                    declared::Spine::Fun { head, args } => {
+                    declared::Spine::Fun { head, args, anno } => {
                         // Resolve the pattern before the bound body to allow
                         // local recursive functions
                         let head = self.pattern(gen_scope, &head);
+
+                        let bound = if let Some(ty) = anno {
+                            let span = bound.span + ty.span;
+                            let node = parsed::ExprNode::Anno(bound, *ty);
+                            self.scratch.alloc(parsed::Expr { node, span })
+                        } else {
+                            bound
+                        };
+
                         let body = self.lambda(
                             item,
                             gen_scope,
@@ -117,6 +126,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                             bound,
                             |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
                         );
+
                         (head, body)
                     }
                 };

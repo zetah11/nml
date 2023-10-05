@@ -158,7 +158,15 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                         let expr = self.expr(id, &mut this_scope, expr);
                         (pattern, expr)
                     }
-                    declared::Spine::Fun { head, args } => {
+                    declared::Spine::Fun { head, args, anno } => {
+                        let expr = if let Some(ty) = anno {
+                            let span = expr.span + ty.span;
+                            let node = parsed::ExprNode::Anno(expr, *ty);
+                            self.scratch.alloc(parsed::Expr { node, span })
+                        } else {
+                            expr
+                        };
+
                         let body = self.lambda(
                             id,
                             &mut this_scope,
@@ -166,6 +174,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                             expr,
                             |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
                         );
+
                         (head, body)
                     }
                 };

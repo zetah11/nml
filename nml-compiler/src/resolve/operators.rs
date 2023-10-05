@@ -46,7 +46,11 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
         match Precedencer::new(self, self.scratch, item_id).unflatten(terms) {
             OneOrMany::Single(pattern) => declared::Spine::Single(pattern),
-            OneOrMany::Many(head, args) => declared::Spine::Fun { head, args },
+            OneOrMany::Many(head, args) => declared::Spine::Fun {
+                head,
+                args,
+                anno: None,
+            },
         }
     }
 }

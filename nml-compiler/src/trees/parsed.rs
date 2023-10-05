@@ -30,6 +30,7 @@ pub struct Pattern<'a, 'lit> {
     pub span: Span,
 }
 
+#[derive(Clone, Copy)]
 pub struct Type<'a, 'lit> {
     pub node: TypeNode<'a, 'lit>,
     pub span: Span,

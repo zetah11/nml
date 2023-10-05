@@ -21,7 +21,50 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
     ) -> declared::Spine<'scratch, 'lit, declared::SpinedPattern<'scratch, 'lit>> {
         match &pattern.node {
-            parsed::PatternNode::Anno(_, _) => todo!(),
+            parsed::PatternNode::Anno(pattern, ty) => {
+                match self.function_spine(item_id, gen_scope, pattern) {
+                    declared::Spine::Fun {
+                        head,
+                        args,
+                        anno: Some(_),
+                    } => {
+                        let span = ty.span;
+                        let e = self
+                            .errors
+                            .parse_error(span)
+                            .multiple_return_type_annotations();
+                        let node = parsed::TypeNode::Invalid(e);
+                        let anno = self.scratch.alloc(parsed::Type { node, span });
+                        declared::Spine::Fun {
+                            head,
+                            args,
+                            anno: Some(anno),
+                        }
+                    }
+
+                    declared::Spine::Fun {
+                        head,
+                        args,
+                        anno: None,
+                    } => {
+                        let anno = Some(ty);
+                        declared::Spine::Fun { head, args, anno }
+                    }
+
+                    declared::Spine::Single(pattern) => {
+                        let span = pattern.span + ty.span;
+                        let node =
+                            declared::SpinedPatternNode::Anno(self.scratch.alloc(pattern), ty);
+
+                        declared::Spine::Single(declared::SpinedPattern {
+                            node,
+                            span,
+                            item_id,
+                        })
+                    }
+                }
+            }
+
             parsed::PatternNode::Apply(terms) => self.apply_pattern_run(item_id, gen_scope, terms),
             _ => declared::Spine::Single(self.single_pattern(item_id, gen_scope, pattern)),
         }

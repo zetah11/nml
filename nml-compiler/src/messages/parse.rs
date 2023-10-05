@@ -140,6 +140,11 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn multiple_return_type_annotations(&mut self) -> ErrorId {
+        let error = self.error("function can only have a single return type annotation");
+        self.errors.add(error)
+    }
+
     pub fn postfix_function(&mut self, name: &str) -> ErrorId {
         let error = self.error(format!("`{name}` is a postfix function"));
         self.errors.add(error)

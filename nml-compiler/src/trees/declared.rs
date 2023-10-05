@@ -66,6 +66,7 @@ pub(crate) enum Spine<'a, 'lit, T> {
     Fun {
         head: T,
         args: Vec<SpinedPattern<'a, 'lit>>,
+        anno: Option<&'a parsed::Type<'a, 'lit>>,
     },
 
     Single(T),
@@ -74,9 +75,10 @@ pub(crate) enum Spine<'a, 'lit, T> {
 impl<'a, 'lit, T> Spine<'a, 'lit, T> {
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spine<'a, 'lit, U> {
         match self {
-            Self::Fun { head, args } => Spine::Fun {
+            Self::Fun { head, args, anno } => Spine::Fun {
                 head: f(head),
                 args,
+                anno,
             },
 
             Self::Single(pattern) => Spine::Single(f(pattern)),
