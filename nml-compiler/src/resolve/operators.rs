@@ -6,7 +6,7 @@ use super::{ItemId, Resolver};
 use crate::errors::ErrorId;
 use crate::names::{Ident, Name};
 use crate::source::Span;
-use crate::trees::declared::Spine;
+use crate::trees::declared;
 use crate::trees::parsed::Affix;
 use crate::trees::{parsed, resolved};
 
@@ -27,9 +27,9 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             .map(|expr| self.expr(item_id, gen_scope, expr))
             .collect();
 
-        match Precedencer::new(self).unflatten(terms) {
+        match Precedencer::new(self, item_id).unflatten(terms) {
             OneOrMany::Single(expr) => expr,
-            OneOrMany::Many(fun, args) => self.prefixes(fun, args),
+            OneOrMany::Many(fun, args) => self.prefixes(item_id, fun, args),
         }
     }
 
@@ -38,21 +38,21 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &[parsed::Pattern<'_, 'lit>],
-    ) -> Spine<'a, 'lit> {
+    ) -> declared::Spine<'a, 'lit, declared::SpinedPattern<'a, 'lit>> {
         let terms = terms
             .iter()
             .map(|pattern| self.single_pattern(item_id, gen_scope, pattern))
             .collect();
 
-        match Precedencer::new(self).unflatten(terms) {
-            OneOrMany::Single(pattern) => Spine::Single(pattern),
-            OneOrMany::Many(head, args) => Spine::Fun { head, args },
+        match Precedencer::new(self, item_id).unflatten(terms) {
+            OneOrMany::Single(pattern) => declared::Spine::Single(pattern),
+            OneOrMany::Many(head, args) => declared::Spine::Fun { head, args },
         }
     }
 
-    fn prefixes<A: Affixable<'a>>(&self, mut fun: A, args: Vec<A>) -> A {
+    fn prefixes<A: Affixable<'a>>(&self, item_id: ItemId, mut fun: A, args: Vec<A>) -> A {
         for arg in args {
-            fun = A::apply(self.alloc, fun, arg);
+            fun = A::apply(self.alloc, item_id, fun, arg);
         }
 
         fun
@@ -61,6 +61,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
 
 struct Precedencer<'a, 'lit, 'err, 'resolver, A> {
     resolver: &'resolver mut Resolver<'a, 'lit, 'err>,
+    item_id: ItemId,
     infix: Option<(Vec<A>, A, Name)>,
     exprs: Vec<A>,
 }
@@ -69,9 +70,10 @@ impl<'a, 'lit, 'err, 'resolver, A> Precedencer<'a, 'lit, 'err, 'resolver, A>
 where
     A: Affixable<'a>,
 {
-    pub fn new(resolver: &'resolver mut Resolver<'a, 'lit, 'err>) -> Self {
+    pub fn new(resolver: &'resolver mut Resolver<'a, 'lit, 'err>, item_id: ItemId) -> Self {
         Self {
             resolver,
+            item_id,
             infix: None,
             exprs: Vec::new(),
         }
@@ -85,7 +87,7 @@ where
         if let Some((mut lhs, op, name)) = self.infix {
             let lhs = {
                 let fun = lhs.remove(0);
-                self.resolver.prefixes(fun, lhs)
+                self.resolver.prefixes(self.item_id, fun, lhs)
             };
 
             let rhs = if self.exprs.is_empty() {
@@ -93,14 +95,14 @@ where
                 let name = self.resolver.names.get_name(&name);
                 let name = self.resolver.names.get_ident(&name.name);
                 let error = self.resolver.errors.parse_error(span).infix_function(name);
-                A::invalid(error, span)
+                A::invalid(self.item_id, error, span)
             } else {
                 let fun = self.exprs.remove(0);
-                self.resolver.prefixes(fun, self.exprs)
+                self.resolver.prefixes(self.item_id, fun, self.exprs)
             };
 
-            let fun = A::apply(self.resolver.alloc, op, lhs);
-            OneOrMany::Single(A::apply(self.resolver.alloc, fun, rhs))
+            let fun = A::apply(self.resolver.alloc, self.item_id, op, lhs);
+            OneOrMany::Single(A::apply(self.resolver.alloc, self.item_id, fun, rhs))
         } else {
             let fun = self.exprs.remove(0);
             OneOrMany::Many(fun, self.exprs)
@@ -128,14 +130,14 @@ where
                 .errors
                 .parse_error(span)
                 .ambiguous_infix_operators(op.span());
-            let expr = A::invalid(error, span);
+            let expr = A::invalid(self.item_id, error, span);
             self.exprs.push(expr);
         } else if self.exprs.is_empty() {
             let span = term.span();
             let name = self.resolver.names.get_name(&name);
             let name = self.resolver.names.get_ident(&name.name);
             let error = self.resolver.errors.parse_error(span).infix_function(name);
-            let expr = A::invalid(error, span);
+            let expr = A::invalid(self.item_id, error, span);
             self.exprs.push(expr);
         } else {
             let lhs = std::mem::take(&mut self.exprs);
@@ -145,7 +147,7 @@ where
 
     fn postfix_term(&mut self, term: A, name: Name) {
         if let Some(prev) = self.exprs.pop() {
-            let expr = A::apply(self.resolver.alloc, term, prev);
+            let expr = A::apply(self.resolver.alloc, self.item_id, term, prev);
             self.exprs.push(expr);
         } else {
             let span = term.span();
@@ -156,15 +158,15 @@ where
                 .errors
                 .parse_error(span)
                 .postfix_function(name);
-            let expr = A::invalid(error, span);
+            let expr = A::invalid(self.item_id, error, span);
             self.exprs.push(expr);
         }
     }
 }
 
 trait Affixable<'a>: Sized {
-    fn invalid(error: ErrorId, span: Span) -> Self;
-    fn apply(alloc: &'a Bump, fun: Self, arg: Self) -> Self;
+    fn invalid(item_id: ItemId, error: ErrorId, span: Span) -> Self;
+    fn apply(alloc: &'a Bump, item_id: ItemId, fun: Self, arg: Self) -> Self;
 
     fn name(self) -> (Self, Option<Name>);
 
@@ -172,12 +174,12 @@ trait Affixable<'a>: Sized {
 }
 
 impl<'a, 'lit> Affixable<'a> for resolved::Expr<'a, 'lit> {
-    fn invalid(error: ErrorId, span: Span) -> Self {
+    fn invalid(_: ItemId, error: ErrorId, span: Span) -> Self {
         let node = resolved::ExprNode::Invalid(error);
         Self { node, span }
     }
 
-    fn apply(alloc: &'a Bump, fun: Self, arg: Self) -> Self {
+    fn apply(alloc: &'a Bump, _: ItemId, fun: Self, arg: Self) -> Self {
         let span = fun.span + arg.span;
         let node = resolved::ExprNode::Apply(alloc.alloc([fun, arg]));
         Self { node, span }
@@ -197,20 +199,28 @@ impl<'a, 'lit> Affixable<'a> for resolved::Expr<'a, 'lit> {
     }
 }
 
-impl<'a, 'lit> Affixable<'a> for resolved::Pattern<'a, 'lit> {
-    fn invalid(error: ErrorId, span: Span) -> Self {
-        let node = resolved::PatternNode::Invalid(error);
-        Self { node, span }
+impl<'a, 'lit> Affixable<'a> for declared::SpinedPattern<'a, 'lit> {
+    fn invalid(item_id: ItemId, error: ErrorId, span: Span) -> Self {
+        let node = declared::SpinedPatternNode::Invalid(error);
+        Self {
+            node,
+            span,
+            item_id,
+        }
     }
 
-    fn apply(alloc: &'a Bump, fun: Self, arg: Self) -> Self {
+    fn apply(alloc: &'a Bump, item_id: ItemId, fun: Self, arg: Self) -> Self {
         let span = fun.span + arg.span;
-        let node = resolved::PatternNode::Apply(alloc.alloc([fun, arg]));
-        Self { node, span }
+        let node = declared::SpinedPatternNode::Apply(alloc.alloc([fun, arg]));
+        Self {
+            node,
+            span,
+            item_id,
+        }
     }
 
     fn name(self) -> (Self, Option<Name>) {
-        if let resolved::PatternNode::Constructor(name) = &self.node {
+        if let declared::SpinedPatternNode::Constructor(name) = &self.node {
             let name = *name;
             (self, Some(name))
         } else {

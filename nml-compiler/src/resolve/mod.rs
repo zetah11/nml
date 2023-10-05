@@ -125,6 +125,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             parsed::ItemNode::Let(pattern, expr, ()) => {
                 let mut this_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut this_scope, pattern);
+                let spine = spine.map(|pattern| self.pattern(&mut this_scope, &pattern));
                 declared::ItemNode::Let(spine, expr, this_scope)
             }
         };
@@ -141,17 +142,20 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         let node = match item.node {
             declared::ItemNode::Invalid(e) => resolved::ItemNode::Invalid(e),
             declared::ItemNode::Let(spine, expr, mut this_scope) => {
-                let mut expr = self.expr(id, &mut this_scope, expr);
-                let pattern = match spine {
-                    declared::Spine::Single(pattern) => pattern,
+                let (pattern, expr) = match spine {
+                    declared::Spine::Single(pattern) => {
+                        let expr = self.expr(id, &mut this_scope, expr);
+                        (pattern, expr)
+                    }
                     declared::Spine::Fun { head, args } => {
-                        for arg in args.into_iter().rev() {
-                            let span = arg.span + expr.span;
-                            let node = resolved::ExprNode::Lambda(self.alloc.alloc([(arg, expr)]));
-                            expr = resolved::Expr { node, span };
-                        }
-
-                        head
+                        let body = self.lambda(
+                            id,
+                            &mut this_scope,
+                            &args,
+                            expr,
+                            |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
+                        );
+                        (head, body)
                     }
                 };
 
@@ -198,6 +202,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         at: Span,
         affix: Affix,
         ident: Ident<'lit>,
+        ns: ValueNamespace,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
         let prev = self.items.insert(name, item);
@@ -206,7 +211,7 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
         // Note that, if this is a redefinition, we will return an error. To
         // ensure that the redefined name still has an associated definition,
         // check with `get` before actually inserting the new name.
-        if let Some(prev) = self.scopes.1.values.get(&ident) {
+        if let Some((prev, _)) = self.scopes.1.values.get(&ident) {
             let prev_span = self
                 .spans
                 .get(prev)
@@ -214,14 +219,14 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
-            self.scopes.1.values.insert(ident, name);
+            self.scopes.1.values.insert(ident, (name, ns));
             self.spans.insert(name, at);
             self.affii.insert(name, affix);
             Ok(name)
         }
     }
 
-    fn lookup_value(&mut self, name: &Ident) -> Option<Name> {
+    fn lookup_value(&mut self, name: &Ident) -> Option<(Name, ValueNamespace)> {
         if let Some(name) = self.scopes.1.values.get(name) {
             return Some(*name);
         }
@@ -259,10 +264,16 @@ impl<'a, 'lit, 'err> Resolver<'a, 'lit, 'err> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ValueNamespace {
+    Pattern,
+    Value,
+}
+
 #[derive(Debug)]
 struct Scope<'lit> {
     name: ScopeName,
-    values: BTreeMap<Ident<'lit>, Name>,
+    values: BTreeMap<Ident<'lit>, (Name, ValueNamespace)>,
     types: BTreeMap<Ident<'lit>, Name>,
 }
 

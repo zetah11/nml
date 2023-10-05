@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::{ItemId, Resolver};
 use crate::names::{Ident, Name};
-use crate::trees::declared::Spine;
+use crate::trees::declared;
 use crate::trees::{parsed, resolved};
 
 impl<'a, 'lit> Resolver<'a, 'lit, '_> {
@@ -22,7 +22,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             parsed::ExprNode::Bool(v) => resolved::ExprNode::Bool(*v),
 
             parsed::ExprNode::Name(name) => {
-                if let Some(name) = self.lookup_value(name) {
+                if let Some((name, _)) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
                 } else {
                     let name = self.names.get_ident(name);
@@ -84,6 +84,7 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
                         .alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
                             self.scope(None, |this| {
                                 let pattern = this.single_pattern(item, gen_scope, pattern);
+                                let pattern = this.pattern(gen_scope, &pattern);
                                 let body = this.expr(item, gen_scope, body);
                                 (pattern, body)
                             })
@@ -95,19 +96,28 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
             parsed::ExprNode::Let(binding, [bound, body], ()) => {
                 let mut this_scope = BTreeMap::new();
 
-                let binding = self.function_spine(item, &mut this_scope, binding);
-                let mut bound = self.expr(item, &mut this_scope, bound);
+                let spine = self.function_spine(item, &mut this_scope, binding);
+                let (pattern, bound) = match spine {
+                    declared::Spine::Single(pattern) => {
+                        // Resolve the pattern after the bound body to allow
+                        // shadowing
+                        let bound = self.expr(item, &mut this_scope, bound);
+                        let pattern = self.pattern(gen_scope, &pattern);
+                        (pattern, bound)
+                    }
 
-                let pattern = match binding {
-                    Spine::Single(pattern) => pattern,
-                    Spine::Fun { head, args } => {
-                        for arg in args.into_iter().rev() {
-                            let span = arg.span + bound.span;
-                            let node = resolved::ExprNode::Lambda(self.alloc.alloc([(arg, bound)]));
-                            bound = resolved::Expr { node, span };
-                        }
-
-                        head
+                    declared::Spine::Fun { head, args } => {
+                        // Resolve the pattern before the bound body to allow
+                        // local recursive functions
+                        let head = self.pattern(gen_scope, &head);
+                        let body = self.lambda(
+                            item,
+                            gen_scope,
+                            &args,
+                            bound,
+                            |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
+                        );
+                        (head, body)
                     }
                 };
 
@@ -125,5 +135,30 @@ impl<'a, 'lit> Resolver<'a, 'lit, '_> {
         };
 
         resolved::Expr { node, span }
+    }
+
+    pub fn lambda<T>(
+        &mut self,
+        item_id: ItemId,
+        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
+        params: &[T],
+        body: &parsed::Expr<'_, 'lit>,
+        mut f: impl FnMut(
+            &mut Self,
+            &mut BTreeMap<Ident<'lit>, Name>,
+            &T,
+        ) -> resolved::Pattern<'a, 'lit>,
+    ) -> resolved::Expr<'a, 'lit> {
+        if let [param, params @ ..] = params {
+            self.scope(None, |this| {
+                let pattern = f(this, gen_scope, param);
+                let body = this.lambda(item_id, gen_scope, params, body, f);
+                let span = pattern.span + body.span;
+                let node = resolved::ExprNode::Lambda(this.alloc.alloc([(pattern, body)]));
+                resolved::Expr { node, span }
+            })
+        } else {
+            self.expr(item_id, gen_scope, body)
+        }
     }
 }
