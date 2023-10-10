@@ -21,6 +21,7 @@ pub enum Node<'a> {
     Group(&'a Thing<'a>),
 
     Let {
+        kw: (LetKw, Span),
         defs: (ValueDef<'a>, Vec<ValueDef<'a>>),
 
         /// The expression after the `in`
@@ -47,6 +48,12 @@ pub enum Node<'a> {
         defs: Vec<ValueDef<'a>>,
         extends: Vec<&'a Thing<'a>>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub enum LetKw {
+    Data,
+    Let,
 }
 
 #[derive(Clone, Debug)]

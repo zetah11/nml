@@ -19,6 +19,8 @@ pub enum Token<'src> {
     And,
     #[token("case")]
     Case,
+    #[token("data")]
+    Data,
     #[token("do")]
     Do,
     #[token("else")]

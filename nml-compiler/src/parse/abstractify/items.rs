@@ -9,7 +9,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ItemNode::Invalid(*e),
-            cst::Node::Let { defs, within } => {
+            cst::Node::Let {
+                kw: (cst::LetKw::Let, _),
+                defs,
+                within,
+            } => {
                 if let Some(within) = within {
                     let e = self
                         .errors

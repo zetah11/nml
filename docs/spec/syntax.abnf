@@ -17,7 +17,7 @@ thing         = item{lambda}
 simple        = item{anno}
 item{default} = let / if / case / default
 
-let           = "let" def *("and" def) ["in" thing]
+let           = ("let" / "data") def *("and" def) ["in" thing]
 def           = anno ["=" thing]
 
 if            = "if" thing "do" thing ("else" thing / "end")

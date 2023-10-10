@@ -24,6 +24,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
 
         Token::And
         | Token::Case
+        | Token::Data
         | Token::Do
         | Token::Else
         | Token::End

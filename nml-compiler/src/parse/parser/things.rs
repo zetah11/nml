@@ -1,6 +1,6 @@
 use log::trace;
 
-use crate::parse::cst::{Name, Node, Thing, ValueDef};
+use crate::parse::cst::{LetKw, Name, Node, Thing, ValueDef};
 use crate::parse::tokens::Token;
 use crate::source::Span;
 
@@ -42,6 +42,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
     const THING_STARTS: &'static [Token<'static>] = &[
         Token::Let,
+        Token::Data,
         Token::If,
         Token::Case,
         Token::Name(""),
@@ -75,7 +76,9 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```
     fn item(&mut self, default: impl FnOnce(&mut Self) -> &'a Thing<'a>) -> &'a Thing<'a> {
         if let Some(opener) = self.consume(Token::Let) {
-            self.let_def(opener)
+            self.let_def(LetKw::Let, opener)
+        } else if let Some(opener) = self.consume(Token::Data) {
+            self.let_def(LetKw::Data, opener)
         } else if let Some(opener) = self.consume(Token::If) {
             self.if_do(opener)
         } else if let Some(opener) = self.consume(Token::Case) {
@@ -88,7 +91,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// let = "let" def *("and" def) ["in" thing]
     /// ```
-    fn let_def(&mut self, opener: Span) -> &'a Thing<'a> {
+    fn let_def(&mut self, kw: LetKw, opener: Span) -> &'a Thing<'a> {
         trace!("parse let-def");
 
         let primary = self.def(Some(opener));
@@ -104,6 +107,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
 
         let span = opener + self.closest_span();
         let node = Node::Let {
+            kw: (kw, opener),
             defs: (primary, others),
             within,
         };
