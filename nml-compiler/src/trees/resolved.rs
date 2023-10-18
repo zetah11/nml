@@ -38,6 +38,17 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
+pub struct TypePattern {
+    pub name: (Result<Name, ErrorId>, Span),
+}
+
+pub struct DataBody<'a, 'lit>(pub &'a [DataConstructor<'a, 'lit>]);
+
+pub struct DataConstructor<'a, 'lit> {
+    pub name: Result<Name, ErrorId>,
+    pub params: &'a [Type<'a, 'lit>],
+}
+
 type Var = Name;
 type Constructor = Name;
 type Universal = Name;
@@ -45,7 +56,13 @@ type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
 type GenScope<'a> = &'a [Name];
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, GenScope<'a>>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<
+    Expr<'a, 'lit>,
+    Pattern<'a, 'lit>,
+    TypePattern,
+    DataBody<'a, 'lit>,
+    GenScope<'a>,
+>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,

@@ -2,7 +2,8 @@ use std::collections::BTreeSet;
 
 use crate::names::Name;
 use crate::trees::resolved::{
-    Expr, ExprNode, Item, ItemNode, Pattern, PatternNode, Type, TypeNode,
+    DataBody, DataConstructor, Expr, ExprNode, Item, ItemNode, Pattern, PatternNode, Type,
+    TypeNode, TypePattern,
 };
 
 use super::{ItemId, Resolver};
@@ -16,6 +17,14 @@ impl Resolver<'_, '_, '_, '_> {
                 let mut depends = BTreeSet::new();
                 self.in_pattern(&mut ignore, &mut depends, pattern);
                 self.in_expr(&mut ignore, &mut depends, body);
+                depends
+            }
+
+            ItemNode::Data(pattern, body) => {
+                let mut ignore = BTreeSet::new();
+                let mut depends = BTreeSet::new();
+                self.in_type_pattern(&mut ignore, pattern);
+                self.in_data_body(&mut ignore, &mut depends, body);
                 depends
             }
         }
@@ -111,6 +120,30 @@ impl Resolver<'_, '_, '_, '_> {
             PatternNode::Apply([fun, arg]) => {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
+            }
+        }
+    }
+
+    fn in_type_pattern(&self, ignore: &mut BTreeSet<Name>, pattern: &TypePattern) {
+        let TypePattern { name: (name, _) } = pattern;
+        if let Ok(name) = name {
+            ignore.insert(*name);
+        }
+    }
+
+    fn in_data_body(
+        &self,
+        ignore: &mut BTreeSet<Name>,
+        out: &mut BTreeSet<ItemId>,
+        body: &DataBody,
+    ) {
+        for DataConstructor { name, params } in body.0 {
+            if let Ok(name) = name {
+                ignore.insert(*name);
+            }
+
+            for param in *params {
+                self.in_type(ignore, out, param);
             }
         }
     }

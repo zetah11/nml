@@ -36,6 +36,22 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
+/// A type pattern is a name, potentially with an affix.
+pub struct TypePattern<'lit> {
+    pub name: (Affix, Ident<'lit>, Span),
+}
+
+/// The body of a `data` item is a list of [`DataConstructor`]s.
+pub struct DataBody<'a, 'lit>(pub &'a [DataConstructor<'a, 'lit>]);
+
+/// Every data constructor is an (optional) affix, an identifier, and an
+/// optional list of types.
+pub struct DataConstructor<'a, 'lit> {
+    pub affix: Affix,
+    pub name: Ident<'lit>,
+    pub params: &'a [Type<'a, 'lit>],
+}
+
 type GenScope = ();
 type Var<'lit> = Ident<'lit>;
 type PatternVar<'lit> = (Affix, Ident<'lit>);
@@ -45,7 +61,13 @@ type Universal<'lit> = Ident<'lit>;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>];
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, GenScope>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<
+    Expr<'a, 'lit>,
+    Pattern<'a, 'lit>,
+    TypePattern<'lit>,
+    DataBody<'a, 'lit>,
+    GenScope,
+>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,

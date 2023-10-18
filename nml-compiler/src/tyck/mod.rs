@@ -104,6 +104,40 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                         inferred::BoundItemNode::Let(pattern, expr, scope)
                     }
+
+                    resolved::ItemNode::Data(pattern, body) => {
+                        let resolved::TypePattern { name: (name, _) } = pattern;
+                        let ty = this.alloc.alloc(match name {
+                            Ok(name) => Type::Named(*name),
+                            Err(e) => Type::Invalid(*e),
+                        });
+
+                        let constructors =
+                            this.alloc
+                                .alloc_slice_fill_iter(body.0.iter().map(|constructor| {
+                                    let resolved::DataConstructor { name, params } = constructor;
+                                    let mut ty = &*ty;
+
+                                    let params = this.alloc.alloc_slice_fill_iter(
+                                        params.iter().map(|ty| this.lower(ty).clone()),
+                                    );
+
+                                    for param in params.iter().rev() {
+                                        ty = self.alloc.alloc(Type::Fun(param, ty));
+                                    }
+
+                                    if let Ok(name) = name {
+                                        this.env.insert(*name, Scheme::mono(ty));
+                                    }
+
+                                    inferred::DataConstructor {
+                                        name: *name,
+                                        params,
+                                    }
+                                }));
+
+                        inferred::BoundItemNode::Data(ty, inferred::DataBody(constructors))
+                    }
                 };
 
                 let item = inferred::BoundItem {
@@ -133,6 +167,10 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                         inferred::BoundItemNode::Let(pattern, body, scope)
                     }
+
+                    inferred::BoundItemNode::Data(ty, body) => {
+                        inferred::BoundItemNode::Data(ty, body)
+                    }
                 };
 
                 inferred_items.push(inferred::BoundItem {
@@ -154,6 +192,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                         let pattern = self.generalize(scope, &pattern);
                         inferred::ItemNode::Let(pattern, expr, ())
                     }
+
+                    inferred::BoundItemNode::Data(ty, body) => inferred::ItemNode::Data(ty, body),
                 };
 
                 inferred::Item { node, span, id }

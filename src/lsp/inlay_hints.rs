@@ -46,6 +46,7 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
                 ItemNode::Let(pattern, _, _) => {
                     self.pattern(pattern);
                 }
+                ItemNode::Data(_, _) => {}
             }
         }
     }

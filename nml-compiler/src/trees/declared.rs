@@ -49,18 +49,25 @@ use crate::names::{Ident, Name};
 use crate::resolve::ItemId;
 use crate::source::Span;
 
-type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
-type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
-type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
-
 pub(crate) struct Item<'a, 'parsed, 'lit> {
     pub node: ItemNode<'a, 'parsed, 'lit>,
     pub span: Span,
     pub id: ItemId,
 }
 
-pub(crate) type ItemNode<'a, 'parsed, 'lit> =
-    nodes::ItemNode<Expr<'parsed, 'lit>, Pattern<'a, 'parsed, 'lit>, GenScope<'lit>>;
+type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
+type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
+type TypePattern = resolved::TypePattern;
+type DataBody<'parsed, 'lit> = constructored::DataBody<'parsed, 'lit>;
+type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
+
+pub(crate) type ItemNode<'a, 'parsed, 'lit> = nodes::ItemNode<
+    Expr<'parsed, 'lit>,
+    Pattern<'a, 'parsed, 'lit>,
+    TypePattern,
+    DataBody<'parsed, 'lit>,
+    GenScope<'lit>,
+>;
 
 pub(crate) enum Spine<'a, 'lit, T> {
     Fun {
@@ -112,5 +119,39 @@ mod spined {
         Var<'lit>,
         Constructor,
         ApplyPattern<'scratch, 'lit>,
+    >;
+}
+
+pub(crate) mod constructored {
+    use super::{nodes, parsed};
+    use crate::errors::ErrorId;
+    use crate::names::Name;
+    use crate::resolve::ItemId;
+    use crate::source::Span;
+
+    pub(crate) struct Item<'parsed, 'lit> {
+        pub node: ItemNode<'parsed, 'lit>,
+        pub span: Span,
+        pub id: ItemId,
+    }
+
+    type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
+    type Pattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
+    type TypePattern<'parsed, 'lit> = &'parsed parsed::TypePattern<'lit>;
+    type GenScope = ();
+
+    pub(crate) struct DataBody<'parsed, 'lit>(pub &'parsed [DataConstructor<'parsed, 'lit>]);
+
+    pub(crate) struct DataConstructor<'parsed, 'lit> {
+        pub name: Result<Name, ErrorId>,
+        pub params: &'parsed [parsed::Type<'parsed, 'lit>],
+    }
+
+    pub(crate) type ItemNode<'parsed, 'lit> = nodes::ItemNode<
+        Expr<'parsed, 'lit>,
+        Pattern<'parsed, 'lit>,
+        TypePattern<'parsed, 'lit>,
+        DataBody<'parsed, 'lit>,
+        GenScope,
     >;
 }

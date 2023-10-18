@@ -35,6 +35,13 @@ impl NameErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn implicit_type_var_in_data(&mut self) -> ErrorId {
+        let error = self
+            .error("implicit type variables are not allowed in data types")
+            .with_help("explicitly add a type parameter with a normal type name to the data type");
+        self.errors.add(error)
+    }
+
     fn error(&mut self, title: impl Into<String>) -> Error {
         Error::new(ErrorType::Name, Severity::Error, self.primary, title)
     }

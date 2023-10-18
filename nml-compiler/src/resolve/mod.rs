@@ -112,8 +112,15 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         items: &'scratch [parsed::Item<'scratch, 'lit>],
     ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
         debug!("declaring {} items", items.len());
-        let items: Vec<declared::Item<'a, 'scratch, 'lit>> =
-            items.iter().map(|item| self.declare_item(item)).collect();
+        let items: Vec<declared::constructored::Item<'scratch, 'lit>> = items
+            .iter()
+            .map(|item| self.constructor_items(item))
+            .collect();
+
+        let items: Vec<declared::Item<'a, 'scratch, 'lit>> = items
+            .into_iter()
+            .map(|item| self.declare_item(item))
+            .collect();
 
         debug!("resolving {} items", items.len());
         items
@@ -122,22 +129,62 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             .collect()
     }
 
-    fn declare_item(
+    fn constructor_items(
         &mut self,
         item: &'scratch parsed::Item<'scratch, 'lit>,
-    ) -> declared::Item<'a, 'scratch, 'lit> {
+    ) -> declared::constructored::Item<'scratch, 'lit> {
         let id = ItemId(self.item_ids);
         self.item_ids += 1;
         let span = item.span;
         let node = match &item.node {
-            parsed::ItemNode::Invalid(e) => declared::ItemNode::Invalid(*e),
+            parsed::ItemNode::Invalid(e) => declared::constructored::ItemNode::Invalid(*e),
             parsed::ItemNode::Let(pattern, expr, ()) => {
+                declared::constructored::ItemNode::Let(pattern, expr, ())
+            }
+
+            parsed::ItemNode::Data(pattern, body) => {
+                let ctrs = self
+                    .scratch
+                    .alloc_slice_fill_iter(body.0.iter().map(|ctor| {
+                        let parsed::DataConstructor {
+                            affix,
+                            name,
+                            params,
+                        } = ctor;
+                        let name =
+                            self.define_value(id, span, *affix, *name, ValueNamespace::Pattern);
+                        declared::constructored::DataConstructor { name, params }
+                    }));
+
+                let body = declared::constructored::DataBody(ctrs);
+
+                declared::constructored::ItemNode::Data(pattern, body)
+            }
+        };
+
+        declared::constructored::Item { node, span, id }
+    }
+
+    fn declare_item(
+        &mut self,
+        item: declared::constructored::Item<'scratch, 'lit>,
+    ) -> declared::Item<'a, 'scratch, 'lit> {
+        let id = item.id;
+        let span = item.span;
+        let node = match item.node {
+            declared::constructored::ItemNode::Invalid(e) => declared::ItemNode::Invalid(e),
+            declared::constructored::ItemNode::Let(pattern, expr, ()) => {
                 let mut this_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut this_scope, pattern);
                 let spine: declared::Spine<'scratch, 'lit, resolved::Pattern<'a, 'lit>> =
                     spine.map(|pattern| self.pattern(&mut this_scope, &pattern));
 
                 declared::ItemNode::Let(spine, expr, this_scope)
+            }
+
+            declared::constructored::ItemNode::Data(pattern, body) => {
+                let pattern = self.type_pattern(id, pattern);
+                declared::ItemNode::Data(pattern, body)
             }
         };
 
@@ -184,6 +231,45 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                     expr,
                     self.alloc.alloc_slice_fill_iter(this_scope.into_values()),
                 )
+            }
+
+            declared::ItemNode::Data(pattern, body) => {
+                let mut bad_ctors = Vec::new();
+                let ctors = self.alloc.alloc_slice_fill_iter(body.0.iter().map(|ctor| {
+                    let declared::constructored::DataConstructor { name, params } = ctor;
+                    let mut gen_scope = BTreeMap::new();
+                    let params = self.alloc.alloc_slice_fill_iter(
+                        params.iter().map(|ty| self.ty(id, &mut gen_scope, ty)),
+                    );
+
+                    if !gen_scope.is_empty() {
+                        bad_ctors.push(span);
+                    }
+
+                    resolved::DataConstructor {
+                        name: *name,
+                        params,
+                    }
+                }));
+
+                let body = if bad_ctors.is_empty() {
+                    resolved::DataBody(ctors)
+                } else {
+                    let ctors = self
+                        .alloc
+                        .alloc_slice_fill_iter(bad_ctors.into_iter().map(|at| {
+                            let e = self.errors.name_error(at).implicit_type_var_in_data();
+                            let params = self.alloc.alloc([]);
+                            resolved::DataConstructor {
+                                name: Err(e),
+                                params,
+                            }
+                        }));
+
+                    resolved::DataBody(ctors)
+                };
+
+                resolved::ItemNode::Data(pattern, body)
             }
         };
 

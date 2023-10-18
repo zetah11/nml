@@ -21,12 +21,15 @@ use crate::errors::ErrorId;
 use crate::names::Label;
 use crate::source::Span;
 
-pub enum ItemNode<Expr, Pattern, GenScope> {
+pub enum ItemNode<Expr, Pattern, TypePattern, DataBody, GenScope> {
     /// Something fishy
     Invalid(ErrorId),
 
     /// `let a = x`
     Let(Pattern, Expr, GenScope),
+
+    /// `data a = t`
+    Data(TypePattern, DataBody),
 }
 
 pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Var, ApplyExpr, GenScope> {
@@ -126,18 +129,24 @@ pub enum TypeNode<'a, 'lit, Type, Universal> {
 
 /* Copy and Clone impls ----------------------------------------------------- */
 
-impl<Pattern, Expr, GenScope> Copy for ItemNode<Pattern, Expr, GenScope>
+impl<Pattern, Expr, TypePattern, DataBody, GenScope> Copy
+    for ItemNode<Pattern, Expr, TypePattern, DataBody, GenScope>
 where
     Pattern: Copy,
     Expr: Copy,
+    TypePattern: Copy,
+    DataBody: Copy,
     GenScope: Copy,
 {
 }
 
-impl<Pattern, Expr, GenScope> Clone for ItemNode<Pattern, Expr, GenScope>
+impl<Pattern, Expr, TypePattern, DataBody, GenScope> Clone
+    for ItemNode<Pattern, Expr, TypePattern, DataBody, GenScope>
 where
     Pattern: Copy,
     Expr: Copy,
+    TypePattern: Copy,
+    DataBody: Copy,
     GenScope: Copy,
 {
     fn clone(&self) -> Self {
@@ -218,7 +227,9 @@ mod variance_checking {
 
     use super::{ExprNode, ItemNode, PatternNode, TypeNode};
 
-    struct Item<'a, 'lit>(ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, Infallible>);
+    struct Item<'a, 'lit>(
+        ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, Infallible, Infallible, Infallible>,
+    );
 
     struct Expr<'a, 'lit>(
         ExprNode<
