@@ -41,6 +41,49 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         ast::Type { node, span }
     }
 
+    pub fn type_pattern(&mut self, node: &cst::Thing) -> ast::TypePattern<'lit> {
+        let span = node.span;
+        match &node.node {
+            cst::Node::Name(cst::Name::Normal(name)) => {
+                let affix = ast::Affix::Prefix;
+                let name = self.names.intern(name);
+                ast::TypePattern {
+                    name: (affix, name, span),
+                }
+            }
+
+            cst::Node::Apply(run) => {
+                let [affix, name, rest @ ..] = &run[..] else {
+                    unreachable!("application runs have at least two terms");
+                };
+
+                let affix = match &affix.node {
+                    cst::Node::Infix => ast::Affix::Infix,
+                    cst::Node::Postfix => ast::Affix::Postfix,
+                    _ => todo!(),
+                };
+
+                let name_span = name.span;
+                let name = match &name.node {
+                    cst::Node::Name(cst::Name::Normal(name)) => name,
+                    _ => todo!(),
+                };
+
+                let name = self.names.intern(name);
+
+                if let Some(rest) = rest.iter().map(|node| node.span).reduce(|a, b| a + b) {
+                    todo!()
+                }
+
+                ast::TypePattern {
+                    name: (affix, name, name_span),
+                }
+            }
+
+            _ => todo!(),
+        }
+    }
+
     fn field(
         &mut self,
         def: &ValueDef,

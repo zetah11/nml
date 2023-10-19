@@ -1,1 +1,4 @@
-let f x : { bap: 'a } = { bap = x }
+data bool = true | false
+let toNum =
+  | true => 1
+  | false => 0
