@@ -32,12 +32,12 @@ pub enum ItemNode<Expr, Pattern, TypePattern, DataBody, GenScope> {
     Data(TypePattern, DataBody),
 }
 
-pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Var, ApplyExpr, GenScope> {
+pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
     /// Something fishy
     Invalid(ErrorId),
 
     /// Variable name
-    Var(Var),
+    Var(Name),
 
     /// `_`
     Hole,
@@ -84,7 +84,7 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Var, ApplyExpr, GenScope> {
     Let(Pattern, &'a [Expr; 2], GenScope),
 }
 
-pub enum PatternNode<'a, Pattern, Type, Var, Constructor, ApplyPattern> {
+pub enum PatternNode<'a, Pattern, Type, Name, ConstructorName, ApplyPattern> {
     /// Something fishy.
     Invalid(ErrorId),
 
@@ -95,10 +95,10 @@ pub enum PatternNode<'a, Pattern, Type, Var, Constructor, ApplyPattern> {
     Unit,
 
     /// A name binding
-    Bind(Var),
+    Bind(Name),
 
     /// A constructor name
-    Constructor(Constructor),
+    Constructor(ConstructorName),
 
     /// `a : t`
     Anno(&'a Pattern, Type),
@@ -125,6 +125,22 @@ pub enum TypeNode<'a, 'lit, Type, Universal> {
 
     /// `{ a : t, b : u }`
     Record(&'a [(Result<Label<'lit>, ErrorId>, Span, Type)]),
+}
+
+pub enum DataNode<'a, Constructor> {
+    /// Some erroneous data body.
+    Invalid(ErrorId),
+
+    /// `C t | D u`
+    Sum(&'a [Constructor]),
+}
+
+pub enum ConstructorNode<'a, Name, Type> {
+    /// Oopsies
+    Invalid(ErrorId),
+
+    /// `Some t`
+    Constructor(Name, &'a [Type]),
 }
 
 /* Copy and Clone impls ----------------------------------------------------- */
@@ -154,23 +170,23 @@ where
     }
 }
 
-impl<Expr, Pattern, Type, Var, ApplyExpr, GenScope> Copy
-    for ExprNode<'_, '_, Expr, Pattern, Type, Var, ApplyExpr, GenScope>
+impl<Expr, Pattern, Type, Name, ApplyExpr, GenScope> Copy
+    for ExprNode<'_, '_, Expr, Pattern, Type, Name, ApplyExpr, GenScope>
 where
     Pattern: Copy,
     Type: Copy,
-    Var: Copy,
+    Name: Copy,
     ApplyExpr: Copy,
     GenScope: Copy,
 {
 }
 
-impl<Expr, Pattern, Type, Var, ApplyExpr, GenScope> Clone
-    for ExprNode<'_, '_, Expr, Pattern, Type, Var, ApplyExpr, GenScope>
+impl<Expr, Pattern, Type, Name, ApplyExpr, GenScope> Clone
+    for ExprNode<'_, '_, Expr, Pattern, Type, Name, ApplyExpr, GenScope>
 where
     Pattern: Copy,
     Type: Copy,
-    Var: Copy,
+    Name: Copy,
     ApplyExpr: Copy,
     GenScope: Copy,
 {
@@ -179,22 +195,22 @@ where
     }
 }
 
-impl<Pattern, Type, PatternName, Var, ApplyPattern> Copy
-    for PatternNode<'_, Pattern, Type, PatternName, Var, ApplyPattern>
+impl<Pattern, Type, PatternName, Name, ApplyPattern> Copy
+    for PatternNode<'_, Pattern, Type, PatternName, Name, ApplyPattern>
 where
     Type: Copy,
     PatternName: Copy,
-    Var: Copy,
+    Name: Copy,
     ApplyPattern: Copy,
 {
 }
 
-impl<Pattern, Type, PatternName, Var, ApplyPattern> Clone
-    for PatternNode<'_, Pattern, Type, PatternName, Var, ApplyPattern>
+impl<Pattern, Type, PatternName, Name, ApplyPattern> Clone
+    for PatternNode<'_, Pattern, Type, PatternName, Name, ApplyPattern>
 where
     Type: Copy,
     PatternName: Copy,
-    Var: Copy,
+    Name: Copy,
     ApplyPattern: Copy,
 {
     fn clone(&self) -> Self {
@@ -207,6 +223,34 @@ impl<Type, Universal> Copy for TypeNode<'_, '_, Type, Universal> where Universal
 impl<Type, Universal> Clone for TypeNode<'_, '_, Type, Universal>
 where
     Universal: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Constructor> Copy for DataNode<'_, Constructor> where Constructor: Copy {}
+
+impl<Constructor> Clone for DataNode<'_, Constructor>
+where
+    Constructor: Copy,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Name, Type> Copy for ConstructorNode<'_, Name, Type>
+where
+    Name: Copy,
+    Type: Copy,
+{
+}
+
+impl<Name, Type> Clone for ConstructorNode<'_, Name, Type>
+where
+    Name: Copy,
+    Type: Copy,
 {
     fn clone(&self) -> Self {
         *self

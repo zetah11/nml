@@ -13,8 +13,6 @@ pub struct Source<'a, 'lit> {
     pub source: SourceId,
 }
 
-pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
 pub struct Item<'a, 'lit> {
     pub node: ItemNode<'a, 'lit>,
     pub span: Span,
@@ -41,33 +39,30 @@ pub struct TypePattern<'lit> {
     pub name: (Affix, Ident<'lit>, Span),
 }
 
-/// The body of a `data` item is a list of [`DataConstructor`]s.
-pub struct DataBody<'a, 'lit>(pub &'a [DataConstructor<'a, 'lit>]);
+/// The body of a `data` item is a list of [`Constructor`]s.
+pub struct Data<'a, 'lit> {
+    pub node: DataNode<'a, 'lit>,
+    pub span: Span,
+}
 
-/// Every data constructor is an (optional) affix, an identifier, and an
-/// optional list of types.
-pub struct DataConstructor<'a, 'lit> {
-    pub affix: Affix,
-    pub name: Ident<'lit>,
-    pub params: &'a [Type<'a, 'lit>],
+/// Every constructor is an (optional) affix, an identifier, and an optional
+/// list of types.
+pub struct Constructor<'a, 'lit> {
+    pub node: ConstructorNode<'a, 'lit>,
+    pub span: Span,
 }
 
 type GenScope = ();
 type Var<'lit> = Ident<'lit>;
 type PatternVar<'lit> = (Affix, Ident<'lit>);
-type Constrcutor = Infallible;
+type ConstructorName = Infallible;
 type Universal<'lit> = Ident<'lit>;
 
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>];
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<
-    Expr<'a, 'lit>,
-    Pattern<'a, 'lit>,
-    TypePattern<'lit>,
-    DataBody<'a, 'lit>,
-    GenScope,
->;
+pub type ItemNode<'a, 'lit> =
+    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, TypePattern<'lit>, Data<'a, 'lit>, GenScope>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,
@@ -85,11 +80,16 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
     PatternVar<'lit>,
-    Constrcutor,
+    ConstructorName,
     ApplyPattern<'a, 'lit>,
 >;
 
 pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Universal<'lit>>;
+
+pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
+
+pub type ConstructorNode<'a, 'lit> =
+    nodes::ConstructorNode<'a, (Affix, Ident<'lit>), Type<'a, 'lit>>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Affix {

@@ -143,26 +143,58 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             parsed::ItemNode::Data(pattern, body) => {
-                let ctrs = self
-                    .scratch
-                    .alloc_slice_fill_iter(body.0.iter().map(|ctor| {
-                        let parsed::DataConstructor {
-                            affix,
-                            name,
-                            params,
-                        } = ctor;
-                        let name =
-                            self.define_value(id, span, *affix, *name, ValueNamespace::Pattern);
-                        declared::constructored::DataConstructor { name, params }
-                    }));
-
-                let body = declared::constructored::DataBody(ctrs);
-
+                let body = self.constructor_data(id, body);
                 declared::constructored::ItemNode::Data(pattern, body)
             }
         };
 
         declared::constructored::Item { node, span, id }
+    }
+
+    fn constructor_data(
+        &mut self,
+        id: ItemId,
+        data: &'scratch parsed::Data<'scratch, 'lit>,
+    ) -> declared::constructored::Data<'scratch, 'lit> {
+        let span = data.span;
+        let node = match &data.node {
+            parsed::DataNode::Invalid(e) => declared::constructored::DataNode::Invalid(*e),
+            parsed::DataNode::Sum(ctors) => {
+                let ctors = self.scratch.alloc_slice_fill_iter(
+                    ctors
+                        .iter()
+                        .map(|ctor| self.constructor_constructor(id, ctor)),
+                );
+
+                declared::constructored::DataNode::Sum(ctors)
+            }
+        };
+
+        declared::constructored::Data { node, span }
+    }
+
+    fn constructor_constructor(
+        &mut self,
+        id: ItemId,
+        ctor: &'scratch parsed::Constructor<'scratch, 'lit>,
+    ) -> declared::constructored::Constructor<'scratch, 'lit> {
+        let span = ctor.span;
+        let node = match &ctor.node {
+            parsed::ConstructorNode::Invalid(e) => {
+                declared::constructored::ConstructorNode::Invalid(*e)
+            }
+            parsed::ConstructorNode::Constructor((affix, name), params) => {
+                let name = self.define_value(id, span, *affix, *name, ValueNamespace::Pattern);
+                match name {
+                    Ok(name) => {
+                        declared::constructored::ConstructorNode::Constructor(name, *params)
+                    }
+                    Err(e) => declared::constructored::ConstructorNode::Invalid(e),
+                }
+            }
+        };
+
+        declared::constructored::Constructor { node, span }
     }
 
     fn declare_item(
@@ -234,46 +266,62 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             declared::ItemNode::Data(pattern, body) => {
-                let mut bad_ctors = Vec::new();
-                let ctors = self.alloc.alloc_slice_fill_iter(body.0.iter().map(|ctor| {
-                    let declared::constructored::DataConstructor { name, params } = ctor;
-                    let mut gen_scope = BTreeMap::new();
-                    let params = self.alloc.alloc_slice_fill_iter(
-                        params.iter().map(|ty| self.ty(id, &mut gen_scope, ty)),
-                    );
-
-                    if !gen_scope.is_empty() {
-                        bad_ctors.push(span);
-                    }
-
-                    resolved::DataConstructor {
-                        name: *name,
-                        params,
-                    }
-                }));
-
-                let body = if bad_ctors.is_empty() {
-                    resolved::DataBody(ctors)
-                } else {
-                    let ctors = self
-                        .alloc
-                        .alloc_slice_fill_iter(bad_ctors.into_iter().map(|at| {
-                            let e = self.errors.name_error(at).implicit_type_var_in_data();
-                            let params = self.alloc.alloc([]);
-                            resolved::DataConstructor {
-                                name: Err(e),
-                                params,
-                            }
-                        }));
-
-                    resolved::DataBody(ctors)
-                };
-
+                let body = self.resolve_data(id, body);
                 resolved::ItemNode::Data(pattern, body)
             }
         };
 
         resolved::Item { id, node, span }
+    }
+
+    fn resolve_data(
+        &mut self,
+        item: ItemId,
+        data: declared::constructored::Data<'scratch, 'lit>,
+    ) -> resolved::Data<'a, 'lit> {
+        let span = data.span;
+        let node = match data.node {
+            declared::constructored::DataNode::Invalid(e) => resolved::DataNode::Invalid(e),
+            declared::constructored::DataNode::Sum(ctors) => {
+                let ctors = self.alloc.alloc_slice_fill_iter(
+                    ctors
+                        .iter()
+                        .map(|ctor| self.resolve_constructor(item, ctor)),
+                );
+
+                resolved::DataNode::Sum(ctors)
+            }
+        };
+
+        resolved::Data { node, span }
+    }
+
+    fn resolve_constructor(
+        &mut self,
+        item: ItemId,
+        ctor: &'scratch declared::constructored::Constructor<'scratch, 'lit>,
+    ) -> resolved::Constructor<'a, 'lit> {
+        let span = ctor.span;
+        let node = match &ctor.node {
+            declared::constructored::ConstructorNode::Invalid(e) => {
+                resolved::ConstructorNode::Invalid(*e)
+            }
+
+            declared::constructored::ConstructorNode::Constructor(name, params) => {
+                let mut gen_scope = BTreeMap::new();
+                let params = self.alloc.alloc_slice_fill_iter(
+                    params.iter().map(|ty| self.ty(item, &mut gen_scope, ty)),
+                );
+
+                if !gen_scope.is_empty() {
+                    todo!()
+                }
+
+                resolved::ConstructorNode::Constructor(*name, params)
+            }
+        };
+
+        resolved::Constructor { node, span }
     }
 
     fn define_type(

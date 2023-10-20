@@ -4,7 +4,6 @@ use super::Abstractifier;
 use crate::errors::ErrorId;
 use crate::names::Ident;
 use crate::parse::cst;
-use crate::source::Span;
 use crate::trees::parsed as ast;
 
 impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
@@ -82,19 +81,23 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     }
 
     fn single_data_type(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
+        let span = def.span;
         let pattern = self.type_pattern(def.pattern);
         let body = if let Some(body) = def.definition {
             self.data_body(body)
         } else {
-            ast::DataBody(self.alloc.alloc([]))
+            ast::Data {
+                node: ast::DataNode::Sum(self.alloc.alloc([])),
+                span,
+            }
         };
 
-        let span = def.span;
         let node = ast::ItemNode::Data(pattern, body);
         ast::Item { node, span }
     }
 
-    fn data_body(&mut self, node: &cst::Thing) -> ast::DataBody<'a, 'lit> {
+    fn data_body(&mut self, node: &cst::Thing) -> ast::Data<'a, 'lit> {
+        let span = node.span;
         match &node.node {
             cst::Node::Group(thing) => self.data_body(thing),
 
@@ -102,7 +105,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let ctors = self
                     .alloc
                     .alloc_slice_fill_iter(things.iter().map(|thing| self.data_constructor(thing)));
-                ast::DataBody(ctors)
+                ast::Data {
+                    node: ast::DataNode::Sum(ctors),
+                    span,
+                }
             }
 
             cst::Node::Case(scrutinee, alts) => self.data_body(alts),
@@ -110,12 +116,16 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             _ => {
                 let ctor = self.data_constructor(node);
                 let ctors = self.alloc.alloc([ctor]);
-                ast::DataBody(ctors)
+                ast::Data {
+                    node: ast::DataNode::Sum(ctors),
+                    span,
+                }
             }
         }
     }
 
-    fn data_constructor(&mut self, node: &cst::Thing) -> ast::DataConstructor<'a, 'lit> {
+    fn data_constructor(&mut self, node: &cst::Thing) -> ast::Constructor<'a, 'lit> {
+        let span = node.span;
         match &node.node {
             cst::Node::Group(thing) => self.data_constructor(thing),
 
@@ -123,10 +133,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let affix = ast::Affix::Prefix;
                 let name = self.names.intern(name);
                 let params = self.alloc.alloc([]);
-                ast::DataConstructor {
-                    affix,
-                    name,
-                    params,
+
+                ast::Constructor {
+                    node: ast::ConstructorNode::Constructor((affix, name), params),
+                    span,
                 }
             }
 
@@ -135,7 +145,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     unreachable!("application runs have at least two terms");
                 };
 
-                let Ok((affix, name)) = self.data_constructor_name(name) else {
+                let Ok(name) = self.data_constructor_name(name) else {
                     todo!()
                 };
 
@@ -143,10 +153,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     .alloc
                     .alloc_slice_fill_iter(params.iter().map(|thing| self.ty(thing)));
 
-                ast::DataConstructor {
-                    affix,
-                    name,
-                    params,
+                ast::Constructor {
+                    node: ast::ConstructorNode::Constructor(name, params),
+                    span,
                 }
             }
 

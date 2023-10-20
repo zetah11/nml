@@ -19,7 +19,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
-    ) -> declared::Spine<'scratch, 'lit, declared::SpinedPattern<'scratch, 'lit>> {
+    ) -> declared::Spine<'scratch, 'lit, declared::spined::Pattern<'scratch, 'lit>> {
         match &pattern.node {
             parsed::PatternNode::Anno(pattern, ty) => {
                 match self.function_spine(item_id, gen_scope, pattern) {
@@ -54,9 +54,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                     declared::Spine::Single(pattern) => {
                         let span = pattern.span + ty.span;
                         let node =
-                            declared::SpinedPatternNode::Anno(self.scratch.alloc(pattern), ty);
+                            declared::spined::PatternNode::Anno(self.scratch.alloc(pattern), ty);
 
-                        declared::Spine::Single(declared::SpinedPattern {
+                        declared::Spine::Single(declared::spined::Pattern {
                             node,
                             span,
                             item_id,
@@ -75,18 +75,18 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
-    ) -> declared::SpinedPattern<'scratch, 'lit> {
+    ) -> declared::spined::Pattern<'scratch, 'lit> {
         let span = pattern.span;
         let node = match &pattern.node {
-            parsed::PatternNode::Invalid(e) => declared::SpinedPatternNode::Invalid(*e),
-            parsed::PatternNode::Wildcard => declared::SpinedPatternNode::Wildcard,
-            parsed::PatternNode::Unit => declared::SpinedPatternNode::Unit,
+            parsed::PatternNode::Invalid(e) => declared::spined::PatternNode::Invalid(*e),
+            parsed::PatternNode::Wildcard => declared::spined::PatternNode::Wildcard,
+            parsed::PatternNode::Unit => declared::spined::PatternNode::Unit,
 
             parsed::PatternNode::Bind(name) => {
                 if let Some((name, ValueNamespace::Pattern)) = self.lookup_value(&name.1) {
-                    declared::SpinedPatternNode::Constructor(name)
+                    declared::spined::PatternNode::Constructor(name)
                 } else {
-                    declared::SpinedPatternNode::Bind(*name)
+                    declared::spined::PatternNode::Bind(*name)
                 }
             }
 
@@ -94,14 +94,14 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 let pattern = self
                     .scratch
                     .alloc(self.single_pattern(item_id, gen_scope, pattern));
-                declared::SpinedPatternNode::Anno(pattern, ty)
+                declared::spined::PatternNode::Anno(pattern, ty)
             }
 
             parsed::PatternNode::Group(pattern) => {
                 let pattern = self
                     .scratch
                     .alloc(self.single_pattern(item_id, gen_scope, pattern));
-                declared::SpinedPatternNode::Group(pattern)
+                declared::spined::PatternNode::Group(pattern)
             }
 
             parsed::PatternNode::Apply(terms) => {
@@ -112,7 +112,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                             .errors
                             .parse_error(span)
                             .unexpected_function_definition();
-                        declared::SpinedPatternNode::Invalid(e)
+                        declared::spined::PatternNode::Invalid(e)
                     }
                 }
             }
@@ -120,7 +120,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             parsed::PatternNode::Constructor(v) => match *v {},
         };
 
-        declared::SpinedPattern {
+        declared::spined::Pattern {
             node,
             span,
             item_id,
@@ -130,38 +130,38 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn pattern(
         &mut self,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &declared::SpinedPattern<'scratch, 'lit>,
+        pattern: &declared::spined::Pattern<'scratch, 'lit>,
     ) -> resolved::Pattern<'a, 'lit> {
         let item_id = pattern.item_id;
         let span = pattern.span;
         let node = match &pattern.node {
-            declared::SpinedPatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
-            declared::SpinedPatternNode::Wildcard => resolved::PatternNode::Wildcard,
-            declared::SpinedPatternNode::Unit => resolved::PatternNode::Unit,
+            declared::spined::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
+            declared::spined::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
+            declared::spined::PatternNode::Unit => resolved::PatternNode::Unit,
 
-            declared::SpinedPatternNode::Bind((affix, ident)) => {
+            declared::spined::PatternNode::Bind((affix, ident)) => {
                 match self.define_value(item_id, span, *affix, *ident, ValueNamespace::Value) {
                     Ok(name) => resolved::PatternNode::Bind(name),
                     Err(e) => resolved::PatternNode::Invalid(e),
                 }
             }
 
-            declared::SpinedPatternNode::Constructor(name) => {
+            declared::spined::PatternNode::Constructor(name) => {
                 resolved::PatternNode::Constructor(*name)
             }
 
-            declared::SpinedPatternNode::Anno(pattern, ty) => {
+            declared::spined::PatternNode::Anno(pattern, ty) => {
                 let pattern = self.alloc.alloc(self.pattern(gen_scope, pattern));
                 let ty = self.ty(item_id, gen_scope, ty);
                 resolved::PatternNode::Anno(pattern, ty)
             }
 
-            declared::SpinedPatternNode::Group(pattern) => {
+            declared::spined::PatternNode::Group(pattern) => {
                 let pattern = self.alloc.alloc(self.pattern(gen_scope, pattern));
                 resolved::PatternNode::Group(pattern)
             }
 
-            declared::SpinedPatternNode::Apply([fun, arg]) => {
+            declared::spined::PatternNode::Apply([fun, arg]) => {
                 let fun = self.pattern(gen_scope, fun);
                 let arg = self.pattern(gen_scope, arg);
                 let terms = self.alloc.alloc([fun, arg]);

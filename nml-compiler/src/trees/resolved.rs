@@ -13,10 +13,6 @@ pub struct Program<'a, 'lit> {
     pub unattached: Vec<(ErrorId, Span)>,
 }
 
-pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
-pub struct TypeData<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
 pub struct Item<'a, 'lit> {
     pub node: ItemNode<'a, 'lit>,
     pub span: Span,
@@ -42,27 +38,24 @@ pub struct TypePattern {
     pub name: (Result<Name, ErrorId>, Span),
 }
 
-pub struct DataBody<'a, 'lit>(pub &'a [DataConstructor<'a, 'lit>]);
-
-pub struct DataConstructor<'a, 'lit> {
-    pub name: Result<Name, ErrorId>,
-    pub params: &'a [Type<'a, 'lit>],
+pub struct Data<'a, 'lit> {
+    pub node: DataNode<'a, 'lit>,
+    pub span: Span,
 }
 
-type Var = Name;
-type Constructor = Name;
+pub struct Constructor<'a, 'lit> {
+    pub node: ConstructorNode<'a, 'lit>,
+    pub span: Span,
+}
+
+type ConstructorName = Name;
 type Universal = Name;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
 type GenScope<'a> = &'a [Name];
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<
-    Expr<'a, 'lit>,
-    Pattern<'a, 'lit>,
-    TypePattern,
-    DataBody<'a, 'lit>,
-    GenScope<'a>,
->;
+pub type ItemNode<'a, 'lit> =
+    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, TypePattern, Data<'a, 'lit>, GenScope<'a>>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,
@@ -70,7 +63,7 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     Expr<'a, 'lit>,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    Var,
+    Name,
     ApplyExpr<'a, 'lit>,
     GenScope<'a>,
 >;
@@ -79,9 +72,13 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     'a,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    Var,
-    Constructor,
+    Name,
+    ConstructorName,
     ApplyPattern<'a, 'lit>,
 >;
 
 pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Universal>;
+
+pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
+
+pub type ConstructorNode<'a, 'lit> = nodes::ConstructorNode<'a, Name, Type<'a, 'lit>>;

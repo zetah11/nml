@@ -38,7 +38,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &'scratch [parsed::Pattern<'scratch, 'lit>],
-    ) -> declared::Spine<'scratch, 'lit, declared::SpinedPattern<'scratch, 'lit>> {
+    ) -> declared::Spine<'scratch, 'lit, declared::spined::Pattern<'scratch, 'lit>> {
         let terms = terms
             .iter()
             .map(|pattern| self.single_pattern(item_id, gen_scope, pattern))
@@ -210,9 +210,9 @@ impl<'a, 'lit> Affixable<'a> for resolved::Expr<'a, 'lit> {
     }
 }
 
-impl<'a, 'lit> Affixable<'a> for declared::SpinedPattern<'a, 'lit> {
+impl<'a, 'lit> Affixable<'a> for declared::spined::Pattern<'a, 'lit> {
     fn invalid(item_id: ItemId, error: ErrorId, span: Span) -> Self {
-        let node = declared::SpinedPatternNode::Invalid(error);
+        let node = declared::spined::PatternNode::Invalid(error);
         Self {
             node,
             span,
@@ -222,7 +222,7 @@ impl<'a, 'lit> Affixable<'a> for declared::SpinedPattern<'a, 'lit> {
 
     fn apply(alloc: &'a Bump, item_id: ItemId, fun: Self, arg: Self) -> Self {
         let span = fun.span + arg.span;
-        let node = declared::SpinedPatternNode::Apply(alloc.alloc([fun, arg]));
+        let node = declared::spined::PatternNode::Apply(alloc.alloc([fun, arg]));
         Self {
             node,
             span,
@@ -231,7 +231,7 @@ impl<'a, 'lit> Affixable<'a> for declared::SpinedPattern<'a, 'lit> {
     }
 
     fn name(self) -> (Self, Option<Name>) {
-        if let declared::SpinedPatternNode::Constructor(name) = &self.node {
+        if let declared::spined::PatternNode::Constructor(name) = &self.node {
             let name = *name;
             (self, Some(name))
         } else {

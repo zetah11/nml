@@ -28,7 +28,7 @@
 //! is bound in the narrower scope of its body.
 //!
 //! Figuring this out happens after step 1 (declaring constructors) but before
-//! step 2, and produces a [`SpinedPattern`]. This is a "partially resolved"
+//! step 2, and produces a [`spined::Pattern`]. This is a "partially resolved"
 //! pattern, where constructors and application order is explicit, but no names
 //! have been defined. A spined pattern can then be defined and resolved with
 //! the appropriate scopes.
@@ -39,7 +39,7 @@
 //! - `'a` - references to [`resolved`] patterns
 //! - `'parsed` - references into the [`parsed`] syntax tree
 //!
-//! [`SpinedPattern`]s only take two lifetimes `'scratch` and `'lit`; they
+//! [`spined::Pattern`]s only take two lifetimes `'scratch` and `'lit`; they
 //! should be temporary and not outlive any [`parsed`] subtrees.
 
 use std::collections::BTreeMap;
@@ -58,21 +58,21 @@ pub(crate) struct Item<'a, 'parsed, 'lit> {
 type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
 type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
 type TypePattern = resolved::TypePattern;
-type DataBody<'parsed, 'lit> = constructored::DataBody<'parsed, 'lit>;
+type Data<'parsed, 'lit> = constructored::Data<'parsed, 'lit>;
 type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
 
 pub(crate) type ItemNode<'a, 'parsed, 'lit> = nodes::ItemNode<
     Expr<'parsed, 'lit>,
     Pattern<'a, 'parsed, 'lit>,
     TypePattern,
-    DataBody<'parsed, 'lit>,
+    Data<'parsed, 'lit>,
     GenScope<'lit>,
 >;
 
 pub(crate) enum Spine<'a, 'lit, T> {
     Fun {
         head: T,
-        args: Vec<SpinedPattern<'a, 'lit>>,
+        args: Vec<spined::Pattern<'a, 'lit>>,
         anno: Option<&'a parsed::Type<'a, 'lit>>,
     },
 
@@ -93,9 +93,7 @@ impl<'a, 'lit, T> Spine<'a, 'lit, T> {
     }
 }
 
-pub(crate) use spined::{Pattern as SpinedPattern, PatternNode as SpinedPatternNode};
-
-mod spined {
+pub(crate) mod spined {
     use super::{nodes, parsed};
     use crate::names::{Ident, Name};
     use crate::resolve::ItemId;
@@ -103,7 +101,7 @@ mod spined {
 
     type Type<'scratch, 'lit> = &'scratch parsed::Type<'scratch, 'lit>;
     type Var<'lit> = (parsed::Affix, Ident<'lit>);
-    type Constructor = Name;
+    type ConstructorName = Name;
     type ApplyPattern<'scratch, 'lit> = &'scratch [Pattern<'scratch, 'lit>; 2];
 
     pub(crate) struct Pattern<'scratch, 'lit> {
@@ -117,14 +115,13 @@ mod spined {
         Pattern<'scratch, 'lit>,
         Type<'scratch, 'lit>,
         Var<'lit>,
-        Constructor,
+        ConstructorName,
         ApplyPattern<'scratch, 'lit>,
     >;
 }
 
 pub(crate) mod constructored {
     use super::{nodes, parsed};
-    use crate::errors::ErrorId;
     use crate::names::Name;
     use crate::resolve::ItemId;
     use crate::source::Span;
@@ -135,23 +132,31 @@ pub(crate) mod constructored {
         pub id: ItemId,
     }
 
-    type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
-    type Pattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
-    type TypePattern<'parsed, 'lit> = &'parsed parsed::TypePattern<'lit>;
-    type GenScope = ();
+    pub(crate) struct Data<'parsed, 'lit> {
+        pub node: DataNode<'parsed, 'lit>,
+        pub span: Span,
+    }
 
-    pub(crate) struct DataBody<'parsed, 'lit>(pub &'parsed [DataConstructor<'parsed, 'lit>]);
-
-    pub(crate) struct DataConstructor<'parsed, 'lit> {
-        pub name: Result<Name, ErrorId>,
-        pub params: &'parsed [parsed::Type<'parsed, 'lit>],
+    pub(crate) struct Constructor<'parsed, 'lit> {
+        pub node: ConstructorNode<'parsed, 'lit>,
+        pub span: Span,
     }
 
     pub(crate) type ItemNode<'parsed, 'lit> = nodes::ItemNode<
         Expr<'parsed, 'lit>,
         Pattern<'parsed, 'lit>,
         TypePattern<'parsed, 'lit>,
-        DataBody<'parsed, 'lit>,
+        Data<'parsed, 'lit>,
         GenScope,
     >;
+
+    pub(crate) type DataNode<'parsed, 'lit> = nodes::DataNode<'parsed, Constructor<'parsed, 'lit>>;
+
+    pub(crate) type ConstructorNode<'parsed, 'lit> =
+        nodes::ConstructorNode<'parsed, Name, parsed::Type<'parsed, 'lit>>;
+
+    type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
+    type Pattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
+    type TypePattern<'parsed, 'lit> = &'parsed parsed::TypePattern<'lit>;
+    type GenScope = ();
 }

@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use crate::names::Name;
 use crate::trees::resolved::{
-    DataBody, DataConstructor, Expr, ExprNode, Item, ItemNode, Pattern, PatternNode, Type,
-    TypeNode, TypePattern,
+    Constructor, ConstructorNode, Data, DataNode, Expr, ExprNode, Item, ItemNode, Pattern,
+    PatternNode, Type, TypeNode, TypePattern,
 };
 
 use super::{ItemId, Resolver};
@@ -131,19 +131,31 @@ impl Resolver<'_, '_, '_, '_> {
         }
     }
 
-    fn in_data_body(
+    fn in_data_body(&self, ignore: &mut BTreeSet<Name>, out: &mut BTreeSet<ItemId>, body: &Data) {
+        match &body.node {
+            DataNode::Invalid(_) => {}
+            DataNode::Sum(ctors) => {
+                for ctor in *ctors {
+                    self.in_constructor(ignore, out, ctor);
+                }
+            }
+        }
+    }
+
+    fn in_constructor(
         &self,
         ignore: &mut BTreeSet<Name>,
         out: &mut BTreeSet<ItemId>,
-        body: &DataBody,
+        ctor: &Constructor,
     ) {
-        for DataConstructor { name, params } in body.0 {
-            if let Ok(name) = name {
+        match &ctor.node {
+            ConstructorNode::Invalid(_) => {}
+            ConstructorNode::Constructor(name, params) => {
                 ignore.insert(*name);
-            }
 
-            for param in *params {
-                self.in_type(ignore, out, param);
+                for param in *params {
+                    self.in_type(ignore, out, param);
+                }
             }
         }
     }

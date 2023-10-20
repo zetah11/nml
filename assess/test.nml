@@ -1,4 +1,4 @@
-data bool = true | false
+data bool = True | False
 let toNum =
-  | true => 1
-  | false => 0
+  | True => 1
+  | False => 0

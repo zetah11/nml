@@ -112,31 +112,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                             Err(e) => Type::Invalid(*e),
                         });
 
-                        let constructors =
-                            this.alloc
-                                .alloc_slice_fill_iter(body.0.iter().map(|constructor| {
-                                    let resolved::DataConstructor { name, params } = constructor;
-                                    let mut ty = &*ty;
+                        let body = this.check_data(ty, body);
 
-                                    let params = this.alloc.alloc_slice_fill_iter(
-                                        params.iter().map(|ty| this.lower(ty).clone()),
-                                    );
-
-                                    for param in params.iter().rev() {
-                                        ty = self.alloc.alloc(Type::Fun(param, ty));
-                                    }
-
-                                    if let Ok(name) = name {
-                                        this.env.insert(*name, Scheme::mono(ty));
-                                    }
-
-                                    inferred::DataConstructor {
-                                        name: *name,
-                                        params,
-                                    }
-                                }));
-
-                        inferred::BoundItemNode::Data(ty, inferred::DataBody(constructors))
+                        inferred::BoundItemNode::Data(ty, body)
                     }
                 };
 
@@ -198,6 +176,54 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                 inferred::Item { node, span, id }
             }))
+    }
+
+    fn check_data(
+        &mut self,
+        ty: &'a Type<'a>,
+        data: &resolved::Data<'_, 'ids>,
+    ) -> inferred::Data<'a> {
+        let span = data.span;
+        let node = match &data.node {
+            resolved::DataNode::Invalid(e) => inferred::DataNode::Invalid(*e),
+            resolved::DataNode::Sum(ctors) => {
+                let ctors = self.alloc.alloc_slice_fill_iter(
+                    ctors.iter().map(|ctor| self.check_constructor(ty, ctor)),
+                );
+
+                inferred::DataNode::Sum(ctors)
+            }
+        };
+
+        inferred::Data { node, span }
+    }
+
+    fn check_constructor(
+        &mut self,
+        ty: &'a Type<'a>,
+        ctor: &resolved::Constructor<'_, 'ids>,
+    ) -> inferred::Constructor<'a> {
+        let span = ctor.span;
+        let node = match &ctor.node {
+            resolved::ConstructorNode::Invalid(e) => inferred::ConstructorNode::Invalid(*e),
+            resolved::ConstructorNode::Constructor(name, params) => {
+                let mut ty = ty;
+
+                let params = self
+                    .alloc
+                    .alloc_slice_fill_iter(params.iter().map(|ty| self.lower(ty).clone()));
+
+                for param in params.iter().rev() {
+                    ty = self.alloc.alloc(Type::Fun(param, ty));
+                }
+
+                self.env.insert(*name, Scheme::mono(ty));
+
+                inferred::ConstructorNode::Constructor(*name, params)
+            }
+        };
+
+        inferred::Constructor { node, span }
     }
 
     fn fresh(&mut self) -> &'a Type<'a> {

@@ -18,10 +18,6 @@ pub struct Program<'a, 'lit> {
     pub unattached: Vec<(ErrorId, Span)>,
 }
 
-pub struct Data<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
-pub struct MonoData<'a, 'lit>(std::marker::PhantomData<&'a &'lit ()>);
-
 pub struct Item<'a, 'lit> {
     pub node: ItemNode<'a, 'lit>,
     pub span: Span,
@@ -34,11 +30,14 @@ pub struct Expr<'a, 'lit> {
     pub ty: &'a Type<'a>,
 }
 
-pub struct DataBody<'a>(pub &'a [DataConstructor<'a>]);
+pub struct Data<'a> {
+    pub node: DataNode<'a>,
+    pub span: Span,
+}
 
-pub struct DataConstructor<'a> {
-    pub name: Result<Name, ErrorId>,
-    pub params: &'a [Type<'a>],
+pub struct Constructor<'a> {
+    pub node: ConstructorNode<'a>,
+    pub span: Span,
 }
 
 /// A pattern with a generalized type.
@@ -57,15 +56,14 @@ pub struct MonoPattern<'a> {
 
 type TypeSyntax = Infallible;
 type TypePattern<'a> = &'a Type<'a>;
-type Var = Name;
-type Constructor = Name;
+type ConstructorName = Name;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPolyPattern<'a> = &'a [PolyPattern<'a>; 2];
 type ApplyMonoPattern<'a> = &'a [MonoPattern<'a>; 2];
 type GenScope = ();
 
 pub type ItemNode<'a, 'lit> =
-    nodes::ItemNode<Expr<'a, 'lit>, PolyPattern<'a>, TypePattern<'a>, DataBody<'a>, GenScope>;
+    nodes::ItemNode<Expr<'a, 'lit>, PolyPattern<'a>, TypePattern<'a>, Data<'a>, GenScope>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,
@@ -73,16 +71,32 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     Expr<'a, 'lit>,
     PolyPattern<'a>,
     TypeSyntax,
-    Var,
+    Name,
     ApplyExpr<'a, 'lit>,
     GenScope,
 >;
 
-pub type PolyPatternNode<'a> =
-    nodes::PatternNode<'a, PolyPattern<'a>, TypeSyntax, Var, Constructor, ApplyPolyPattern<'a>>;
+pub type PolyPatternNode<'a> = nodes::PatternNode<
+    'a,
+    PolyPattern<'a>,
+    TypeSyntax,
+    Name,
+    ConstructorName,
+    ApplyPolyPattern<'a>,
+>;
 
-pub type MonoPatternNode<'a> =
-    nodes::PatternNode<'a, MonoPattern<'a>, TypeSyntax, Var, Constructor, ApplyMonoPattern<'a>>;
+pub type MonoPatternNode<'a> = nodes::PatternNode<
+    'a,
+    MonoPattern<'a>,
+    TypeSyntax,
+    Name,
+    ConstructorName,
+    ApplyMonoPattern<'a>,
+>;
+
+pub type DataNode<'a> = nodes::DataNode<'a, Constructor<'a>>;
+
+pub type ConstructorNode<'a> = nodes::ConstructorNode<'a, Name, Type<'a>>;
 
 pub(crate) struct BoundItem<'a, E> {
     pub node: BoundItemNode<'a, E>,
@@ -93,4 +107,4 @@ pub(crate) struct BoundItem<'a, E> {
 type BoundGenScope<'a> = &'a [Generic];
 
 pub(crate) type BoundItemNode<'a, E> =
-    nodes::ItemNode<E, MonoPattern<'a>, TypePattern<'a>, DataBody<'a>, BoundGenScope<'a>>;
+    nodes::ItemNode<E, MonoPattern<'a>, TypePattern<'a>, Data<'a>, BoundGenScope<'a>>;
