@@ -111,7 +111,18 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 }
             }
 
-            cst::Node::Case(scrutinee, alts) => self.data_body(alts),
+            cst::Node::Case(scrutinee, alts) => {
+                if let Some(scrutinee) = scrutinee {
+                    let span = scrutinee.span;
+                    let e = self.errors.parse_error(span).scrutinee_in_sum_data_type();
+                    ast::Data {
+                        node: ast::DataNode::Invalid(e),
+                        span,
+                    }
+                } else {
+                    self.data_body(alts)
+                }
+            }
 
             _ => {
                 let ctor = self.data_constructor(node);
@@ -134,10 +145,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let name = self.names.intern(name);
                 let params = self.alloc.alloc([]);
 
-                ast::Constructor {
-                    node: ast::ConstructorNode::Constructor((affix, name), params),
-                    span,
-                }
+                let node = ast::ConstructorNode::Constructor((affix, name), params);
+                ast::Constructor { node, span }
             }
 
             cst::Node::Apply(run) => {
@@ -145,22 +154,26 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                     unreachable!("application runs have at least two terms");
                 };
 
-                let Ok(name) = self.data_constructor_name(name) else {
-                    todo!()
+                let name = match self.data_constructor_name(name) {
+                    Ok(name) => name,
+                    Err(e) => {
+                        let node = ast::ConstructorNode::Invalid(e);
+                        return ast::Constructor { node, span };
+                    }
                 };
 
                 let params = self
                     .alloc
                     .alloc_slice_fill_iter(params.iter().map(|thing| self.ty(thing)));
 
-                ast::Constructor {
-                    node: ast::ConstructorNode::Constructor(name, params),
-                    span,
-                }
+                let node = ast::ConstructorNode::Constructor(name, params);
+                ast::Constructor { node, span }
             }
 
             _ => {
-                todo!()
+                let e = self.errors.parse_error(span).expected_constructor_name();
+                let node = ast::ConstructorNode::Invalid(e);
+                ast::Constructor { node, span }
             }
         }
     }
@@ -187,24 +200,52 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let affix = match &affix.node {
                     cst::Node::Infix => ast::Affix::Infix,
                     cst::Node::Postfix => ast::Affix::Postfix,
-                    _ => todo!(),
+
+                    cst::Node::Name(_) => {
+                        let span = rest
+                            .iter()
+                            .map(|node| node.span)
+                            .fold(name.span, |a, b| a + b);
+                        return Err(self
+                            .errors
+                            .parse_error(span)
+                            .constructor_parameters_not_after_name());
+                    }
+
+                    _ => {
+                        return Err(self
+                            .errors
+                            .parse_error(affix.span)
+                            .expected_constructor_name())
+                    }
                 };
 
                 let name = match &name.node {
                     cst::Node::Name(cst::Name::Normal(name)) => name,
-                    _ => todo!(),
+                    _ => {
+                        return Err(self
+                            .errors
+                            .parse_error(name.span)
+                            .expected_constructor_name())
+                    }
                 };
 
                 let name = self.names.intern(name);
 
                 if let Some(rest) = rest.iter().map(|node| node.span).reduce(|a, b| a + b) {
-                    todo!()
+                    Err(self
+                        .errors
+                        .parse_error(rest)
+                        .constructor_parameters_not_after_name())
+                } else {
+                    Ok((affix, name))
                 }
-
-                Ok((affix, name))
             }
 
-            _ => todo!(),
+            _ => Err(self
+                .errors
+                .parse_error(node.span)
+                .expected_constructor_name()),
         }
     }
 }

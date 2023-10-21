@@ -183,12 +183,11 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             parsed::ConstructorNode::Invalid(e) => {
                 declared::constructored::ConstructorNode::Invalid(*e)
             }
+
             parsed::ConstructorNode::Constructor((affix, name), params) => {
                 let name = self.define_value(id, span, *affix, *name, ValueNamespace::Pattern);
                 match name {
-                    Ok(name) => {
-                        declared::constructored::ConstructorNode::Constructor(name, *params)
-                    }
+                    Ok(name) => declared::constructored::ConstructorNode::Constructor(name, params),
                     Err(e) => declared::constructored::ConstructorNode::Invalid(e),
                 }
             }
@@ -308,14 +307,19 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             declared::constructored::ConstructorNode::Constructor(name, params) => {
-                let mut gen_scope = BTreeMap::new();
-                let params = self.alloc.alloc_slice_fill_iter(
-                    params.iter().map(|ty| self.ty(item, &mut gen_scope, ty)),
-                );
+                let params = self.alloc.alloc_slice_fill_iter(params.iter().map(|ty| {
+                    let mut gen_scope = BTreeMap::new();
+                    let ty = self.ty(item, &mut gen_scope, ty);
 
-                if !gen_scope.is_empty() {
-                    todo!()
-                }
+                    if !gen_scope.is_empty() {
+                        let span = ty.span;
+                        let e = self.errors.name_error(span).implicit_type_var_in_data();
+                        let node = resolved::TypeNode::Invalid(e);
+                        resolved::Type { node, span }
+                    } else {
+                        ty
+                    }
+                }));
 
                 resolved::ConstructorNode::Constructor(*name, params)
             }

@@ -30,6 +30,13 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn constructor_parameters_not_after_name(&mut self) -> ErrorId {
+        let error = self
+            .error("unexpected tokens")
+            .with_help("parameters to a constructor must come outside the constructor name");
+        self.errors.add(error)
+    }
+
     pub fn expected_annotation(&mut self, name: &str) -> ErrorId {
         let error = self
             .error("expected a type annotation")
@@ -63,6 +70,11 @@ impl ParseErrors<'_> {
         let error = self
             .error("expected an item")
             .with_help("expressions must be inside an item definition: `let name = <expression>`");
+        self.errors.add(error)
+    }
+
+    pub fn expected_constructor_name(&mut self) -> ErrorId {
+        let error = self.error("expected a constructor name");
         self.errors.add(error)
     }
 
@@ -157,6 +169,13 @@ impl ParseErrors<'_> {
 
     pub fn record_type_field_definition(&mut self) -> ErrorId {
         let error = self.error("record type field may not be defined");
+        self.errors.add(error)
+    }
+
+    pub fn scrutinee_in_sum_data_type(&mut self) -> ErrorId {
+        let error = self
+            .error("data types may not contain a scrutinee")
+            .with_help("if you intended this to be a constructor, add an initial bar (`|`)");
         self.errors.add(error)
     }
 
