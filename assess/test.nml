@@ -1,4 +1,4 @@
-data bool = True | False
-let toNum =
-  | True => 1
-  | False => 0
+data bool = case
+  | True 
+  | False
+end

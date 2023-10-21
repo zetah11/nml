@@ -81,8 +81,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     }
 
     fn single_data_type(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
+        let pattern = self.pattern(def.pattern);
+
         let span = def.span;
-        let pattern = self.type_pattern(def.pattern);
         let body = if let Some(body) = def.definition {
             self.data_body(body)
         } else {

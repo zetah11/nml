@@ -106,14 +106,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                     }
 
                     resolved::ItemNode::Data(pattern, body) => {
-                        let resolved::TypePattern { name: (name, _) } = pattern;
-                        let ty = this.alloc.alloc(match name {
-                            Ok(name) => Type::Named(*name),
-                            Err(e) => Type::Invalid(*e),
-                        });
-
+                        let ty = this.type_pattern(pattern);
+                        let ty = this.alloc.alloc(ty);
                         let body = this.check_data(ty, body);
-
                         inferred::BoundItemNode::Data(ty, body)
                     }
                 };
@@ -176,6 +171,15 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                 inferred::Item { node, span, id }
             }))
+    }
+
+    fn type_pattern(&mut self, pat: &resolved::Pattern) -> Type<'a> {
+        match &pat.node {
+            resolved::PatternNode::Invalid(e) => Type::Invalid(*e),
+            resolved::PatternNode::Bind(name) => Type::Named(*name),
+            resolved::PatternNode::Group(pat) => self.type_pattern(pat),
+            _ => Type::Invalid(self.errors.parse_error(pat.span).expected_name()),
+        }
     }
 
     fn check_data(

@@ -34,11 +34,6 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
-/// A type pattern is a name, potentially with an affix.
-pub struct TypePattern<'lit> {
-    pub name: (Affix, Ident<'lit>, Span),
-}
-
 /// The body of a `data` item is a list of [`Constructor`]s.
 pub struct Data<'a, 'lit> {
     pub node: DataNode<'a, 'lit>,
@@ -62,7 +57,7 @@ type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>];
 
 pub type ItemNode<'a, 'lit> =
-    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, TypePattern<'lit>, Data<'a, 'lit>, GenScope>;
+    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, Pattern<'a, 'lit>, Data<'a, 'lit>, GenScope>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,

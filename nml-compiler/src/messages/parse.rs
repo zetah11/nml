@@ -37,6 +37,11 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn data_parameters_unsupported(&mut self) -> ErrorId {
+        let error = self.error("type parameters on data types are not yet supported");
+        self.errors.add(error)
+    }
+
     pub fn expected_annotation(&mut self, name: &str) -> ErrorId {
         let error = self
             .error("expected a type annotation")

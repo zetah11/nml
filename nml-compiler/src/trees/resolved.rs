@@ -34,10 +34,6 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
-pub struct TypePattern {
-    pub name: (Result<Name, ErrorId>, Span),
-}
-
 pub struct Data<'a, 'lit> {
     pub node: DataNode<'a, 'lit>,
     pub span: Span,
@@ -54,8 +50,13 @@ type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
 type GenScope<'a> = &'a [Name];
 
-pub type ItemNode<'a, 'lit> =
-    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, TypePattern, Data<'a, 'lit>, GenScope<'a>>;
+pub type ItemNode<'a, 'lit> = nodes::ItemNode<
+    Expr<'a, 'lit>,
+    Pattern<'a, 'lit>,
+    Pattern<'a, 'lit>,
+    Data<'a, 'lit>,
+    GenScope<'a>,
+>;
 
 pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     'a,

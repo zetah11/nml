@@ -53,10 +53,4 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
         o::Type { node, span }
     }
-
-    pub fn type_pattern(&mut self, item: ItemId, pattern: &i::TypePattern<'lit>) -> o::TypePattern {
-        let (affix, ident, span) = pattern.name;
-        let name = self.define_type(item, span, affix, ident);
-        o::TypePattern { name: (name, span) }
-    }
 }

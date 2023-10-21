@@ -214,8 +214,17 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             declared::constructored::ItemNode::Data(pattern, body) => {
-                let pattern = self.type_pattern(id, pattern);
-                declared::ItemNode::Data(pattern, body)
+                let mut gen_scope = BTreeMap::new();
+                let spine = self.function_spine(id, &mut gen_scope, pattern);
+                let spine = spine.map(|pattern| self.pattern(&mut gen_scope, &pattern));
+
+                if !gen_scope.is_empty() {
+                    let span = pattern.span;
+                    let e = self.errors.name_error(span).implicit_type_var_in_data();
+                    declared::ItemNode::Invalid(e)
+                } else {
+                    declared::ItemNode::Data(spine, body)
+                }
             }
         };
 
@@ -236,6 +245,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                         let expr = self.expr(id, &mut this_scope, expr);
                         (pattern, expr)
                     }
+
                     declared::Spine::Fun { head, args, anno } => {
                         let expr = if let Some(ty) = anno {
                             let span = expr.span + ty.span;
@@ -264,8 +274,24 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                 )
             }
 
-            declared::ItemNode::Data(pattern, body) => {
+            declared::ItemNode::Data(spine, body) => {
                 let body = self.resolve_data(id, body);
+
+                let pattern = match spine {
+                    declared::Spine::Single(pattern) => pattern,
+                    declared::Spine::Fun { args, .. } => {
+                        let span = args
+                            .iter()
+                            .map(|node| node.span)
+                            .reduce(|a, b| a + b)
+                            .expect("a function spine has at least one argument");
+
+                        let e = self.errors.parse_error(span).data_parameters_unsupported();
+                        let node = resolved::PatternNode::Invalid(e);
+                        resolved::Pattern { node, span }
+                    }
+                };
+
                 resolved::ItemNode::Data(pattern, body)
             }
         };

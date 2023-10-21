@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use crate::names::Name;
 use crate::trees::resolved::{
     Constructor, ConstructorNode, Data, DataNode, Expr, ExprNode, Item, ItemNode, Pattern,
-    PatternNode, Type, TypeNode, TypePattern,
+    PatternNode, Type, TypeNode,
 };
 
 use super::{ItemId, Resolver};
@@ -23,7 +23,7 @@ impl Resolver<'_, '_, '_, '_> {
             ItemNode::Data(pattern, body) => {
                 let mut ignore = BTreeSet::new();
                 let mut depends = BTreeSet::new();
-                self.in_type_pattern(&mut ignore, pattern);
+                self.in_pattern(&mut ignore, &mut depends, pattern);
                 self.in_data_body(&mut ignore, &mut depends, body);
                 depends
             }
@@ -121,13 +121,6 @@ impl Resolver<'_, '_, '_, '_> {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
             }
-        }
-    }
-
-    fn in_type_pattern(&self, ignore: &mut BTreeSet<Name>, pattern: &TypePattern) {
-        let TypePattern { name: (name, _) } = pattern;
-        if let Ok(name) = name {
-            ignore.insert(*name);
         }
     }
 

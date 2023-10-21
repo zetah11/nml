@@ -57,14 +57,14 @@ pub(crate) struct Item<'a, 'parsed, 'lit> {
 
 type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
 type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
-type TypePattern = resolved::TypePattern;
+type TypePattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
 type Data<'parsed, 'lit> = constructored::Data<'parsed, 'lit>;
 type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
 
 pub(crate) type ItemNode<'a, 'parsed, 'lit> = nodes::ItemNode<
     Expr<'parsed, 'lit>,
     Pattern<'a, 'parsed, 'lit>,
-    TypePattern,
+    TypePattern<'a, 'parsed, 'lit>,
     Data<'parsed, 'lit>,
     GenScope<'lit>,
 >;
@@ -157,6 +157,6 @@ pub(crate) mod constructored {
 
     type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
     type Pattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
-    type TypePattern<'parsed, 'lit> = &'parsed parsed::TypePattern<'lit>;
+    type TypePattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
     type GenScope = ();
 }
