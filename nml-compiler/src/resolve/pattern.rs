@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{ItemId, Resolver, ValueNamespace};
+use super::{ItemId, Namekind, Namespace, Resolver};
 use crate::names::{Ident, Name};
 use crate::trees::declared;
 use crate::trees::{parsed, resolved};
@@ -83,7 +83,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             parsed::PatternNode::Unit => declared::spined::PatternNode::Unit,
 
             parsed::PatternNode::Bind(name) => {
-                if let Some((name, ValueNamespace::Pattern)) = self.lookup_value(&name.1) {
+                if let Some((name, Namekind::Pattern)) = self.lookup_value(&name.1) {
                     declared::spined::PatternNode::Constructor(name)
                 } else {
                     declared::spined::PatternNode::Bind(*name)
@@ -129,6 +129,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
     pub fn pattern(
         &mut self,
+        ns: Namespace,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         pattern: &declared::spined::Pattern<'scratch, 'lit>,
     ) -> resolved::Pattern<'a, 'lit> {
@@ -140,7 +141,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             declared::spined::PatternNode::Unit => resolved::PatternNode::Unit,
 
             declared::spined::PatternNode::Bind((affix, ident)) => {
-                match self.define_value(item_id, span, *affix, *ident, ValueNamespace::Value) {
+                match self.define_name(item_id, span, *affix, *ident, Namekind::Value, ns) {
                     Ok(name) => resolved::PatternNode::Bind(name),
                     Err(e) => resolved::PatternNode::Invalid(e),
                 }
@@ -151,19 +152,19 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             }
 
             declared::spined::PatternNode::Anno(pattern, ty) => {
-                let pattern = self.alloc.alloc(self.pattern(gen_scope, pattern));
+                let pattern = self.alloc.alloc(self.pattern(ns, gen_scope, pattern));
                 let ty = self.ty(item_id, gen_scope, ty);
                 resolved::PatternNode::Anno(pattern, ty)
             }
 
             declared::spined::PatternNode::Group(pattern) => {
-                let pattern = self.alloc.alloc(self.pattern(gen_scope, pattern));
+                let pattern = self.alloc.alloc(self.pattern(ns, gen_scope, pattern));
                 resolved::PatternNode::Group(pattern)
             }
 
             declared::spined::PatternNode::Apply([fun, arg]) => {
-                let fun = self.pattern(gen_scope, fun);
-                let arg = self.pattern(gen_scope, arg);
+                let fun = self.pattern(ns, gen_scope, fun);
+                let arg = self.pattern(ns, gen_scope, arg);
                 let terms = self.alloc.alloc([fun, arg]);
                 resolved::PatternNode::Apply(terms)
             }

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{ItemId, Resolver};
+use super::{ItemId, Namespace, Resolver};
 use crate::names::{Ident, Name};
 use crate::trees::declared;
 use crate::trees::{parsed, resolved};
@@ -84,7 +84,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                         .alloc_slice_fill_iter(arrows.iter().map(|(pattern, body)| {
                             self.scope(None, |this| {
                                 let pattern = this.single_pattern(item, gen_scope, pattern);
-                                let pattern = this.pattern(gen_scope, &pattern);
+                                let pattern = this.pattern(Namespace::Value, gen_scope, &pattern);
                                 let body = this.expr(item, gen_scope, body);
                                 (pattern, body)
                             })
@@ -102,14 +102,14 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                         // Resolve the pattern after the bound body to allow
                         // shadowing
                         let bound = self.expr(item, &mut this_scope, bound);
-                        let pattern = self.pattern(gen_scope, &pattern);
+                        let pattern = self.pattern(Namespace::Value, gen_scope, &pattern);
                         (pattern, bound)
                     }
 
                     declared::Spine::Fun { head, args, anno } => {
                         // Resolve the pattern before the bound body to allow
                         // local recursive functions
-                        let head = self.pattern(gen_scope, &head);
+                        let head = self.pattern(Namespace::Value, gen_scope, &head);
 
                         let bound = if let Some(ty) = anno {
                             let span = bound.span + ty.span;
@@ -119,13 +119,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                             bound
                         };
 
-                        let body = self.lambda(
-                            item,
-                            gen_scope,
-                            &args,
-                            bound,
-                            |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
-                        );
+                        let body = self.lambda(item, gen_scope, &args, bound);
 
                         (head, body)
                     }
@@ -145,22 +139,17 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         resolved::Expr { node, span }
     }
 
-    pub fn lambda<T>(
+    pub fn lambda(
         &mut self,
         item_id: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        params: &[T],
+        params: &[declared::spined::Pattern<'scratch, 'lit>],
         body: &'scratch parsed::Expr<'_, 'lit>,
-        mut f: impl FnMut(
-            &mut Self,
-            &mut BTreeMap<Ident<'lit>, Name>,
-            &T,
-        ) -> resolved::Pattern<'a, 'lit>,
     ) -> resolved::Expr<'a, 'lit> {
         if let [param, params @ ..] = params {
             self.scope(None, |this| {
-                let pattern = f(this, gen_scope, param);
-                let body = this.lambda(item_id, gen_scope, params, body, f);
+                let pattern = this.pattern(Namespace::Value, gen_scope, param);
+                let body = this.lambda(item_id, gen_scope, params, body);
                 let span = pattern.span + body.span;
                 let node = resolved::ExprNode::Lambda(this.alloc.alloc([(pattern, body)]));
                 resolved::Expr { node, span }

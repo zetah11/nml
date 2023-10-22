@@ -185,7 +185,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             parsed::ConstructorNode::Constructor((affix, name), params) => {
-                let name = self.define_value(id, span, *affix, *name, ValueNamespace::Pattern);
+                let name = self.define_value(id, span, *affix, *name, Namekind::Pattern);
                 match name {
                     Ok(name) => declared::constructored::ConstructorNode::Constructor(name, params),
                     Err(e) => declared::constructored::ConstructorNode::Invalid(e),
@@ -208,7 +208,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                 let mut this_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut this_scope, pattern);
                 let spine: declared::Spine<'scratch, 'lit, resolved::Pattern<'a, 'lit>> =
-                    spine.map(|pattern| self.pattern(&mut this_scope, &pattern));
+                    spine.map(|pattern| self.pattern(Namespace::Value, &mut this_scope, &pattern));
 
                 declared::ItemNode::Let(spine, expr, this_scope)
             }
@@ -216,7 +216,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             declared::constructored::ItemNode::Data(pattern, body) => {
                 let mut gen_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut gen_scope, pattern);
-                let spine = spine.map(|pattern| self.pattern(&mut gen_scope, &pattern));
+                let spine =
+                    spine.map(|pattern| self.pattern(Namespace::Type, &mut gen_scope, &pattern));
 
                 if !gen_scope.is_empty() {
                     let span = pattern.span;
@@ -255,13 +256,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                             expr
                         };
 
-                        let body = self.lambda(
-                            id,
-                            &mut this_scope,
-                            &args,
-                            expr,
-                            |this, gen_scope, pattern| this.pattern(gen_scope, pattern),
-                        );
+                        let body = self.lambda(id, &mut this_scope, &args, expr);
 
                         (head, body)
                     }
@@ -354,6 +349,21 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         resolved::Constructor { node, span }
     }
 
+    fn define_name(
+        &mut self,
+        item: ItemId,
+        at: Span,
+        affix: Affix,
+        ident: Ident<'lit>,
+        kind: Namekind,
+        ns: Namespace,
+    ) -> Result<Name, ErrorId> {
+        match ns {
+            Namespace::Type => self.define_type(item, at, affix, ident),
+            Namespace::Value => self.define_value(item, at, affix, ident, kind),
+        }
+    }
+
     fn define_type(
         &mut self,
         item: ItemId,
@@ -386,7 +396,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         at: Span,
         affix: Affix,
         ident: Ident<'lit>,
-        ns: ValueNamespace,
+        kind: Namekind,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
         let prev = self.items.insert(name, item);
@@ -395,7 +405,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         // Note that, if this is a redefinition, we will return an error. To
         // ensure that the redefined name still has an associated definition,
         // check with `get` before actually inserting the new name.
-        if let Some((prev, _)) = self.scopes.1.values.get(&ident) {
+        if let Some((prev, _)) = self.scopes.1.names.get(&ident) {
             let prev_span = self
                 .spans
                 .get(prev)
@@ -403,20 +413,20 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
-            self.scopes.1.values.insert(ident, (name, ns));
+            self.scopes.1.names.insert(ident, (name, kind));
             self.spans.insert(name, at);
             self.affii.insert(name, affix);
             Ok(name)
         }
     }
 
-    fn lookup_value(&mut self, name: &Ident) -> Option<(Name, ValueNamespace)> {
-        if let Some(name) = self.scopes.1.values.get(name) {
+    fn lookup_value(&mut self, name: &Ident) -> Option<(Name, Namekind)> {
+        if let Some(name) = self.scopes.1.names.get(name) {
             return Some(*name);
         }
 
         for scope in self.scopes.0.iter().rev() {
-            if let Some(name) = scope.values.get(name) {
+            if let Some(name) = scope.names.get(name) {
                 return Some(*name);
             }
         }
@@ -449,7 +459,13 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum ValueNamespace {
+enum Namespace {
+    Type,
+    Value,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Namekind {
     Pattern,
     Value,
 }
@@ -457,7 +473,7 @@ enum ValueNamespace {
 #[derive(Debug)]
 struct Scope<'lit> {
     name: ScopeName,
-    values: BTreeMap<Ident<'lit>, (Name, ValueNamespace)>,
+    names: BTreeMap<Ident<'lit>, (Name, Namekind)>,
     types: BTreeMap<Ident<'lit>, Name>,
 }
 
@@ -465,7 +481,7 @@ impl Scope<'_> {
     pub fn new(name: ScopeName) -> Self {
         Self {
             name,
-            values: BTreeMap::new(),
+            names: BTreeMap::new(),
             types: BTreeMap::new(),
         }
     }
@@ -473,7 +489,7 @@ impl Scope<'_> {
     pub fn top_level(source: SourceId) -> Self {
         Self {
             name: ScopeName::TopLevel(source),
-            values: BTreeMap::new(),
+            names: BTreeMap::new(),
             types: BTreeMap::new(),
         }
     }
