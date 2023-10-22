@@ -1,2 +1,4 @@
-data t = C {}
-let x: t = C {}
+data nat = Zero | Succ nat
+let (infix +) x =
+  | Zero => x
+  | Succ y => Succ (x + y)

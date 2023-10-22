@@ -50,6 +50,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::PatternNode::Apply(terms)
             }
 
+            cst::Node::Group(pattern) => {
+                let pattern = self.alloc.alloc(self.pattern(pattern));
+                ast::PatternNode::Group(pattern)
+            }
+
             _ => {
                 let e = self.errors.parse_error(span).expected_pattern();
                 ast::PatternNode::Invalid(e)

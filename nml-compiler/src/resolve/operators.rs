@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bumpalo::Bump;
+use log::trace;
 
 use super::{ItemId, Resolver};
 use crate::errors::ErrorId;
@@ -22,6 +23,8 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &'scratch [parsed::Expr<'scratch, 'lit>],
     ) -> resolved::Expr<'a, 'lit> {
+        trace!("resolving expression run of {} terms", terms.len());
+
         let terms = terms
             .iter()
             .map(|expr| self.expr(item_id, gen_scope, expr))
@@ -39,18 +42,27 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         terms: &'scratch [parsed::Pattern<'scratch, 'lit>],
     ) -> declared::Spine<'scratch, 'lit, declared::spined::Pattern<'scratch, 'lit>> {
-        let terms = terms
+        trace!("resolving pattern run of {} terms", terms.len());
+
+        let terms: Vec<_> = terms
             .iter()
             .map(|pattern| self.single_pattern(item_id, gen_scope, pattern))
             .collect();
 
         match Precedencer::new(self, self.scratch, item_id).unflatten(terms) {
             OneOrMany::Single(pattern) => declared::Spine::Single(pattern),
-            OneOrMany::Many(head, args) => declared::Spine::Fun {
-                head,
-                args,
-                anno: None,
-            },
+            OneOrMany::Many(head, args) => {
+                if head.is_constructor() {
+                    let pat = Precedencer::prefixes(self.scratch, item_id, head, args);
+                    declared::Spine::Single(pat)
+                } else {
+                    declared::Spine::Fun {
+                        head,
+                        args,
+                        anno: None,
+                    }
+                }
+            }
         }
     }
 }

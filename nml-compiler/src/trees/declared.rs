@@ -118,6 +118,17 @@ pub(crate) mod spined {
         ConstructorName,
         ApplyPattern<'scratch, 'lit>,
     >;
+
+    impl Pattern<'_, '_> {
+        pub fn is_constructor(&self) -> bool {
+            match &self.node {
+                PatternNode::Invalid(_) | PatternNode::Constructor(_) => true,
+                PatternNode::Group(pattern) => pattern.is_constructor(),
+
+                _ => false,
+            }
+        }
+    }
 }
 
 pub(crate) mod constructored {
