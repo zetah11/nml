@@ -158,6 +158,12 @@ impl Resolver<'_, '_, '_, '_> {
 
         match &ty.node {
             TypeNode::Invalid(_) | TypeNode::Wildcard | TypeNode::Universal(_) => {}
+
+            TypeNode::Named(name) if ignore.contains(name) => {}
+            TypeNode::Named(name) => {
+                out.extend(self.items.get(name).copied());
+            }
+
             TypeNode::Function([t, u]) => {
                 self.in_type(ignore, out, t);
                 self.in_type(ignore, out, u);

@@ -405,7 +405,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         // Note that, if this is a redefinition, we will return an error. To
         // ensure that the redefined name still has an associated definition,
         // check with `get` before actually inserting the new name.
-        if let Some((prev, _)) = self.scopes.1.names.get(&ident) {
+        if let Some((prev, _)) = self.scopes.1.values.get(&ident) {
             let prev_span = self
                 .spans
                 .get(prev)
@@ -413,20 +413,34 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             let name = self.names.get_ident(&ident);
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
-            self.scopes.1.names.insert(ident, (name, kind));
+            self.scopes.1.values.insert(ident, (name, kind));
             self.spans.insert(name, at);
             self.affii.insert(name, affix);
             Ok(name)
         }
     }
 
-    fn lookup_value(&mut self, name: &Ident) -> Option<(Name, Namekind)> {
-        if let Some(name) = self.scopes.1.names.get(name) {
+    fn lookup_type(&mut self, name: &Ident) -> Option<Name> {
+        if let Some(name) = self.scopes.1.types.get(name) {
             return Some(*name);
         }
 
         for scope in self.scopes.0.iter().rev() {
-            if let Some(name) = scope.names.get(name) {
+            if let Some(name) = scope.types.get(name) {
+                return Some(*name);
+            }
+        }
+
+        None
+    }
+
+    fn lookup_value(&mut self, name: &Ident) -> Option<(Name, Namekind)> {
+        if let Some(name) = self.scopes.1.values.get(name) {
+            return Some(*name);
+        }
+
+        for scope in self.scopes.0.iter().rev() {
+            if let Some(name) = scope.values.get(name) {
                 return Some(*name);
             }
         }
@@ -473,7 +487,7 @@ enum Namekind {
 #[derive(Debug)]
 struct Scope<'lit> {
     name: ScopeName,
-    names: BTreeMap<Ident<'lit>, (Name, Namekind)>,
+    values: BTreeMap<Ident<'lit>, (Name, Namekind)>,
     types: BTreeMap<Ident<'lit>, Name>,
 }
 
@@ -481,7 +495,7 @@ impl Scope<'_> {
     pub fn new(name: ScopeName) -> Self {
         Self {
             name,
-            names: BTreeMap::new(),
+            values: BTreeMap::new(),
             types: BTreeMap::new(),
         }
     }
@@ -489,7 +503,7 @@ impl Scope<'_> {
     pub fn top_level(source: SourceId) -> Self {
         Self {
             name: ScopeName::TopLevel(source),
-            names: BTreeMap::new(),
+            values: BTreeMap::new(),
             types: BTreeMap::new(),
         }
     }

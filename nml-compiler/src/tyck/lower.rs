@@ -8,6 +8,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             i::TypeNode::Invalid(e) => o::Type::Invalid(*e),
             i::TypeNode::Wildcard => return self.fresh(),
 
+            i::TypeNode::Named(name) => o::Type::Named(*name),
+
             i::TypeNode::Universal(name) => o::Type::Param(o::Generic::Ticked(*name)),
 
             i::TypeNode::Function([t, u]) => {

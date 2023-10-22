@@ -12,6 +12,11 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
             cst::Node::Invalid(e) => ast::TypeNode::Invalid(*e),
             cst::Node::Wildcard => ast::TypeNode::Wildcard,
 
+            cst::Node::Name(cst::Name::Normal(name)) => {
+                let name = self.names.intern(name);
+                ast::TypeNode::Named(name)
+            }
+
             cst::Node::Name(cst::Name::Universal(name)) => {
                 let name = self.names.intern(name);
                 ast::TypeNode::Universal(name)

@@ -78,7 +78,7 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     ApplyPattern<'a, 'lit>,
 >;
 
-pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Universal>;
+pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name, Universal>;
 
 pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
 

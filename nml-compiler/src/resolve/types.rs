@@ -17,6 +17,15 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             i::TypeNode::Invalid(e) => o::TypeNode::Invalid(*e),
             i::TypeNode::Wildcard => o::TypeNode::Wildcard,
 
+            i::TypeNode::Named(name) => {
+                if let Some(name) = self.lookup_type(name) {
+                    o::TypeNode::Named(name)
+                } else {
+                    let name = self.names.get_ident(name);
+                    o::TypeNode::Invalid(self.errors.name_error(span).unknown_name(name))
+                }
+            }
+
             i::TypeNode::Universal(ident) => {
                 // 'a universal types are implicitly defined when used
                 if let Some(name) = gen_scope.get(ident) {

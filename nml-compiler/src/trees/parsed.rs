@@ -48,7 +48,7 @@ pub struct Constructor<'a, 'lit> {
 }
 
 type GenScope = ();
-type Var<'lit> = Ident<'lit>;
+type Name<'lit> = Ident<'lit>;
 type PatternVar<'lit> = (Affix, Ident<'lit>);
 type ConstructorName = Infallible;
 type Universal<'lit> = Ident<'lit>;
@@ -65,7 +65,7 @@ pub type ExprNode<'a, 'lit> = nodes::ExprNode<
     Expr<'a, 'lit>,
     Pattern<'a, 'lit>,
     Type<'a, 'lit>,
-    Var<'lit>,
+    Name<'lit>,
     ApplyExpr<'a, 'lit>,
     GenScope,
 >;
@@ -79,12 +79,13 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     ApplyPattern<'a, 'lit>,
 >;
 
-pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Universal<'lit>>;
+pub type TypeNode<'a, 'lit> =
+    nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name<'lit>, Universal<'lit>>;
 
 pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
 
 pub type ConstructorNode<'a, 'lit> =
-    nodes::ConstructorNode<'a, (Affix, Ident<'lit>), Type<'a, 'lit>>;
+    nodes::ConstructorNode<'a, (Affix, Name<'lit>), Type<'a, 'lit>>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Affix {

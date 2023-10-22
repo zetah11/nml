@@ -1,1 +1,2 @@
 data t = C {}
+let x: t = C {}

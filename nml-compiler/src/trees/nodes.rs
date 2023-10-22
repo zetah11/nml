@@ -110,12 +110,15 @@ pub enum PatternNode<'a, Pattern, Type, Name, ConstructorName, ApplyPattern> {
     Apply(ApplyPattern),
 }
 
-pub enum TypeNode<'a, 'lit, Type, Universal> {
+pub enum TypeNode<'a, 'lit, Type, Name, Universal> {
     /// Bad stuff.
     Invalid(ErrorId),
 
     /// `_`
     Wildcard,
+
+    /// `abc`
+    Named(Name),
 
     /// `'a`
     Universal(Universal),
@@ -218,10 +221,16 @@ where
     }
 }
 
-impl<Type, Universal> Copy for TypeNode<'_, '_, Type, Universal> where Universal: Copy {}
-
-impl<Type, Universal> Clone for TypeNode<'_, '_, Type, Universal>
+impl<Type, Name, Universal> Copy for TypeNode<'_, '_, Type, Name, Universal>
 where
+    Name: Copy,
+    Universal: Copy,
+{
+}
+
+impl<Type, Name, Universal> Clone for TypeNode<'_, '_, Type, Name, Universal>
+where
+    Name: Copy,
     Universal: Copy,
 {
     fn clone(&self) -> Self {
@@ -292,7 +301,7 @@ mod variance_checking {
         PatternNode<'a, Self, Type<'a, 'lit>, Infallible, Infallible, Infallible>,
     );
 
-    struct Type<'a, 'lit>(TypeNode<'a, 'lit, Self, Infallible>);
+    struct Type<'a, 'lit>(TypeNode<'a, 'lit, Self, Infallible, Infallible>);
 
     fn assert_item_covariance<'a: 'b, 'b, 'lit>(v: Item<'a, 'lit>) -> Item<'b, 'lit> {
         v
