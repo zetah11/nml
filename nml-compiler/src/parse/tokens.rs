@@ -6,7 +6,7 @@ pub enum Token<'src> {
     #[regex(r"[\p{XID_Start}][\p{XID_Continue}_']*", |lexer| lexer.slice(), priority = 2)]
     Name(&'src str),
 
-    #[regex(r"[\p{Symbol}\p{Punctuation}]+", |lexer| lexer.slice())]
+    #[regex(r"[\p{Symbol}\p{Punctuation}--[()\[\]{},]]+", |lexer| lexer.slice())]
     Symbol(&'src str),
 
     #[regex(r"'[\p{XID_Start}][\p{XID_Continue}_']*", |lexer| lexer.slice())]
