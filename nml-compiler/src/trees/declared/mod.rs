@@ -42,6 +42,9 @@
 //! [`spined::Pattern`]s only take two lifetimes `'scratch` and `'lit`; they
 //! should be temporary and not outlive any [`parsed`] subtrees.
 
+pub(crate) mod patterns;
+pub(crate) mod spined;
+
 use std::collections::BTreeMap;
 
 use super::{nodes, parsed, resolved};
@@ -58,7 +61,7 @@ pub(crate) struct Item<'a, 'parsed, 'lit> {
 type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
 type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
 type TypePattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
-type Data<'parsed, 'lit> = constructored::Data<'parsed, 'lit>;
+type Data<'parsed, 'lit> = patterns::Data<'parsed, 'lit>;
 type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
 
 pub(crate) type ItemNode<'a, 'parsed, 'lit> = nodes::ItemNode<
@@ -91,83 +94,4 @@ impl<'a, 'lit, T> Spine<'a, 'lit, T> {
             Self::Single(pattern) => Spine::Single(f(pattern)),
         }
     }
-}
-
-pub(crate) mod spined {
-    use super::{nodes, parsed};
-    use crate::names::{Ident, Name};
-    use crate::resolve::ItemId;
-    use crate::source::Span;
-
-    type Type<'scratch, 'lit> = &'scratch parsed::Type<'scratch, 'lit>;
-    type Var<'lit> = (parsed::Affix, Ident<'lit>);
-    type ConstructorName = Name;
-    type ApplyPattern<'scratch, 'lit> = &'scratch [Pattern<'scratch, 'lit>; 2];
-
-    pub(crate) struct Pattern<'scratch, 'lit> {
-        pub node: PatternNode<'scratch, 'lit>,
-        pub span: Span,
-        pub item_id: ItemId,
-    }
-
-    pub(crate) type PatternNode<'scratch, 'lit> = nodes::PatternNode<
-        'scratch,
-        Pattern<'scratch, 'lit>,
-        Type<'scratch, 'lit>,
-        Var<'lit>,
-        ConstructorName,
-        ApplyPattern<'scratch, 'lit>,
-    >;
-
-    impl Pattern<'_, '_> {
-        pub fn is_constructor(&self) -> bool {
-            match &self.node {
-                PatternNode::Invalid(_) | PatternNode::Constructor(_) => true,
-                PatternNode::Group(pattern) => pattern.is_constructor(),
-
-                _ => false,
-            }
-        }
-    }
-}
-
-pub(crate) mod constructored {
-    use super::{nodes, parsed};
-    use crate::names::Name;
-    use crate::resolve::ItemId;
-    use crate::source::Span;
-
-    pub(crate) struct Item<'parsed, 'lit> {
-        pub node: ItemNode<'parsed, 'lit>,
-        pub span: Span,
-        pub id: ItemId,
-    }
-
-    pub(crate) struct Data<'parsed, 'lit> {
-        pub node: DataNode<'parsed, 'lit>,
-        pub span: Span,
-    }
-
-    pub(crate) struct Constructor<'parsed, 'lit> {
-        pub node: ConstructorNode<'parsed, 'lit>,
-        pub span: Span,
-    }
-
-    pub(crate) type ItemNode<'parsed, 'lit> = nodes::ItemNode<
-        Expr<'parsed, 'lit>,
-        Pattern<'parsed, 'lit>,
-        TypePattern<'parsed, 'lit>,
-        Data<'parsed, 'lit>,
-        GenScope,
-    >;
-
-    pub(crate) type DataNode<'parsed, 'lit> = nodes::DataNode<'parsed, Constructor<'parsed, 'lit>>;
-
-    pub(crate) type ConstructorNode<'parsed, 'lit> =
-        nodes::ConstructorNode<'parsed, Name, parsed::Type<'parsed, 'lit>>;
-
-    type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
-    type Pattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
-    type TypePattern<'parsed, 'lit> = &'parsed parsed::Pattern<'parsed, 'lit>;
-    type GenScope = ();
 }
