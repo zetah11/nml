@@ -7,10 +7,17 @@ use crate::trees::{parsed, resolved};
 
 impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn name_of(pattern: &resolved::Pattern) -> Option<Name> {
-        if let resolved::PatternNode::Bind(name) = &pattern.node {
-            Some(*name)
-        } else {
-            None
+        match &pattern.node {
+            resolved::PatternNode::Invalid(_) => None,
+            resolved::PatternNode::Wildcard => None,
+            resolved::PatternNode::Unit => None,
+            resolved::PatternNode::Bind(name) => Some(*name),
+            resolved::PatternNode::Constructor(_) => None,
+            resolved::PatternNode::Anno(pattern, _) => Resolver::name_of(pattern),
+            resolved::PatternNode::Group(pattern) => Resolver::name_of(pattern),
+            resolved::PatternNode::Apply([head, body]) => {
+                Resolver::name_of(head).or_else(|| Resolver::name_of(body))
+            }
         }
     }
 

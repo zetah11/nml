@@ -116,17 +116,37 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         &mut self,
         items: &'scratch [parsed::Item<'scratch, 'lit>],
     ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
-        debug!("declaring {} items", items.len());
-        let items: Vec<declared::patterns::Item<'scratch, 'lit>> = items
+        let items: Vec<declared::patterns::Item<'scratch, 'lit>> = self.pattern_items(items);
+        let items: Vec<declared::Item<'a, 'scratch, 'lit>> = self.declare_items(items);
+        self.resolve_items(items)
+    }
+
+    fn pattern_items(
+        &mut self,
+        items: &'scratch [parsed::Item<'scratch, 'lit>],
+    ) -> Vec<declared::patterns::Item<'scratch, 'lit>> {
+        debug!("patterning {} items", items.len());
+        items
             .iter()
             .map(|item| self.constructor_items(item))
-            .collect();
+            .collect()
+    }
 
-        let items: Vec<declared::Item<'a, 'scratch, 'lit>> = items
+    fn declare_items(
+        &mut self,
+        items: Vec<declared::patterns::Item<'scratch, 'lit>>,
+    ) -> Vec<declared::Item<'a, 'scratch, 'lit>> {
+        debug!("declaring {} items", items.len());
+        items
             .into_iter()
             .map(|item| self.declare_item(item))
-            .collect();
+            .collect()
+    }
 
+    fn resolve_items(
+        &mut self,
+        items: Vec<declared::Item<'a, 'scratch, 'lit>>,
+    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
         debug!("resolving {} items", items.len());
         items
             .into_iter()
