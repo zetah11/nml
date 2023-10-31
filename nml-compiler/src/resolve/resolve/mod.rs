@@ -69,6 +69,10 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                                             this.pattern(Namespace::Type, &mut gen_scope, &pattern);
                                         this.resolve_data_pattern_name(&pattern)
                                     }));
+
+                            this.explicit_universals
+                                .extend(args.iter().flat_map(|name| name.ok()));
+
                             let body = this.resolve_data(id, body);
                             (&*args, body)
                         });

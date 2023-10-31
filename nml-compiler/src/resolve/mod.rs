@@ -9,7 +9,7 @@ mod operators;
 mod pattern;
 mod types;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use bumpalo::Bump;
 use log::debug;
@@ -80,6 +80,7 @@ struct Resolver<'a, 'scratch, 'lit, 'err> {
     items: BTreeMap<Name, ItemId>,
     spans: BTreeMap<Name, Span>,
     affii: BTreeMap<Name, Affix>,
+    explicit_universals: BTreeSet<Name>,
 
     scopes: (Vec<Scope<'lit>>, Scope<'lit>),
     counter: usize,
@@ -105,6 +106,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             items: BTreeMap::new(),
             spans: BTreeMap::new(),
             affii: BTreeMap::new(),
+            explicit_universals: BTreeSet::new(),
 
             scopes: (Vec::new(), scope),
             counter: 0,

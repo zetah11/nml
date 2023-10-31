@@ -19,7 +19,11 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
             i::TypeNode::Named(name) => {
                 if let Some(name) = self.lookup_type(name) {
-                    o::TypeNode::Named(name)
+                    if self.explicit_universals.contains(&name) {
+                        o::TypeNode::Universal(name)
+                    } else {
+                        o::TypeNode::Named(name)
+                    }
                 } else {
                     let name = self.names.get_ident(name);
                     o::TypeNode::Invalid(self.errors.name_error(span).unknown_name(name))
