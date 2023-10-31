@@ -24,6 +24,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 let scheme = self.env.lookup(name);
                 let mut pretty = self.pretty.build();
                 let ty = self.solver.instantiate(&mut pretty, self.alloc, scheme);
+                let ty = &*self.alloc.alloc(ty);
                 trace!("done var");
                 (o::ExprNode::Var(*name), ty)
             }

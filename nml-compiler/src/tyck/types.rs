@@ -12,7 +12,7 @@ pub enum Type<'a> {
     Var(TypeVar, Level),
     Param(Generic),
 
-    Named(Name),
+    Named(Name, &'a [Type<'a>]),
 
     Unit,
     Boolean,

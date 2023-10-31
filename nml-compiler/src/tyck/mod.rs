@@ -14,8 +14,8 @@ mod tests;
 use bumpalo::Bump;
 
 use self::solve::Solver;
-use crate::errors::Errors;
-use crate::names::Names;
+use crate::errors::{ErrorId, Errors};
+use crate::names::{Name, Names};
 use crate::source::Span;
 use crate::trees::{inferred, resolved};
 
@@ -107,8 +107,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                     resolved::ItemNode::Data(pattern, body) => {
                         let ty = this.type_pattern(pattern);
-                        let ty = this.alloc.alloc(ty);
-                        let body = this.check_data(ty, body);
+                        let body = this.check_data(&ty, body);
                         inferred::BoundItemNode::Data(ty, body)
                     }
                 };
@@ -173,18 +172,35 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             }))
     }
 
-    fn type_pattern(&mut self, pat: &resolved::Pattern) -> Type<'a> {
-        match &pat.node {
-            resolved::PatternNode::Invalid(e) => Type::Invalid(*e),
-            resolved::PatternNode::Bind(name) => Type::Named(*name),
-            resolved::PatternNode::Group(pat) => self.type_pattern(pat),
-            _ => Type::Invalid(self.errors.parse_error(pat.span).expected_name()),
+    fn type_pattern(&mut self, pat: &resolved::DataPattern) -> Scheme<'a> {
+        fn get_names(pat: &resolved::DataPattern) -> Result<(Name, Vec<Name>), ErrorId> {
+            let name = pat.name?;
+            let args: Result<_, ErrorId> = pat.args.iter().copied().collect();
+            Ok((name, args?))
+        }
+
+        match get_names(pat) {
+            Ok((name, args)) => {
+                let params: Vec<_> = args.into_iter().map(Generic::Ticked).collect();
+                let args = self
+                    .alloc
+                    .alloc_slice_fill_iter(params.iter().map(|name| Type::Param(*name)));
+
+                let ty = self.alloc.alloc(Type::Named(name, args));
+
+                Scheme { ty, params }
+            }
+
+            Err(e) => {
+                let ty = self.alloc.alloc(Type::Invalid(e));
+                Scheme::mono(ty)
+            }
         }
     }
 
     fn check_data(
         &mut self,
-        ty: &'a Type<'a>,
+        scheme: &Scheme<'a>,
         data: &resolved::Data<'_, 'ids>,
     ) -> inferred::Data<'a> {
         let span = data.span;
@@ -192,7 +208,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             resolved::DataNode::Invalid(e) => inferred::DataNode::Invalid(*e),
             resolved::DataNode::Sum(ctors) => {
                 let ctors = self.alloc.alloc_slice_fill_iter(
-                    ctors.iter().map(|ctor| self.check_constructor(ty, ctor)),
+                    ctors
+                        .iter()
+                        .map(|ctor| self.check_constructor(scheme, ctor)),
                 );
 
                 inferred::DataNode::Sum(ctors)
@@ -204,14 +222,14 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
     fn check_constructor(
         &mut self,
-        ty: &'a Type<'a>,
+        scheme: &Scheme<'a>,
         ctor: &resolved::Constructor<'_, 'ids>,
     ) -> inferred::Constructor<'a> {
         let span = ctor.span;
         let node = match &ctor.node {
             resolved::ConstructorNode::Invalid(e) => inferred::ConstructorNode::Invalid(*e),
             resolved::ConstructorNode::Constructor(name, params) => {
-                let mut ty = ty;
+                let mut ty = scheme.ty;
 
                 let params = self
                     .alloc
@@ -221,7 +239,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                     ty = self.alloc.alloc(Type::Fun(param, ty));
                 }
 
-                self.env.insert(*name, Scheme::mono(ty));
+                self.env.insert(*name, scheme.onto(ty));
 
                 inferred::ConstructorNode::Constructor(*name, params)
             }
@@ -255,8 +273,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
         if !alpha_equal(lhs, rhs) {
             let mut pretty = self.pretty.build();
-            let lhs = pretty.ty(self.solver.apply(self.alloc, lhs));
-            let rhs = pretty.ty(self.solver.apply(self.alloc, rhs));
+            let lhs = pretty.ty(self.alloc.alloc(self.solver.apply(self.alloc, lhs)));
+            let rhs = pretty.ty(self.alloc.alloc(self.solver.apply(self.alloc, rhs)));
 
             panic!("Inequal types\n    {lhs}\nand {rhs}");
         }
@@ -264,7 +282,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
     #[cfg(test)]
     pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
-        self.solver.apply(self.alloc, ty)
+        self.alloc.alloc(self.solver.apply(self.alloc, ty))
     }
 }
 
@@ -305,7 +323,14 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
                 }
             }
 
-            (Type::Named(n), Type::Named(m)) => n == m,
+            (Type::Named(n, n_args), Type::Named(m, m_args)) => {
+                n == m
+                    && n_args
+                        .iter()
+                        .zip(m_args.iter())
+                        .all(|(a, b)| inner(subst, a, b))
+            }
+
             (Type::Param(n), Type::Param(m)) => n == m,
             (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),

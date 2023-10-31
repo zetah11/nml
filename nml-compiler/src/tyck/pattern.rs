@@ -49,7 +49,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
 
     fn gen_pattern(&mut self, scheme: &Scheme<'a>, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
         let span = pattern.span;
-        let ty = self.solver.apply(self.alloc, pattern.ty);
+        let ty = self.alloc.alloc(self.solver.apply(self.alloc, pattern.ty));
         let scheme = scheme.onto(ty);
         let node = match &pattern.node {
             PatternNode::Invalid(e) => PatternNode::Invalid(*e),

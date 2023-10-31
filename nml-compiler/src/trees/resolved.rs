@@ -34,6 +34,11 @@ pub struct Type<'a, 'lit> {
     pub span: Span,
 }
 
+pub struct DataPattern<'a> {
+    pub name: Result<Name, ErrorId>,
+    pub args: &'a [Result<Name, ErrorId>],
+}
+
 pub struct Data<'a, 'lit> {
     pub node: DataNode<'a, 'lit>,
     pub span: Span,
@@ -53,7 +58,7 @@ type GenScope<'a> = &'a [Name];
 pub type ItemNode<'a, 'lit> = nodes::ItemNode<
     Expr<'a, 'lit>,
     Pattern<'a, 'lit>,
-    Pattern<'a, 'lit>,
+    DataPattern<'a>,
     Data<'a, 'lit>,
     GenScope<'a>,
 >;

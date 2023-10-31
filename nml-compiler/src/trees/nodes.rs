@@ -21,7 +21,7 @@ use crate::errors::ErrorId;
 use crate::names::Label;
 use crate::source::Span;
 
-pub enum ItemNode<Expr, Pattern, TypePattern, DataBody, GenScope> {
+pub enum ItemNode<Expr, Pattern, DataPattern, DataBody, GenScope> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -29,7 +29,7 @@ pub enum ItemNode<Expr, Pattern, TypePattern, DataBody, GenScope> {
     Let(Pattern, Expr, GenScope),
 
     /// `data a = t`
-    Data(TypePattern, DataBody),
+    Data(DataPattern, DataBody),
 }
 
 pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {

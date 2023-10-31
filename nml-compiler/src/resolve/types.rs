@@ -6,7 +6,7 @@ use crate::trees::{parsed as i, resolved as o};
 use super::{ItemId, Resolver};
 
 impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
-    pub fn ty(
+    pub fn resolve_type(
         &mut self,
         item: ItemId,
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
@@ -43,8 +43,8 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             }
 
             i::TypeNode::Function([t, u]) => {
-                let t = self.ty(item, gen_scope, t);
-                let u = self.ty(item, gen_scope, u);
+                let t = self.resolve_type(item, gen_scope, t);
+                let u = self.resolve_type(item, gen_scope, u);
                 o::TypeNode::Function(self.alloc.alloc([t, u]))
             }
 
@@ -52,7 +52,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 let fields =
                     self.alloc
                         .alloc_slice_fill_iter(fields.iter().map(|(name, name_span, ty)| {
-                            let ty = self.ty(item, gen_scope, ty);
+                            let ty = self.resolve_type(item, gen_scope, ty);
                             (*name, *name_span, ty)
                         }));
 

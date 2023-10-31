@@ -132,7 +132,19 @@ impl Prettifier<'_, '_, '_> {
             Type::Invalid(e) => self.error(e),
             Type::Var(var, level) => self.var(var, Some(level)),
             Type::Param(name) => self.param(name, subst),
-            Type::Named(name) => self.name(name),
+
+            Type::Named(name, args) => {
+                let mut result = self.name(name);
+                let args = args.iter().map(|ty| self.simple(ty, subst));
+
+                for arg in args {
+                    result.push(' ');
+                    result.push_str(&arg);
+                }
+
+                result
+            }
+
             Type::Unit => "unit".into(),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),

@@ -1,4 +1,2 @@
-data nat = Zero | Succ nat
-let (infix +) x =
-  | Zero => x
-  | Succ y => Succ (x + y)
+data pair a b = (infix ;) a b
+let zonk = 1; {}

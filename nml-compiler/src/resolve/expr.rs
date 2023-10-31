@@ -41,7 +41,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
             parsed::ExprNode::Anno(expr, ty) => {
                 let expr = self.alloc.alloc(self.expr(item, gen_scope, expr));
-                let ty = self.ty(item, gen_scope, ty);
+                let ty = self.resolve_type(item, gen_scope, ty);
                 resolved::ExprNode::Anno(expr, ty)
             }
 

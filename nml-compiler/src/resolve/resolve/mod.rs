@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+use crate::errors::ErrorId;
+use crate::names::Name;
+use crate::resolve::Namespace;
 use crate::trees::{declared, parsed, resolved};
 
 use super::{ItemId, Resolver};
@@ -43,20 +46,35 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             }
 
             declared::ItemNode::Data(spine, body) => {
-                let body = self.resolve_data(id, body);
+                let (pattern, body) = match spine {
+                    declared::Spine::Single(pattern) => {
+                        let pattern = resolved::DataPattern {
+                            name: self.resolve_data_pattern_name(&pattern),
+                            args: self.alloc.alloc([]),
+                        };
 
-                let pattern = match spine {
-                    declared::Spine::Single(pattern) => pattern,
-                    declared::Spine::Fun { args, .. } => {
-                        let span = args
-                            .iter()
-                            .map(|node| node.span)
-                            .reduce(|a, b| a + b)
-                            .expect("a function spine has at least one argument");
+                        let body = self.resolve_data(id, body);
+                        (pattern, body)
+                    }
 
-                        let e = self.errors.parse_error(span).data_parameters_unsupported();
-                        let node = resolved::PatternNode::Invalid(e);
-                        resolved::Pattern { node, span }
+                    declared::Spine::Fun { head, args, anno } => {
+                        let name = self.resolve_data_pattern_name(&head);
+
+                        let (args, body) = self.scope(name.ok(), |this| {
+                            let args =
+                                this.alloc
+                                    .alloc_slice_fill_iter(args.into_iter().map(|pattern| {
+                                        let mut gen_scope = BTreeMap::new();
+                                        let pattern =
+                                            this.pattern(Namespace::Type, &mut gen_scope, &pattern);
+                                        this.resolve_data_pattern_name(&pattern)
+                                    }));
+                            let body = this.resolve_data(id, body);
+                            (&*args, body)
+                        });
+
+                        let pattern = resolved::DataPattern { name, args };
+                        (pattern, body)
                     }
                 };
 
@@ -65,6 +83,27 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         };
 
         resolved::Item { id, node, span }
+    }
+
+    fn resolve_data_pattern_name(
+        &mut self,
+        pattern: &resolved::Pattern<'a, 'lit>,
+    ) -> Result<Name, ErrorId> {
+        match &pattern.node {
+            resolved::PatternNode::Invalid(e) => Err(*e),
+            resolved::PatternNode::Bind(name) => Ok(*name),
+            resolved::PatternNode::Group(pattern) => self.resolve_data_pattern_name(pattern),
+
+            resolved::PatternNode::Wildcard
+            | resolved::PatternNode::Unit
+            | resolved::PatternNode::Constructor(_)
+            | resolved::PatternNode::Anno(_, _)
+            | resolved::PatternNode::Apply(_) => {
+                let span = pattern.span;
+                let e = self.errors.parse_error(span).expected_name();
+                Err(e)
+            }
+        }
     }
 
     fn resolve_data(
@@ -103,7 +142,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             declared::patterns::ConstructorNode::Constructor(name, params) => {
                 let params = self.alloc.alloc_slice_fill_iter(params.iter().map(|ty| {
                     let mut gen_scope = BTreeMap::new();
-                    let ty = self.ty(item, &mut gen_scope, ty);
+                    let ty = self.resolve_type(item, &mut gen_scope, ty);
 
                     if !gen_scope.is_empty() {
                         let span = ty.span;

@@ -55,7 +55,7 @@ pub struct MonoPattern<'a> {
 }
 
 type TypeSyntax = Infallible;
-type TypePattern<'a> = &'a Type<'a>;
+type TypePattern<'a> = Scheme<'a>;
 type ConstructorName = Name;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPolyPattern<'a> = &'a [PolyPattern<'a>; 2];

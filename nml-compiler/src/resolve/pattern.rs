@@ -160,7 +160,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
 
             declared::spined::PatternNode::Anno(pattern, ty) => {
                 let pattern = self.alloc.alloc(self.pattern(ns, gen_scope, pattern));
-                let ty = self.ty(item_id, gen_scope, ty);
+                let ty = self.resolve_type(item_id, gen_scope, ty);
                 resolved::PatternNode::Anno(pattern, ty)
             }
 

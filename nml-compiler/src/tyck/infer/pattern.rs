@@ -30,6 +30,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 let scheme = self.env.lookup(name);
                 let mut pretty = self.pretty.build();
                 let ty = self.solver.instantiate(&mut pretty, self.alloc, scheme);
+                let ty = &*self.alloc.alloc(ty);
                 (o::MonoPatternNode::Constructor(*name), ty)
             }
 

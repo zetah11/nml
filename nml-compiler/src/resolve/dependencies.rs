@@ -23,7 +23,10 @@ impl Resolver<'_, '_, '_, '_> {
             ItemNode::Data(pattern, body) => {
                 let mut ignore = BTreeSet::new();
                 let mut depends = BTreeSet::new();
-                self.in_pattern(&mut ignore, &mut depends, pattern);
+
+                ignore.extend(pattern.name);
+                ignore.extend(pattern.args.iter().copied().flat_map(Result::ok));
+
                 self.in_data_body(&mut ignore, &mut depends, body);
                 depends
             }
