@@ -123,7 +123,19 @@ impl Prettifier<'_, '_, '_> {
     fn pipes(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
         match ty {
             Type::Variant(row) => self.variant_with_subst(row, subst),
-            ty => self.simple(ty, subst),
+            ty => self.apply(ty, subst),
+        }
+    }
+
+    fn apply(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
+        match ty {
+            Type::Apply(t, u) => {
+                let t = self.apply(t, subst);
+                let u = self.simple(u, subst);
+                format!("{t} {u}")
+            }
+
+            _ => self.simple(ty, subst),
         }
     }
 
@@ -132,19 +144,7 @@ impl Prettifier<'_, '_, '_> {
             Type::Invalid(e) => self.error(e),
             Type::Var(var, level) => self.var(var, Some(level)),
             Type::Param(name) => self.param(name, subst),
-
-            Type::Named(name, args) => {
-                let mut result = self.name(name);
-                let args = args.iter().map(|ty| self.simple(ty, subst));
-
-                for arg in args {
-                    result.push(' ');
-                    result.push_str(&arg);
-                }
-
-                result
-            }
-
+            Type::Named(name) => self.name(name),
             Type::Unit => "unit".into(),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),

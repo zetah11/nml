@@ -41,12 +41,8 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer => ty.clone(),
-
-            Type::Named(name, args) => {
-                let args = alloc
-                    .alloc_slice_fill_iter(args.iter().map(|ty| self.inst_ty(alloc, subst, ty)));
-                Type::Named(*name, args)
+            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Named(_) => {
+                ty.clone()
             }
 
             Type::Var(v, _) => {
@@ -77,6 +73,12 @@ impl<'a> Solver<'a> {
             Type::Variant(row) => {
                 let row = alloc.alloc(self.inst_row(alloc, subst, row));
                 Type::Variant(row)
+            }
+
+            Type::Apply(t, u) => {
+                let t = alloc.alloc(self.inst_ty(alloc, subst, t));
+                let u = alloc.alloc(self.inst_ty(alloc, subst, u));
+                Type::Apply(t, u)
             }
         }
     }

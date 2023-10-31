@@ -12,14 +12,12 @@ impl<'a> Solver<'a> {
     /// solved.
     pub fn apply(&self, alloc: &'a Bump, ty: &'a Type<'a>) -> Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Param(_) => {
-                ty.clone()
-            }
-
-            Type::Named(name, args) => {
-                let args = alloc.alloc_slice_fill_iter(args.iter().map(|ty| self.apply(alloc, ty)));
-                Type::Named(*name, args)
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => ty.clone(),
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -43,6 +41,12 @@ impl<'a> Solver<'a> {
             Type::Variant(row) => {
                 let row = alloc.alloc(self.apply_row(alloc, row));
                 Type::Variant(row)
+            }
+
+            Type::Apply(t, u) => {
+                let t = alloc.alloc(self.apply(alloc, t));
+                let u = alloc.alloc(self.apply(alloc, u));
+                Type::Apply(t, u)
             }
         }
     }

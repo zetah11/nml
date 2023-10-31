@@ -34,13 +34,12 @@ impl<'a> Solver<'a> {
 
     fn minimize_ty(&mut self, alloc: &'a Bump, keep: &BTreeSet<TypeVar>, ty: &'a Type<'a>) {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Param(_) => {}
-
-            Type::Named(_, args) => {
-                for ty in args.iter() {
-                    self.minimize_ty(alloc, keep, ty);
-                }
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => {}
 
             Type::Var(v, _) => {
                 if keep.contains(v) {
@@ -49,7 +48,7 @@ impl<'a> Solver<'a> {
                 }
             }
 
-            Type::Fun(t, u) => {
+            Type::Fun(t, u) | Type::Apply(t, u) => {
                 self.minimize_ty(alloc, keep, t);
                 self.minimize_ty(alloc, keep, u);
             }

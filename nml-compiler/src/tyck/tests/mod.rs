@@ -182,7 +182,7 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     pub fn nominal(&self, name: impl Into<String>) -> &'a Type<'a> {
         let name = self.name(name);
-        self.alloc.alloc(Type::Named(name, self.alloc.alloc([])))
+        self.alloc.alloc(Type::Named(name))
     }
 
     pub fn name(&self, name: impl Into<String>) -> Name {

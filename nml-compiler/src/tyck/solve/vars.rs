@@ -32,11 +32,12 @@ impl Solver<'_> {
     /// particular type.
     pub fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Param(_) => {
-                BTreeSet::new()
-            }
-
-            Type::Named(_, args) => args.iter().flat_map(|ty| self.vars_in_ty(ty)).collect(),
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Param(_)
+            | Type::Named(_) => BTreeSet::new(),
 
             Type::Var(var, _) => {
                 if let Some(ty) = self.subst.get(var) {
@@ -46,11 +47,12 @@ impl Solver<'_> {
                 }
             }
 
-            Type::Fun(t, u) => self
+            Type::Fun(t, u) | Type::Apply(t, u) => self
                 .vars_in_ty(t)
                 .union(&self.vars_in_ty(u))
                 .copied()
                 .collect(),
+
             Type::Record(row) | Type::Variant(row) => self.vars_in_row(row),
         }
     }

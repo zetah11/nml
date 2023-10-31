@@ -33,15 +33,12 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Param(_) | Type::Boolean | Type::Integer => {
-                ty.clone()
-            }
-
-            Type::Named(name, args) => {
-                let args = alloc
-                    .alloc_slice_fill_iter(args.iter().map(|ty| self.gen_ty(alloc, subst, ty)));
-                Type::Named(*name, args)
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Param(_)
+            | Type::Boolean
+            | Type::Integer
+            | Type::Named(_) => ty.clone(),
 
             Type::Var(v, level) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -72,6 +69,12 @@ impl<'a> Solver<'a> {
             Type::Variant(row) => {
                 let row = alloc.alloc(self.gen_row(alloc, subst, row));
                 Type::Variant(row)
+            }
+
+            Type::Apply(t, u) => {
+                let t = alloc.alloc(self.gen_ty(alloc, subst, t));
+                let u = alloc.alloc(self.gen_ty(alloc, subst, u));
+                Type::Apply(t, u)
             }
         }
     }

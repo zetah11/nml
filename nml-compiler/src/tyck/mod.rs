@@ -182,11 +182,13 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         match get_names(pat) {
             Ok((name, args)) => {
                 let params: Vec<_> = args.into_iter().map(Generic::Ticked).collect();
-                let args = self
-                    .alloc
-                    .alloc_slice_fill_iter(params.iter().map(|name| Type::Param(*name)));
+                let mut ty = Type::Named(name);
 
-                let ty = self.alloc.alloc(Type::Named(name, args));
+                for arg in params.iter() {
+                    ty = Type::Apply(self.alloc.alloc(ty), self.alloc.alloc(Type::Param(*arg)));
+                }
+
+                let ty = self.alloc.alloc(ty);
 
                 Scheme { ty, params }
             }
@@ -323,19 +325,17 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
                 }
             }
 
-            (Type::Named(n, n_args), Type::Named(m, m_args)) => {
-                n == m
-                    && n_args
-                        .iter()
-                        .zip(m_args.iter())
-                        .all(|(a, b)| inner(subst, a, b))
-            }
+            (Type::Named(n), Type::Named(m)) => n == m,
 
             (Type::Param(n), Type::Param(m)) => n == m,
             (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
             (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),
             (Type::Record(r), Type::Record(s)) | (Type::Variant(r), Type::Variant(s)) => {
                 inner_row(subst, r, s)
+            }
+
+            (Type::Apply(t1, t2), Type::Apply(u1, u2)) => {
+                inner(subst, t1, u1) && inner(subst, t2, u2)
             }
 
             _ => false,

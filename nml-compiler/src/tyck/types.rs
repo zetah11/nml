@@ -12,7 +12,7 @@ pub enum Type<'a> {
     Var(TypeVar, Level),
     Param(Generic),
 
-    Named(Name, &'a [Type<'a>]),
+    Named(Name),
 
     Unit,
     Boolean,
@@ -21,6 +21,8 @@ pub enum Type<'a> {
 
     Record(&'a Row<'a>),
     Variant(&'a Row<'a>),
+
+    Apply(&'a Type<'a>, &'a Type<'a>),
 }
 
 #[derive(Clone, Debug)]
