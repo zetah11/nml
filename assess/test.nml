@@ -1,2 +1,4 @@
-data pair a b = (infix ;) a b
-let zonk = 1; {}
+data linked a = Nil | Cons a (linked a)
+let map f =
+  | Nil => Nil
+  | Cons x xs => Cons (f x) (map f xs)

@@ -177,6 +177,13 @@ impl Resolver<'_, '_, '_, '_> {
                     self.in_type(ignore, out, ty);
                 }
             }
+
+            TypeNode::Group(ty) => self.in_type(ignore, out, ty),
+
+            TypeNode::Apply([t, u]) => {
+                self.in_type(ignore, out, t);
+                self.in_type(ignore, out, u);
+            }
         }
     }
 }

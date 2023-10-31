@@ -37,11 +37,6 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn data_parameters_unsupported(&mut self) -> ErrorId {
-        let error = self.error("type parameters on data types are not yet supported");
-        self.errors.add(error)
-    }
-
     pub fn expected_annotation(&mut self, name: &str) -> ErrorId {
         let error = self
             .error("expected a type annotation")
@@ -130,6 +125,11 @@ impl ParseErrors<'_> {
             .with_note(
                 "the expression body is after the `in` keyword, and is only valid in expressions",
             );
+        self.errors.add(error)
+    }
+
+    pub fn kind_annotations_unsupported(&mut self) -> ErrorId {
+        let error = self.error("kind annotations are not yet supported");
         self.errors.add(error)
     }
 

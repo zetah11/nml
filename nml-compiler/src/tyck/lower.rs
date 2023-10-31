@@ -30,6 +30,12 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                 o::Type::Record(self.alloc.alloc(row))
             }
+
+            i::TypeNode::Group(ty) => return self.lower(ty),
+
+            i::TypeNode::Apply([head, ty]) => {
+                todo!()
+            }
         };
 
         self.alloc.alloc(ty)

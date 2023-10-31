@@ -65,6 +65,25 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             }
         }
     }
+
+    pub(super) fn apply_type_run(
+        &mut self,
+        item_id: ItemId,
+        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
+        terms: &'scratch [parsed::Type<'scratch, 'lit>],
+    ) -> resolved::Type<'a, 'lit> {
+        trace!("resolving type run of {} terms", terms.len());
+
+        let terms = terms
+            .iter()
+            .map(|ty| self.resolve_type(item_id, gen_scope, ty))
+            .collect();
+
+        match Precedencer::new(self, self.alloc, item_id).unflatten(terms) {
+            OneOrMany::Single(ty) => ty,
+            OneOrMany::Many(fun, args) => Precedencer::prefixes(self.alloc, item_id, fun, args),
+        }
+    }
 }
 
 struct Precedencer<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A> {
@@ -244,6 +263,32 @@ impl<'a, 'lit> Affixable<'a> for declared::spined::Pattern<'a, 'lit> {
 
     fn name(self) -> (Self, Option<Name>) {
         if let declared::spined::PatternNode::Constructor(name) = &self.node {
+            let name = *name;
+            (self, Some(name))
+        } else {
+            (self, None)
+        }
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl<'a, 'lit> Affixable<'a> for resolved::Type<'a, 'lit> {
+    fn invalid(_: ItemId, error: ErrorId, span: Span) -> Self {
+        let node = resolved::TypeNode::Invalid(error);
+        Self { node, span }
+    }
+
+    fn apply(alloc: &'a Bump, _: ItemId, fun: Self, arg: Self) -> Self {
+        let span = fun.span + arg.span;
+        let node = resolved::TypeNode::Apply(alloc.alloc([fun, arg]));
+        Self { node, span }
+    }
+
+    fn name(self) -> (Self, Option<Name>) {
+        if let resolved::TypeNode::Named(name) = &self.node {
             let name = *name;
             (self, Some(name))
         } else {

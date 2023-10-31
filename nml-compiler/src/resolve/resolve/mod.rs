@@ -58,7 +58,14 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
                     }
 
                     declared::Spine::Fun { head, args, anno } => {
-                        let name = self.resolve_data_pattern_name(&head);
+                        let name = if let Some(anno) = anno {
+                            Err(self
+                                .errors
+                                .parse_error(anno.span)
+                                .kind_annotations_unsupported())
+                        } else {
+                            self.resolve_data_pattern_name(&head)
+                        };
 
                         let (args, body) = self.scope(name.ok(), |this| {
                             let args =

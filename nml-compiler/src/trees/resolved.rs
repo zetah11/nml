@@ -53,6 +53,7 @@ type ConstructorName = Name;
 type Universal = Name;
 type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
 type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
+type ApplyType<'a, 'lit> = &'a [Type<'a, 'lit>; 2];
 type GenScope<'a> = &'a [Name];
 
 pub type ItemNode<'a, 'lit> = nodes::ItemNode<
@@ -83,7 +84,8 @@ pub type PatternNode<'a, 'lit> = nodes::PatternNode<
     ApplyPattern<'a, 'lit>,
 >;
 
-pub type TypeNode<'a, 'lit> = nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name, Universal>;
+pub type TypeNode<'a, 'lit> =
+    nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name, Universal, ApplyType<'a, 'lit>>;
 
 pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
 
