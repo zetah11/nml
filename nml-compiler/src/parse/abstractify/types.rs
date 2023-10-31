@@ -37,6 +37,13 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 }
             }
 
+            cst::Node::Apply(types) => {
+                let types = self
+                    .alloc
+                    .alloc_slice_fill_iter(types.iter().map(|ty| self.ty(ty)));
+                ast::TypeNode::Apply(types)
+            }
+
             _ => {
                 let e = self.errors.parse_error(span).expected_type();
                 ast::TypeNode::Invalid(e)

@@ -1,4 +1,7 @@
 data linked a = Nil | Cons a (linked a)
-let map f =
+
+let empty = Nil
+let two x y = Cons x (Cons y Nil)
+let id =
   | Nil => Nil
-  | Cons x xs => Cons (f x) (map f xs)
+  | Cons x xs => Cons x (id xs)
