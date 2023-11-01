@@ -37,7 +37,8 @@ impl Solver<'_> {
             | Type::Boolean
             | Type::Integer
             | Type::Param(_)
-            | Type::Named(_) => BTreeSet::new(),
+            | Type::Named(_)
+            | Type::Arrow => BTreeSet::new(),
 
             Type::Var(var, _) => {
                 if let Some(ty) = self.subst.get(var) {
@@ -47,7 +48,7 @@ impl Solver<'_> {
                 }
             }
 
-            Type::Fun(t, u) | Type::Apply(t, u) => self
+            Type::Apply(t, u) => self
                 .vars_in_ty(t)
                 .union(&self.vars_in_ty(u))
                 .copied()

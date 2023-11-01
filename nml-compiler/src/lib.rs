@@ -1,3 +1,5 @@
+#![feature(if_let_guard)]
+
 pub mod errors;
 pub mod literals;
 pub mod names;

@@ -231,6 +231,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         let node = match &ctor.node {
             resolved::ConstructorNode::Invalid(e) => inferred::ConstructorNode::Invalid(*e),
             resolved::ConstructorNode::Constructor(name, params) => {
+                let arrow = self.alloc.alloc(Type::Arrow);
                 let mut ty = scheme.ty;
 
                 let params = self
@@ -238,7 +239,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                     .alloc_slice_fill_iter(params.iter().map(|ty| self.lower(ty).clone()));
 
                 for param in params.iter().rev() {
-                    ty = self.alloc.alloc(Type::Fun(param, ty));
+                    let apply = self.alloc.alloc(Type::Apply(arrow, param));
+                    ty = self.alloc.alloc(Type::Apply(apply, ty));
                 }
 
                 self.env.insert(*name, scheme.onto(ty));
@@ -328,8 +330,10 @@ fn alpha_equal<'a>(t: &'a Type<'a>, u: &'a Type<'a>) -> bool {
             (Type::Named(n), Type::Named(m)) => n == m,
 
             (Type::Param(n), Type::Param(m)) => n == m,
-            (Type::Boolean, Type::Boolean) | (Type::Integer, Type::Integer) => true,
-            (Type::Fun(t1, u1), Type::Fun(t2, u2)) => inner(subst, t1, t2) && inner(subst, u1, u2),
+            (Type::Boolean, Type::Boolean)
+            | (Type::Integer, Type::Integer)
+            | (Type::Arrow, Type::Arrow) => true,
+
             (Type::Record(r), Type::Record(s)) | (Type::Variant(r), Type::Variant(s)) => {
                 inner_row(subst, r, s)
             }

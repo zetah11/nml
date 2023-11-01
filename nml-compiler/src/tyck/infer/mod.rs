@@ -252,7 +252,10 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 self.solver
                     .minimize(&mut pretty, self.alloc, &keep, input_ty);
 
-                let ty = &*self.alloc.alloc(Type::Fun(input_ty, output_ty));
+                let arrow = self.alloc.alloc(Type::Arrow);
+                let ty = self.alloc.alloc(Type::Apply(arrow, input_ty));
+                let ty = &*self.alloc.alloc(Type::Apply(ty, output_ty));
+
                 (o::ExprNode::Lambda(arrows), ty)
             }
 
@@ -262,7 +265,9 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 let arg = self.infer(arg);
 
                 let u = self.fresh();
-                let expected = self.alloc.alloc(Type::Fun(arg.ty, u));
+                let arrow = self.alloc.alloc(Type::Arrow);
+                let expected = self.alloc.alloc(Type::Apply(arrow, arg.ty));
+                let expected = &*self.alloc.alloc(Type::Apply(expected, u));
 
                 let mut pretty = self.pretty.build();
 

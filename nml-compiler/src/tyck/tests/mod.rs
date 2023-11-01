@@ -159,7 +159,9 @@ impl<'a, 'ids> Store<'a, 'ids> {
     }
 
     pub fn arrow(&self, t: &'a Type<'a>, u: &'a Type<'a>) -> &'a Type<'a> {
-        self.alloc.alloc(Type::Fun(t, u))
+        let arrow = self.alloc.alloc(Type::Arrow);
+        let ty = self.alloc.alloc(Type::Apply(arrow, t));
+        self.alloc.alloc(Type::Apply(ty, u))
     }
 
     pub fn boolean(&self) -> &'a Type<'a> {

@@ -15,7 +15,9 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
             i::TypeNode::Function([t, u]) => {
                 let t = self.lower(t);
                 let u = self.lower(u);
-                o::Type::Fun(t, u)
+                let arrow = self.alloc.alloc(o::Type::Arrow);
+                let ty = self.alloc.alloc(o::Type::Apply(arrow, t));
+                o::Type::Apply(ty, u)
             }
 
             i::TypeNode::Record(fields) => {

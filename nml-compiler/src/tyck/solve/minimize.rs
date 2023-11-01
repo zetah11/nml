@@ -39,7 +39,8 @@ impl<'a> Solver<'a> {
             | Type::Boolean
             | Type::Integer
             | Type::Param(_)
-            | Type::Named(_) => {}
+            | Type::Named(_)
+            | Type::Arrow => {}
 
             Type::Var(v, _) => {
                 if keep.contains(v) {
@@ -48,7 +49,7 @@ impl<'a> Solver<'a> {
                 }
             }
 
-            Type::Fun(t, u) | Type::Apply(t, u) => {
+            Type::Apply(t, u) => {
                 self.minimize_ty(alloc, keep, t);
                 self.minimize_ty(alloc, keep, u);
             }

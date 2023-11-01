@@ -112,7 +112,7 @@ impl Prettifier<'_, '_, '_> {
 
     fn arrow(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
         match ty {
-            Type::Fun(t, u) => {
+            Type::Apply(Type::Apply(Type::Arrow, t), u) => {
                 format!("{} -> {}", self.pipes(t, subst), self.arrow(u, subst))
             }
 
@@ -129,6 +129,9 @@ impl Prettifier<'_, '_, '_> {
 
     fn apply(&mut self, ty: &Type, subst: &BTreeMap<Generic, String>) -> String {
         match ty {
+            // Special-case function types
+            Type::Apply(Type::Apply(Type::Arrow, _), _) => self.simple(ty, subst),
+
             Type::Apply(t, u) => {
                 let t = self.apply(t, subst);
                 let u = self.simple(u, subst);
@@ -148,6 +151,7 @@ impl Prettifier<'_, '_, '_> {
             Type::Unit => "unit".into(),
             Type::Boolean => "bool".into(),
             Type::Integer => "int".into(),
+            Type::Arrow => "(->)".into(),
             Type::Record(row) => self.record_with_subst(row, subst),
             ty => format!("({})", self.arrow(ty, subst)),
         }

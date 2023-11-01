@@ -41,9 +41,12 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> Type<'a> {
         match ty {
-            Type::Invalid(_) | Type::Unit | Type::Boolean | Type::Integer | Type::Named(_) => {
-                ty.clone()
-            }
+            Type::Invalid(_)
+            | Type::Unit
+            | Type::Boolean
+            | Type::Integer
+            | Type::Named(_)
+            | Type::Arrow => ty.clone(),
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -58,12 +61,6 @@ impl<'a> Solver<'a> {
                 .map(|(var, level)| &*alloc.alloc(Type::Var(*var, level.clone())))
                 .unwrap_or(ty)
                 .clone(),
-
-            Type::Fun(t, u) => {
-                let t = alloc.alloc(self.inst_ty(alloc, subst, t));
-                let u = alloc.alloc(self.inst_ty(alloc, subst, u));
-                Type::Fun(t, u)
-            }
 
             Type::Record(row) => {
                 let row = alloc.alloc(self.inst_row(alloc, subst, row));

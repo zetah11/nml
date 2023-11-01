@@ -17,8 +17,8 @@ pub enum Type<'a> {
     Unit,
     Boolean,
     Integer,
-    Fun(&'a Type<'a>, &'a Type<'a>),
-
+    Arrow,
+    //Fun(&'a Type<'a>, &'a Type<'a>),
     Record(&'a Row<'a>),
     Variant(&'a Row<'a>),
 

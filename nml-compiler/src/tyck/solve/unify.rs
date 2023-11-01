@@ -52,14 +52,8 @@ impl<'a> Solver<'a> {
             (Type::Named(n), Type::Named(m)) if n == m => {}
             (Type::Named(_), Type::Invalid(_)) | (Type::Invalid(_), Type::Named(_)) => {}
 
-            (Type::Fun(t1, u1), Type::Fun(t2, u2)) => {
-                self.unify_ty(reporting, alloc, t1, t2);
-                self.unify_ty(reporting, alloc, u1, u2);
-            }
-            (Type::Fun(t, u), e @ Type::Invalid(_)) | (e @ Type::Invalid(_), Type::Fun(t, u)) => {
-                self.unify_ty(reporting, alloc, t, e);
-                self.unify_ty(reporting, alloc, u, e);
-            }
+            (Type::Arrow, Type::Arrow) => {}
+            (Type::Arrow, Type::Invalid(_)) | (Type::Invalid(_), Type::Arrow) => {}
 
             (Type::Record(row1), Type::Record(row2))
             | (Type::Variant(row1), Type::Variant(row2)) => {
@@ -84,12 +78,14 @@ impl<'a> Solver<'a> {
                 self.unify_ty(reporting, alloc, u, e);
             }
 
+            (Type::Var(var, _), ty) | (ty, Type::Var(var, _))
+                if let Some(rhs) = self.subst.get(var) =>
+            {
+                self.unify_ty(reporting, alloc, ty, rhs)
+            }
+
             (Type::Var(var, level), ty) | (ty, Type::Var(var, level)) => {
-                if let Some(rhs) = self.subst.get(var) {
-                    self.unify_ty(reporting, alloc, ty, rhs)
-                } else {
-                    self.set(reporting, alloc, var, level, ty)
-                }
+                self.set(reporting, alloc, var, level, ty)
             }
 
             (Type::Invalid(_), Type::Invalid(_)) => {}
@@ -102,7 +98,7 @@ impl<'a> Solver<'a> {
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(..)
-                | Type::Fun(..)
+                | Type::Arrow
                 | Type::Record(_)
                 | Type::Variant(_)
                 | Type::Apply(..),
@@ -111,7 +107,7 @@ impl<'a> Solver<'a> {
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(..)
-                | Type::Fun(..)
+                | Type::Arrow
                 | Type::Record(_)
                 | Type::Variant(_)
                 | Type::Apply(..),
@@ -160,12 +156,14 @@ impl<'a> Solver<'a> {
             (Row::Param(n), Row::Param(m)) if n == m => {}
             (Row::Param(_), Row::Invalid(_)) | (Row::Invalid(_), Row::Param(_)) => {}
 
+            (Row::Var(var, _), record) | (record, Row::Var(var, _))
+                if let Some(rhs) = self.row_subst.get(var) =>
+            {
+                self.unify_row(reporting, alloc, record, rhs)
+            }
+
             (Row::Var(var, level), record) | (record, Row::Var(var, level)) => {
-                if let Some(rhs) = self.row_subst.get(var) {
-                    self.unify_row(reporting, alloc, record, rhs)
-                } else {
-                    self.set_record(reporting, alloc, var, level, record)
-                }
+                self.set_record(reporting, alloc, var, level, record)
             }
 
             (Row::Invalid(_), Row::Invalid(_)) => {}
@@ -267,7 +265,8 @@ impl<'a> Solver<'a> {
             | Type::Boolean
             | Type::Integer
             | Type::Param(_)
-            | Type::Named(_) => false,
+            | Type::Named(_)
+            | Type::Arrow => false,
 
             Type::Var(war, l2) => {
                 if let Some(ty) = self.subst.get(war) {
@@ -281,9 +280,7 @@ impl<'a> Solver<'a> {
             Type::Record(row) => self.occurs_row(var, l1, row),
             Type::Variant(row) => self.occurs_row(var, l1, row),
 
-            Type::Fun(t, u) | Type::Apply(t, u) => {
-                self.occurs(var, l1, t) || self.occurs(var, l1, u)
-            }
+            Type::Apply(t, u) => self.occurs(var, l1, t) || self.occurs(var, l1, u),
         }
     }
 

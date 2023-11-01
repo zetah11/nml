@@ -38,7 +38,8 @@ impl<'a> Solver<'a> {
             | Type::Param(_)
             | Type::Boolean
             | Type::Integer
-            | Type::Named(_) => ty.clone(),
+            | Type::Named(_)
+            | Type::Arrow => ty.clone(),
 
             Type::Var(v, level) => {
                 if let Some(ty) = self.subst.get(v) {
@@ -53,12 +54,6 @@ impl<'a> Solver<'a> {
                 } else {
                     ty.clone()
                 }
-            }
-
-            Type::Fun(t, u) => {
-                let t = alloc.alloc(self.gen_ty(alloc, subst, t));
-                let u = alloc.alloc(self.gen_ty(alloc, subst, u));
-                Type::Fun(t, u)
             }
 
             Type::Record(row) => {

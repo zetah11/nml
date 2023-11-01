@@ -48,11 +48,14 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
             i::PatternNode::Group(pattern) => return self.infer_pattern(wildcards, pattern),
 
             i::PatternNode::Apply([ctr, arg]) => {
+                let arrow = self.alloc.alloc(Type::Arrow);
+
                 let ctr = self.infer_pattern(wildcards, ctr);
                 let arg = self.infer_pattern(wildcards, arg);
 
                 let res_ty = self.fresh();
-                let fun_ty = self.alloc.alloc(Type::Fun(arg.ty, res_ty));
+                let fun_ty = self.alloc.alloc(Type::Apply(arrow, arg.ty));
+                let fun_ty = self.alloc.alloc(Type::Apply(fun_ty, res_ty));
 
                 let mut pretty = self.pretty.build();
                 self.solver
