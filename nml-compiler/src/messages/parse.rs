@@ -138,13 +138,6 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn missing_do(&mut self, kw: &str, possible_placement: Span) -> ErrorId {
-        let error = self
-            .error(format!("`{kw}` has no corresponding `do`"))
-            .with_label(possible_placement, "expected a `do` keyword here");
-        self.errors.add(error)
-    }
-
     pub fn missing_end(&mut self, kw: &str, possible_placement: Span) -> ErrorId {
         let error = self
             .error(format!("`{kw}` has no matching `end`"))

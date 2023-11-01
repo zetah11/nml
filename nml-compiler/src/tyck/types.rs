@@ -15,10 +15,8 @@ pub enum Type<'a> {
     Named(Name),
 
     Unit,
-    Boolean,
     Integer,
     Arrow,
-    //Fun(&'a Type<'a>, &'a Type<'a>),
     Record(&'a Row<'a>),
     Variant(&'a Row<'a>),
 
@@ -40,9 +38,6 @@ pub enum VarKind {
     Type,
     Row,
 }
-
-//#[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
-//pub struct Generic(pub TypeVar);
 
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 pub enum Generic {

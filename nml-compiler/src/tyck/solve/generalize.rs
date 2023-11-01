@@ -36,7 +36,6 @@ impl<'a> Solver<'a> {
             Type::Invalid(_)
             | Type::Unit
             | Type::Param(_)
-            | Type::Boolean
             | Type::Integer
             | Type::Named(_)
             | Type::Arrow => ty.clone(),

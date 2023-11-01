@@ -40,9 +40,6 @@ impl<'a> Solver<'a> {
             (Type::Unit, Type::Unit) => {}
             (Type::Unit, Type::Invalid(_)) | (Type::Invalid(_), Type::Unit) => {}
 
-            (Type::Boolean, Type::Boolean) => {}
-            (Type::Boolean, Type::Invalid(_)) | (Type::Invalid(_), Type::Boolean) => {}
-
             (Type::Integer, Type::Integer) => {}
             (Type::Integer, Type::Invalid(_)) | (Type::Invalid(_), Type::Integer) => {}
 
@@ -94,7 +91,6 @@ impl<'a> Solver<'a> {
             // with error types
             (
                 Type::Unit
-                | Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(..)
@@ -103,7 +99,6 @@ impl<'a> Solver<'a> {
                 | Type::Variant(_)
                 | Type::Apply(..),
                 Type::Unit
-                | Type::Boolean
                 | Type::Integer
                 | Type::Param(_)
                 | Type::Named(..)
@@ -262,7 +257,6 @@ impl<'a> Solver<'a> {
         match ty {
             Type::Invalid(_)
             | Type::Unit
-            | Type::Boolean
             | Type::Integer
             | Type::Param(_)
             | Type::Named(_)

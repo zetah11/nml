@@ -30,21 +30,6 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::Number(num)
             }
 
-            cst::Node::If {
-                conditional,
-                consequence,
-                alternative,
-            } => {
-                let cond = self.expr(conditional);
-                let then = self.expr(consequence);
-                let elze = alternative.map(|node| self.expr(node)).unwrap_or_else(|| {
-                    let node = ast::ExprNode::Unit;
-                    ast::Expr { node, span }
-                });
-
-                ast::ExprNode::If(self.alloc.alloc([cond, then, elze]))
-            }
-
             cst::Node::Anno(expr, ty) => {
                 let expr = self.alloc.alloc(self.expr(expr));
                 let ty = self.ty(ty);

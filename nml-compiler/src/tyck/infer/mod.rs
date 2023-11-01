@@ -39,38 +39,10 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
 
             i::ExprNode::Unit => (o::ExprNode::Unit, &*self.alloc.alloc(Type::Unit)),
 
-            i::ExprNode::Bool(v) => {
-                trace!("infer bool");
-                trace!("done bool");
-                (o::ExprNode::Bool(*v), &*self.alloc.alloc(Type::Boolean))
-            }
-
             i::ExprNode::Number(v) => {
                 trace!("infer num");
                 trace!("done num");
                 (o::ExprNode::Number(v), &*self.alloc.alloc(Type::Integer))
-            }
-
-            i::ExprNode::If([cond, then, otherwise]) => {
-                trace!("infer if");
-                let cond = self.infer(cond);
-                let then = self.infer(then);
-                let elze = self.infer(otherwise);
-
-                let bool_ty = self.alloc.alloc(Type::Boolean);
-
-                let mut pretty = self.pretty.build();
-
-                self.solver
-                    .unify(&mut pretty, self.alloc, self.errors, span, cond.ty, bool_ty);
-                self.solver
-                    .unify(&mut pretty, self.alloc, self.errors, span, then.ty, elze.ty);
-
-                trace!("done if");
-
-                let ty = then.ty;
-                let terms = self.alloc.alloc([cond, then, elze]);
-                (o::ExprNode::If(terms), ty)
             }
 
             i::ExprNode::Anno(expr, ty) => {

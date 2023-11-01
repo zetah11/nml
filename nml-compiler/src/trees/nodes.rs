@@ -45,14 +45,8 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
     /// `()`
     Unit,
 
-    /// `true` or `false`
-    Bool(bool),
-
     /// Some integer
     Number(&'lit Integer),
-
-    /// `if x then y else z`
-    If(&'a [Expr; 3]),
 
     /// `x : t`
     Anno(&'a Expr, Type),

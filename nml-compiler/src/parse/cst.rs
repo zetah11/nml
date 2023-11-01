@@ -28,12 +28,6 @@ pub enum Node<'a> {
         within: Option<&'a Thing<'a>>,
     },
 
-    If {
-        conditional: &'a Thing<'a>,
-        consequence: &'a Thing<'a>,
-        alternative: Option<&'a Thing<'a>>,
-    },
-
     Case(Option<&'a Thing<'a>>, &'a Thing<'a>),
 
     Alt(Vec<&'a Thing<'a>>),

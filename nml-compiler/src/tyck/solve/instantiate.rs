@@ -41,12 +41,9 @@ impl<'a> Solver<'a> {
         ty: &'a Type<'a>,
     ) -> Type<'a> {
         match ty {
-            Type::Invalid(_)
-            | Type::Unit
-            | Type::Boolean
-            | Type::Integer
-            | Type::Named(_)
-            | Type::Arrow => ty.clone(),
+            Type::Invalid(_) | Type::Unit | Type::Integer | Type::Named(_) | Type::Arrow => {
+                ty.clone()
+            }
 
             Type::Var(v, _) => {
                 if let Some(ty) = self.subst.get(v) {

@@ -1,5 +1,5 @@
 data linked a = End | Link a (linked a)
 
-let map f =
+let f =
   | End => End
-  | Link x xs => Link (f x) (map f xs)
+  | Link => End

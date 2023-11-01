@@ -34,7 +34,6 @@ impl Solver<'_> {
         match ty {
             Type::Invalid(_)
             | Type::Unit
-            | Type::Boolean
             | Type::Integer
             | Type::Param(_)
             | Type::Named(_)

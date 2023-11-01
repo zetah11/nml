@@ -19,8 +19,6 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             parsed::ExprNode::Hole => resolved::ExprNode::Hole,
             parsed::ExprNode::Unit => resolved::ExprNode::Unit,
 
-            parsed::ExprNode::Bool(v) => resolved::ExprNode::Bool(*v),
-
             parsed::ExprNode::Var(name) => {
                 if let Some((name, _)) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
@@ -31,13 +29,6 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             }
 
             parsed::ExprNode::Number(num) => resolved::ExprNode::Number(num),
-
-            parsed::ExprNode::If([cond, then, elze]) => {
-                let cond = self.expr(item, gen_scope, cond);
-                let then = self.expr(item, gen_scope, then);
-                let elze = self.expr(item, gen_scope, elze);
-                resolved::ExprNode::If(self.alloc.alloc([cond, then, elze]))
-            }
 
             parsed::ExprNode::Anno(expr, ty) => {
                 let expr = self.alloc.alloc(self.expr(item, gen_scope, expr));

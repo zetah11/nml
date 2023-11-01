@@ -45,18 +45,22 @@ fn overwrite() {
 
 #[test]
 fn sneakily_recursive() {
-    // r => if True then { x = 2 | r } else { y = 2 | r }
+    // r => case 0 | a => { x = 2 | r } | b => { y = 2 | r } end
     // --> [error, branches do not unify]
 
     // The types have a common tail but a distinct prefix, which implies that
     // they are incompatible. Test case taken from
-    // "Extensible Records with Scoped Labels" (Daan Leijen, 2005) at
+    // "Extensible Records with Scoped Labels" (Daan Leijen, 2004) at
     // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf
     Store::with(|s, mut checker| {
-        let then = s.record([("x", s.num(2))], Some(s.var("r")));
-        let elze = s.record([("y", s.num(2))], Some(s.var("r")));
-        let cond = s.if_then(s.bool(true), then, elze);
-        let expr = s.lambda(s.bind("r"), cond);
+        let arm1 = s.record([("x", s.num(2))], Some(s.var("r")));
+        let arm2 = s.record([("y", s.num(2))], Some(s.var("r")));
+
+        let pat1 = s.bind("a");
+        let pat2 = s.bind("b");
+
+        let case = s.case(s.num(0), [(pat1, arm1), (pat2, arm2)]);
+        let expr = s.lambda(s.bind("r"), case);
 
         let _actual = checker.infer(&expr);
         assert_eq!(checker.errors.num_errors(), 1);
@@ -65,16 +69,16 @@ fn sneakily_recursive() {
 
 #[test]
 fn record_literal() {
-    // { x = 1, y = f => f true }
-    // --> { x: int, y: (bool -> '1) -> '1 }
+    // { x = 1, y = f => f 0 }
+    // --> { x: int, y: (int -> '1) -> '1 }
     Store::with(|s, mut checker| {
         let lit = s.num(1);
-        let lambda = s.lambda(s.bind("f"), s.apply(s.var("f"), s.bool(true)));
+        let lambda = s.lambda(s.bind("f"), s.apply(s.var("f"), s.num(0)));
         let expr = s.record([("x", lit), ("y", lambda)], None);
 
         let a = checker.fresh();
         let lit_ty = s.int();
-        let lambda_ty = s.arrow(s.arrow(s.boolean(), a), a);
+        let lambda_ty = s.arrow(s.arrow(s.int(), a), a);
         let expected = s.extend([("x", lit_ty), ("y", lambda_ty)], None);
 
         let actual = checker.infer(&expr);

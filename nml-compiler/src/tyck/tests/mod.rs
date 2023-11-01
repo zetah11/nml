@@ -56,10 +56,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
         f(this, checker)
     }
 
-    pub fn bool(&self, value: bool) -> Expr<'a, 'ids> {
-        self.expr(ExprNode::Bool(value))
-    }
-
     pub fn num(&self, value: impl Into<Integer>) -> Expr<'a, 'ids> {
         let value = self.literals.intern(value.into()).into_ref();
         self.expr(ExprNode::Number(value))
@@ -68,16 +64,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
     pub fn var(&self, name: impl Into<String>) -> Expr<'a, 'ids> {
         let name = self.name(name);
         self.expr(ExprNode::Var(name))
-    }
-
-    pub fn if_then(
-        &self,
-        cond: Expr<'a, 'ids>,
-        then: Expr<'a, 'ids>,
-        elze: Expr<'a, 'ids>,
-    ) -> Expr<'a, 'ids> {
-        let terms = self.alloc.alloc([cond, then, elze]);
-        self.expr(ExprNode::If(terms))
     }
 
     pub fn field(&self, of: Expr<'a, 'ids>, label: impl AsRef<str>) -> Expr<'a, 'ids> {
@@ -162,10 +148,6 @@ impl<'a, 'ids> Store<'a, 'ids> {
         let arrow = self.alloc.alloc(Type::Arrow);
         let ty = self.alloc.alloc(Type::Apply(arrow, t));
         self.alloc.alloc(Type::Apply(ty, u))
-    }
-
-    pub fn boolean(&self) -> &'a Type<'a> {
-        self.alloc.alloc(Type::Boolean)
     }
 
     pub fn int(&self) -> &'a Type<'a> {

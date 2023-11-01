@@ -43,7 +43,6 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     const THING_STARTS: &'static [Token<'static>] = &[
         Token::Let,
         Token::Data,
-        Token::If,
         Token::Case,
         Token::Name(""),
         Token::Symbol(""),
@@ -79,8 +78,6 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             self.let_def(LetKw::Let, opener)
         } else if let Some(opener) = self.consume(Token::Data) {
             self.let_def(LetKw::Data, opener)
-        } else if let Some(opener) = self.consume(Token::If) {
-            self.if_do(opener)
         } else if let Some(opener) = self.consume(Token::Case) {
             self.case(opener)
         } else {
@@ -144,55 +141,6 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             pattern,
             definition,
         }
-    }
-
-    /// ```abnf
-    /// if = "if" thing "do" thing ("else" thing / "end")
-    /// ```
-    fn if_do(&mut self, opener: Span) -> &'a Thing<'a> {
-        trace!("parse `if`");
-
-        let conditional = self.thing();
-        let Some(_do_kw) = self.consume(Token::Do) else {
-            let span = self.current_span;
-            let e = self.errors.parse_error(opener).missing_do("if", span);
-            let node = Node::Invalid(e);
-            return self.alloc.alloc(Thing { node, span });
-        };
-
-        let consequence = self.thing();
-
-        let thing = if let Some(_else_kw) = self.consume(Token::Else) {
-            let alternative = self.thing();
-            let span = opener + alternative.span;
-            let node = Node::If {
-                conditional,
-                consequence,
-                alternative: Some(alternative),
-            };
-            self.alloc.alloc(Thing { node, span })
-        } else {
-            let end = self.consume(Token::End).unwrap_or_else(|| {
-                let e = self
-                    .errors
-                    .parse_error(opener)
-                    .missing_end("if", self.current_span);
-                let span = self.closest_span();
-                self.parse_errors.push((e, span));
-                span
-            });
-
-            let span = opener + end;
-            let node = Node::If {
-                conditional,
-                consequence,
-                alternative: None,
-            };
-            self.alloc.alloc(Thing { node, span })
-        };
-
-        trace!("done `if`");
-        thing
     }
 
     /// ```abnf

@@ -21,14 +21,8 @@ pub enum Token<'src> {
     Case,
     #[token("data")]
     Data,
-    #[token("do")]
-    Do,
-    #[token("else")]
-    Else,
     #[token("end")]
     End,
-    #[token("if")]
-    If,
     #[token("in")]
     In,
     #[token("infix")]

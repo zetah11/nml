@@ -35,21 +35,11 @@ impl Resolver<'_, '_, '_, '_> {
 
     fn in_expr(&self, ignore: &mut BTreeSet<Name>, out: &mut BTreeSet<ItemId>, expr: &Expr) {
         match &expr.node {
-            ExprNode::Invalid(_)
-            | ExprNode::Hole
-            | ExprNode::Unit
-            | ExprNode::Bool(_)
-            | ExprNode::Number(_) => {}
+            ExprNode::Invalid(_) | ExprNode::Hole | ExprNode::Unit | ExprNode::Number(_) => {}
 
             ExprNode::Var(name) if ignore.contains(name) => {}
             ExprNode::Var(name) => {
                 out.extend(self.items.get(name).copied());
-            }
-
-            ExprNode::If([cond, then, elze]) => {
-                self.in_expr(ignore, out, cond);
-                self.in_expr(ignore, out, then);
-                self.in_expr(ignore, out, elze);
             }
 
             ExprNode::Anno(expr, ty) => {
