@@ -35,7 +35,7 @@ base         =/ "{" *(def ",") [def] ["|" thing] "}"
 
 name          = NAME / OPERATOR / UNIVERSAL
 
-NAME          = XID_START *IDENT
+NAME          = START *IDENT
 OPERATOR      = 1*(SYMBOL / PUNCTUATION)
 UNIVERSAL     = "'" NAME
 NUMBER        = DIGIT *(DIGIT / "_")

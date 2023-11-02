@@ -15,11 +15,6 @@ pub(crate) struct ParseErrors<'a> {
     primary: Span,
 }
 
-pub enum NonSmallName<'a> {
-    None,
-    Universal(&'a str),
-}
-
 impl ParseErrors<'_> {
     pub fn ambiguous_infix_operators(&mut self, prev: Span) -> ErrorId {
         let error = self
@@ -83,20 +78,12 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn expected_name_small(&mut self, got: NonSmallName) -> ErrorId {
-        let mut error = self.error("expected a value or type name");
-
-        match got {
-            NonSmallName::None => {}
-
-            NonSmallName::Universal(name) => {
-                let fixed = &name[1..]; // the first character is always '\''
-                error = error
-                    .with_note("value names cannot start with a tick `'`")
-                    .with_help(format!("try removing the apostrophe: `{fixed}`"));
-            }
-        }
-
+    pub fn expected_non_universal_name(&mut self, got: &str) -> ErrorId {
+        let fixed = &got[1..]; // universal names always begin with a `'`
+        let mut error = self
+            .error("ticked names can only be used as types in certain contexts")
+            .with_note("a name with an initial apostrophe denotes a type variable")
+            .with_help(format!("try removing the apostrophe: `{fixed}`"));
         self.errors.add(error)
     }
 

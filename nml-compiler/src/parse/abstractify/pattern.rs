@@ -1,5 +1,4 @@
 use super::Abstractifier;
-use crate::messages::parse::NonSmallName;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
 
@@ -82,7 +81,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let e = self
                     .errors
                     .parse_error(span)
-                    .expected_name_small(NonSmallName::Universal(name));
+                    .expected_non_universal_name(name);
                 ast::PatternNode::Invalid(e)
             }
 

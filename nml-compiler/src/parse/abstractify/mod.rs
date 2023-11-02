@@ -17,7 +17,6 @@ use malachite::Integer;
 use super::cst;
 use crate::errors::{ErrorId, Errors};
 use crate::literals::Literal;
-use crate::messages::parse::NonSmallName;
 use crate::names::{Ident, Names};
 use crate::source::Span;
 use crate::trees::parsed as ast;
@@ -71,12 +70,9 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
             cst::Node::Name(cst::Name::Universal(name)) => Err(self
                 .errors
                 .parse_error(span)
-                .expected_name_small(NonSmallName::Universal(name))),
+                .expected_non_universal_name(name)),
 
-            _ => Err(self
-                .errors
-                .parse_error(span)
-                .expected_name_small(NonSmallName::None)),
+            _ => Err(self.errors.parse_error(span).expected_name()),
         };
 
         (ident, span)

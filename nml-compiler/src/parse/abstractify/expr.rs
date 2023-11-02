@@ -1,5 +1,4 @@
 use super::Abstractifier;
-use crate::messages::parse::NonSmallName;
 use crate::names::Label;
 use crate::parse::cst;
 use crate::trees::parsed as ast;
@@ -21,7 +20,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 let e = self
                     .errors
                     .parse_error(span)
-                    .expected_name_small(NonSmallName::Universal(name));
+                    .expected_non_universal_name(name);
                 ast::ExprNode::Invalid(e)
             }
 
@@ -52,7 +51,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                         cst::Name::Universal(name) => Err(self
                             .errors
                             .parse_error(field_span)
-                            .expected_name_small(NonSmallName::Universal(name))),
+                            .expected_non_universal_name(name)),
                     };
 
                     let span = expr.span + field_span;

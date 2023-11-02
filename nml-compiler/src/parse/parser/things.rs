@@ -422,7 +422,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// name = SMALL / BIG / OPERATOR / UNIVERSAL
+    /// name = NAME / OPERATOR / UNIVERSAL
     /// ```
     fn name(&mut self) -> Option<(Name<'a>, Span)> {
         let (name, span) = match self.next.as_ref()? {
