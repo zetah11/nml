@@ -1,6 +1,8 @@
 use super::Abstractifier;
+use crate::errors::ErrorId;
 use crate::names::Label;
 use crate::parse::cst;
+use crate::source::Span;
 use crate::trees::parsed as ast;
 
 impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
@@ -62,38 +64,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 return expr;
             }
 
-            cst::Node::Record { defs, extends } => {
-                let extend = if let Some(span) = extends
-                    .iter()
-                    .skip(1)
-                    .map(|thing| thing.span)
-                    .reduce(|a, b| a + b)
-                {
-                    let e = self.errors.parse_error(span).multiple_record_extensions();
-                    let node = ast::ExprNode::Invalid(e);
-                    Some(&*self.alloc.alloc(ast::Expr { node, span }))
-                } else {
-                    extends
-                        .first()
-                        .map(|node| &*self.alloc.alloc(self.expr(node)))
-                };
-
-                let fields = self.alloc.alloc_slice_fill_with(defs.len(), |idx| {
-                    let def = &defs[idx];
-                    let (name, name_span) = self.normal_name(def.pattern);
-                    let name = name.map(Label);
-
-                    let body = if let Some(body) = def.definition {
-                        self.expr(body)
-                    } else {
-                        self.expr(def.pattern)
-                    };
-
-                    (name, name_span, body)
-                });
-
-                ast::ExprNode::Record(fields, extend)
-            }
+            cst::Node::Record { defs } => self.record(defs),
 
             cst::Node::Case(scrutinee, terms) => {
                 let span = terms.span;
@@ -176,5 +147,103 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         };
 
         ast::Expr { node, span }
+    }
+
+    fn record(&mut self, defs: &[cst::ValueDef]) -> ast::ExprNode<'a, 'lit> {
+        let mut extend = None;
+
+        let fields: Vec<_> = defs
+            .iter()
+            .flat_map(|def| self.record_field(def, &mut extend))
+            .collect();
+
+        let fields = self.alloc.alloc_slice_fill_iter(fields);
+
+        let extend = match extend {
+            Some(Ok(term)) => Some(term),
+            Some(Err(span)) => {
+                let e = self.errors.parse_error(span).multiple_record_extensions();
+                let node = ast::ExprNode::Invalid(e);
+                Some(ast::Expr { node, span })
+            }
+            None => None,
+        };
+
+        let extend = extend.map(|expr| &*self.alloc.alloc(expr));
+        ast::ExprNode::Record(fields, extend)
+    }
+
+    /// Parse a single record field or record extension. Returns
+    /// `Some((name, name_span, body))` for a record field definition like
+    /// `a = x` or `a` (where the latter is expanded to `a = a`). For record
+    /// extensions, returns `None` and writes to `extend`, which is either the
+    /// (optional) single record extension, or the span containing all multiple
+    /// record extensions met so far.
+    fn record_field(
+        &mut self,
+        def: &cst::ValueDef<'_>,
+        extend: &mut Option<Result<ast::Expr<'a, 'lit>, Span>>,
+    ) -> Option<(Result<Label<'lit>, ErrorId>, Span, ast::Expr<'a, 'lit>)> {
+        if let Some(extension_terms) = Self::get_record_extension(def.pattern) {
+            // Get the extension term
+            let mut term = match extension_terms {
+                [] => unreachable!("record extensions are ellipses applied to at least one thing"),
+                [term] => self.expr(term),
+                terms @ [first, .., last] => {
+                    let span = first.span + last.span;
+                    let node = cst::Node::Apply(terms.to_vec());
+                    let term = cst::Thing { node, span };
+                    self.expr(&term)
+                }
+            };
+
+            // Error on `... x = y`
+            if let Some(definition) = def.definition {
+                let span = definition.span;
+                let e = self
+                    .errors
+                    .parse_error(span)
+                    .record_extension_with_definition();
+                let node = ast::ExprNode::Invalid(e);
+                term = ast::Expr { node, span };
+            }
+
+            // Return the extension
+            *extend = match extend.take() {
+                Some(Ok(previous)) => Some(Err(previous.span + term.span)),
+                Some(Err(span)) => Some(Err(span + term.span)),
+                None => Some(Ok(term)),
+            };
+
+            None
+        } else {
+            let (name, name_span) = self.normal_name(def.pattern);
+            let name = name.map(Label);
+
+            let body = if let Some(body) = def.definition {
+                self.expr(body)
+            } else {
+                self.expr(def.pattern)
+            };
+
+            Some((name, name_span, body))
+        }
+    }
+
+    /// Returns `Some(x y z) if the given node is an application like
+    /// `... x y z`.
+    fn get_record_extension<'tree>(
+        node: &'tree cst::Thing<'tree>,
+    ) -> Option<&'tree [&'tree cst::Thing<'tree>]> {
+        let cst::Node::Apply(terms) = &node.node else {
+            return None;
+        };
+        match &terms[..] {
+            [cst::Thing {
+                node: cst::Node::Ellipses,
+                ..
+            }, rest @ ..] => Some(rest),
+            _ => None,
+        }
     }
 }

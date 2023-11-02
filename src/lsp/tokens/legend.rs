@@ -33,6 +33,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
 
         Token::Comma
         | Token::Dot
+        | Token::Ellipses
         | Token::Colon
         | Token::Equal
         | Token::EqualArrow

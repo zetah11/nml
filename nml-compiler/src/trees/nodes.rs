@@ -58,7 +58,7 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
     /// `x.a`
     Field(&'a Expr, Result<Label<'lit>, ErrorId>, Span),
 
-    /// `{ a = x, b = y | r }`
+    /// `{ a = x, b = y, ...r }`
     Record(
         &'a [(Result<Label<'lit>, ErrorId>, Span, Expr)],
         Option<&'a Expr>,

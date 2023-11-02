@@ -36,6 +36,8 @@ pub enum Token<'src> {
     Comma,
     #[token(".")]
     Dot,
+    #[token("...")]
+    Ellipses,
     #[token(":")]
     Colon,
     #[token("=")]

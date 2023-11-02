@@ -29,9 +29,9 @@ arrow         = simple ["=>" arrow]
 anno          = apply [":" apply]
 apply         = 1*field
 field         = base *("." name)
-base          = name / NUMBER / "_" / "infix" / "postfix"
+base          = name / NUMBER / "_" / "..." / "infix" / "postfix"
 base         =/ "(" thing ")"
-base         =/ "{" *(def ",") [def] ["|" thing] "}"
+base         =/ "{" *(def ",") [def] "}"
 
 name          = NAME / OPERATOR / UNIVERSAL
 

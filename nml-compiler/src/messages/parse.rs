@@ -80,7 +80,7 @@ impl ParseErrors<'_> {
 
     pub fn expected_non_universal_name(&mut self, got: &str) -> ErrorId {
         let fixed = &got[1..]; // universal names always begin with a `'`
-        let mut error = self
+        let error = self
             .error("ticked names can only be used as types in certain contexts")
             .with_note("a name with an initial apostrophe denotes a type variable")
             .with_help(format!("try removing the apostrophe: `{fixed}`"));
@@ -147,8 +147,8 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
-    pub fn record_type_extension(&mut self) -> ErrorId {
-        let error = self.error("extensions in record types are not supported");
+    pub fn record_extension_with_definition(&mut self) -> ErrorId {
+        let error = self.error("record extensions do not have a definition");
         self.errors.add(error)
     }
 

@@ -26,15 +26,10 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 return self.ty(node);
             }
 
-            cst::Node::Record { defs, extends } => {
-                if let Some(span) = extends.iter().map(|a| a.span).reduce(|a, b| a + b) {
-                    let e = self.errors.parse_error(span).record_type_extension();
-                    ast::TypeNode::Invalid(e)
-                } else {
-                    let fields: Vec<_> = defs.iter().map(|def| self.field(def)).collect();
-                    let fields = self.alloc.alloc_slice_fill_iter(fields);
-                    ast::TypeNode::Record(fields)
-                }
+            cst::Node::Record { defs } => {
+                let fields: Vec<_> = defs.iter().map(|def| self.field(def)).collect();
+                let fields = self.alloc.alloc_slice_fill_iter(fields);
+                ast::TypeNode::Record(fields)
             }
 
             cst::Node::Apply(types) => {

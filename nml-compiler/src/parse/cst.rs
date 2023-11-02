@@ -12,6 +12,7 @@ pub enum Node<'a> {
     Invalid(ErrorId),
 
     Wildcard,
+    Ellipses,
     Infix,
     Postfix,
 
@@ -40,7 +41,6 @@ pub enum Node<'a> {
 
     Record {
         defs: Vec<ValueDef<'a>>,
-        extends: Vec<&'a Thing<'a>>,
     },
 }
 

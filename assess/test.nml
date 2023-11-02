@@ -1,5 +1,1 @@
-data linked a = End | Link a (linked a)
-
-let f =
-  | End => End
-  | Link => End
+let person name age = {name, ...{age}}

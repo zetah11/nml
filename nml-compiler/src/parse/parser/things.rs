@@ -49,6 +49,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Ellipses,
         Token::Infix,
         Token::Postfix,
         Token::LeftParen,
@@ -118,6 +119,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Ellipses,
         Token::Infix,
         Token::Postfix,
         Token::LeftParen,
@@ -181,6 +183,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Ellipses,
         Token::Infix,
         Token::Postfix,
         Token::LeftParen,
@@ -216,6 +219,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Ellipses,
         Token::Infix,
         Token::Postfix,
         Token::LeftParen,
@@ -285,6 +289,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
+        Token::Ellipses,
         Token::Infix,
         Token::Postfix,
         Token::LeftParen,
@@ -323,7 +328,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// base  = name / NUMBER / "_" / "infix" / "postfix"
+    /// base  = name / NUMBER / "_" / "..." / "infix" / "postfix"
     /// base =/ "(" thing ")"
     /// base =/ "{" *(def ",") [def] ["|" thing] "}"
     /// ```
@@ -348,6 +353,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
             trace!("wildcard");
             let node = Node::Wildcard;
             (node, span)
+        } else if let Some(span) = self.consume(Token::Ellipses) {
+            trace!("ellipses");
+            let node = Node::Ellipses;
+            (node, span)
         } else if let Some(opener) = self.consume(Token::LeftParen) {
             trace!("parse group");
             let thing = self.thing();
@@ -366,51 +375,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
                 (node, span)
             }
         } else if let Some(opener) = self.consume(Token::LeftBrace) {
-            trace!("parse record");
-            let mut defs = Vec::new();
-            let mut extends = Vec::new();
-
-            let mut expected_comma = None;
-
-            loop {
-                if self.peek(Self::DEF_STARTS).is_none() && self.peek(Token::Pipe).is_none() {
-                    break;
-                }
-
-                if self.peek(Self::DEF_STARTS).is_some() {
-                    if let Some(span) = expected_comma.take() {
-                        let e = self.errors.parse_error(span).expected_comma();
-                        self.parse_errors.push((e, span));
-                    }
-
-                    defs.push(self.def(None));
-                }
-
-                if self.consume(Token::Pipe).is_some() {
-                    extends.push(self.thing());
-                }
-
-                expected_comma = self
-                    .consume(Token::Comma)
-                    .is_none()
-                    .then_some(self.current_span);
-            }
-
-            trace!("done record");
-
-            if let Some(end) = self.consume(Token::RightBrace) {
-                let span = opener + end;
-                let node = Node::Record { defs, extends };
-                (node, span)
-            } else {
-                let e = self
-                    .errors
-                    .parse_error(opener)
-                    .unclosed_brace(self.current_span);
-                let span = self.closest_span();
-                let node = Node::Invalid(e);
-                (node, span)
-            }
+            self.record(opener)
         } else {
             let span = self.current_span;
             let e = self.errors.parse_error(span).unexpected_token();
@@ -419,6 +384,48 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         };
 
         self.alloc.alloc(Thing { node, span })
+    }
+
+    fn record(&mut self, opener: Span) -> (Node<'a>, Span) {
+        trace!("parse record");
+        let mut defs = Vec::new();
+        let mut expected_comma = None;
+
+        loop {
+            if self.peek(Self::DEF_STARTS).is_none() {
+                break;
+            }
+
+            if let Some(span) = expected_comma.take() {
+                let e = self.errors.parse_error(span).expected_comma();
+                self.parse_errors.push((e, span));
+            }
+
+            if self.peek(Self::DEF_STARTS).is_some() {
+                defs.push(self.def(None));
+            }
+
+            expected_comma = self
+                .consume(Token::Comma)
+                .is_none()
+                .then_some(self.current_span);
+        }
+
+        trace!("done record");
+
+        if let Some(end) = self.consume(Token::RightBrace) {
+            let span = opener + end;
+            let node = Node::Record { defs };
+            (node, span)
+        } else {
+            let e = self
+                .errors
+                .parse_error(opener)
+                .unclosed_brace(self.current_span);
+            let span = self.closest_span();
+            let node = Node::Invalid(e);
+            (node, span)
+        }
     }
 
     /// ```abnf
