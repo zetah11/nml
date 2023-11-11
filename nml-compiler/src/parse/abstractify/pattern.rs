@@ -49,6 +49,25 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::PatternNode::Apply(terms)
             }
 
+            cst::Node::Alt(terms) => {
+                let mut result = None;
+
+                for term in terms {
+                    let pattern = self.pattern(term);
+                    match result {
+                        None => result = Some(pattern),
+                        Some(prev) => {
+                            let span = prev.span + pattern.span;
+                            let terms = self.alloc.alloc([prev, pattern]);
+                            let node = ast::PatternNode::Or(terms);
+                            result = Some(ast::Pattern { node, span });
+                        }
+                    }
+                }
+
+                return result.expect("alts contain at least one subterm");
+            }
+
             cst::Node::Group(pattern) => {
                 let pattern = self.alloc.alloc(self.pattern(pattern));
                 ast::PatternNode::Group(pattern)

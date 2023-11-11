@@ -64,6 +64,20 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
                 let terms = self.alloc.alloc([ctr, arg]);
                 (o::MonoPatternNode::Apply(terms), res_ty)
             }
+
+            i::PatternNode::Or([a, b]) => {
+                let a = self.infer_pattern(wildcards, a);
+                let b = self.infer_pattern(wildcards, b);
+
+                let res_ty = a.ty;
+
+                let mut pretty = self.pretty.build();
+                self.solver
+                    .unify(&mut pretty, self.alloc, self.errors, span, a.ty, b.ty);
+
+                let terms = self.alloc.alloc([a, b]);
+                (o::MonoPatternNode::Or(terms), res_ty)
+            }
         };
 
         o::MonoPattern { node, span, ty }

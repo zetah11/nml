@@ -114,6 +114,11 @@ impl Resolver<'_, '_, '_, '_> {
                 self.in_pattern(ignore, out, fun);
                 self.in_pattern(ignore, out, arg);
             }
+
+            PatternNode::Or([a, b]) => {
+                self.in_pattern(ignore, out, a);
+                self.in_pattern(ignore, out, b);
+            }
         }
     }
 

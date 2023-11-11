@@ -15,8 +15,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             resolved::PatternNode::Constructor(_) => None,
             resolved::PatternNode::Anno(pattern, _) => Resolver::name_of(pattern),
             resolved::PatternNode::Group(pattern) => Resolver::name_of(pattern),
-            resolved::PatternNode::Apply([head, body]) => {
-                Resolver::name_of(head).or_else(|| Resolver::name_of(body))
+
+            resolved::PatternNode::Apply([a, b]) | resolved::PatternNode::Or([a, b]) => {
+                Resolver::name_of(a).or_else(|| Resolver::name_of(b))
             }
         }
     }
@@ -124,6 +125,10 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 }
             }
 
+            parsed::PatternNode::Or([a, b]) => {
+                todo!()
+            }
+
             parsed::PatternNode::Constructor(v) => match *v {},
         };
 
@@ -174,6 +179,10 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 let arg = self.pattern(ns, gen_scope, arg);
                 let terms = self.alloc.alloc([fun, arg]);
                 resolved::PatternNode::Apply(terms)
+            }
+
+            declared::spined::PatternNode::Or([a, b]) => {
+                todo!()
             }
         };
 

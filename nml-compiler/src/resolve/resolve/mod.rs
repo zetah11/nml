@@ -109,7 +109,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             | resolved::PatternNode::Unit
             | resolved::PatternNode::Constructor(_)
             | resolved::PatternNode::Anno(_, _)
-            | resolved::PatternNode::Apply(_) => {
+            | resolved::PatternNode::Apply(_)
+            | resolved::PatternNode::Or(_) => {
                 let span = pattern.span;
                 let e = self.errors.parse_error(span).expected_name();
                 Err(e)

@@ -69,6 +69,11 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
                 self.pattern(arg);
             }
 
+            PolyPatternNode::Or([a, b]) => {
+                self.pattern(a);
+                self.pattern(b);
+            }
+
             PolyPatternNode::Anno(_, v) => match *v {},
         }
     }
