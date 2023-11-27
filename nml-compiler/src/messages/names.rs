@@ -16,6 +16,31 @@ pub(crate) struct NameErrors<'a> {
 }
 
 impl NameErrors<'_> {
+    pub fn affii_disagree(&mut self, prev: Span) -> ErrorId {
+        let error = self
+            .error("name bindings have different affixes")
+            .with_label(prev, "previous binding here");
+        self.errors.add(error)
+    }
+
+    pub fn implicit_type_var_in_data(&mut self) -> ErrorId {
+        let error = self
+            .error("implicit type variables are not allowed in data types")
+            .with_help("explicitly add a type parameter with a normal type name to the data type");
+        self.errors.add(error)
+    }
+
+    pub fn or_patterns_disagree<'s>(&mut self, names: impl Iterator<Item = &'s str>) -> ErrorId {
+        let names: Vec<_> = names.map(|name| format!("`{name}`")).collect();
+        let s = if names.len() == 1 { "" } else { "s" };
+        let names = names.join(", ");
+
+        let error = self.error(format!(
+            "name{s} {names} must be bound in both sides of the or-pattern"
+        ));
+        self.errors.add(error)
+    }
+
     pub fn redefined_type(&mut self, prev: Span, name: &str) -> ErrorId {
         let error = self
             .error(format!("redefinition of type `{name}`"))
@@ -32,13 +57,6 @@ impl NameErrors<'_> {
 
     pub fn unknown_name(&mut self, name: &str) -> ErrorId {
         let error = self.error(format!("unknown name `{name}`"));
-        self.errors.add(error)
-    }
-
-    pub fn implicit_type_var_in_data(&mut self) -> ErrorId {
-        let error = self
-            .error("implicit type variables are not allowed in data types")
-            .with_help("explicitly add a type parameter with a normal type name to the data type");
         self.errors.add(error)
     }
 

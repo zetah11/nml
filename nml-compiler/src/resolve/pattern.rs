@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{ItemId, Namekind, Namespace, Resolver};
 use crate::names::{Ident, Name};
@@ -126,7 +126,10 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             }
 
             parsed::PatternNode::Or([a, b]) => {
-                todo!()
+                let a = self.single_pattern(item_id, gen_scope, a);
+                let b = self.single_pattern(item_id, gen_scope, b);
+                let terms = self.scratch.alloc([a, b]);
+                declared::spined::PatternNode::Or(terms)
             }
 
             parsed::PatternNode::Constructor(v) => match *v {},
@@ -145,47 +148,122 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
         pattern: &declared::spined::Pattern<'scratch, 'lit>,
     ) -> resolved::Pattern<'a, 'lit> {
+        let (pattern, _) = self.declare_pattern(ns, gen_scope, pattern, &BTreeMap::new());
+        pattern
+    }
+
+    fn declare_pattern(
+        &mut self,
+        ns: Namespace,
+        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
+        pattern: &declared::spined::Pattern<'scratch, 'lit>,
+        known: &BTreeMap<Ident<'lit>, Name>,
+    ) -> (resolved::Pattern<'a, 'lit>, BTreeMap<Ident<'lit>, Name>) {
         let item_id = pattern.item_id;
         let span = pattern.span;
-        let node = match &pattern.node {
-            declared::spined::PatternNode::Invalid(e) => resolved::PatternNode::Invalid(*e),
-            declared::spined::PatternNode::Wildcard => resolved::PatternNode::Wildcard,
-            declared::spined::PatternNode::Unit => resolved::PatternNode::Unit,
+        let (node, names) = match &pattern.node {
+            declared::spined::PatternNode::Invalid(e) => {
+                (resolved::PatternNode::Invalid(*e), BTreeMap::new())
+            }
+            declared::spined::PatternNode::Wildcard => {
+                (resolved::PatternNode::Wildcard, BTreeMap::new())
+            }
+            declared::spined::PatternNode::Unit => (resolved::PatternNode::Unit, BTreeMap::new()),
 
             declared::spined::PatternNode::Bind((affix, ident)) => {
-                match self.define_name(item_id, span, *affix, *ident, Namekind::Value, ns) {
-                    Ok(name) => resolved::PatternNode::Bind(name),
-                    Err(e) => resolved::PatternNode::Invalid(e),
+                if let Some(name) = known.get(ident) {
+                    let names = BTreeMap::from([(*ident, *name)]);
+
+                    let previous_affix = self
+                        .affii
+                        .get(name)
+                        .expect("all declared names have an affix");
+                    let previous_span = self
+                        .spans
+                        .get(name)
+                        .expect("all declared names have a span");
+
+                    if previous_affix != affix {
+                        let e = self.errors.name_error(span).affii_disagree(*previous_span);
+                        (resolved::PatternNode::Invalid(e), names)
+                    } else {
+                        (resolved::PatternNode::Bind(*name), names)
+                    }
+                } else {
+                    match self.define_name(item_id, span, *affix, *ident, Namekind::Value, ns) {
+                        Ok(name) => {
+                            let names = BTreeMap::from([(*ident, name)]);
+                            (resolved::PatternNode::Bind(name), names)
+                        }
+
+                        Err(e) => (resolved::PatternNode::Invalid(e), BTreeMap::new()),
+                    }
                 }
             }
 
             declared::spined::PatternNode::Constructor(name) => {
-                resolved::PatternNode::Constructor(*name)
+                (resolved::PatternNode::Constructor(*name), BTreeMap::new())
             }
 
             declared::spined::PatternNode::Anno(pattern, ty) => {
-                let pattern = self.alloc.alloc(self.pattern(ns, gen_scope, pattern));
+                let (pattern, names) = self.declare_pattern(ns, gen_scope, pattern, known);
+                let pattern = self.alloc.alloc(pattern);
                 let ty = self.resolve_type(item_id, gen_scope, ty);
-                resolved::PatternNode::Anno(pattern, ty)
+                (resolved::PatternNode::Anno(pattern, ty), names)
             }
 
             declared::spined::PatternNode::Group(pattern) => {
-                let pattern = self.alloc.alloc(self.pattern(ns, gen_scope, pattern));
-                resolved::PatternNode::Group(pattern)
+                let (pattern, names) = self.declare_pattern(ns, gen_scope, pattern, known);
+                let pattern = self.alloc.alloc(pattern);
+                (resolved::PatternNode::Group(pattern), names)
             }
 
             declared::spined::PatternNode::Apply([fun, arg]) => {
-                let fun = self.pattern(ns, gen_scope, fun);
-                let arg = self.pattern(ns, gen_scope, arg);
+                let (fun, names1) = self.declare_pattern(ns, gen_scope, fun, known);
+                let (arg, names2) = self.declare_pattern(ns, gen_scope, arg, known);
                 let terms = self.alloc.alloc([fun, arg]);
-                resolved::PatternNode::Apply(terms)
+
+                let mut names = names1;
+                for (ident, name) in names2 {
+                    let prev = names.insert(ident, name);
+                    debug_assert!(prev.is_none());
+                }
+
+                (resolved::PatternNode::Apply(terms), names)
             }
 
             declared::spined::PatternNode::Or([a, b]) => {
-                todo!()
+                let (a, a_names) = self.declare_pattern(ns, gen_scope, a, known);
+
+                // Known names in `b` are the already known names _and_ whatever
+                // names `a` declares
+                let mut b_known = known.clone();
+                for (ident, name) in a_names.iter() {
+                    let prev = b_known.insert(*ident, *name);
+                    debug_assert!(prev.is_none());
+                }
+
+                let (b, b_names) = self.declare_pattern(ns, gen_scope, b, &b_known);
+
+                // Ensure `a` and `b` declare the exact same set of names
+                let declared_in_a: BTreeSet<&Ident> = a_names.keys().collect();
+                let declared_in_b: BTreeSet<&Ident> = b_names.keys().collect();
+                let difference: Vec<_> =
+                    declared_in_a.symmetric_difference(&declared_in_b).collect();
+
+                if difference.is_empty() {
+                    let terms = self.alloc.alloc([a, b]);
+                    (resolved::PatternNode::Or(terms), a_names)
+                } else {
+                    let names = difference
+                        .into_iter()
+                        .map(|name| self.names.get_ident(name));
+                    let e = self.errors.name_error(span).or_patterns_disagree(names);
+                    (resolved::PatternNode::Invalid(e), BTreeMap::new())
+                }
             }
         };
 
-        resolved::Pattern { node, span }
+        (resolved::Pattern { node, span }, names)
     }
 }
