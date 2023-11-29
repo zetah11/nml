@@ -22,7 +22,19 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
 
             i::PatternNode::Bind(name) => {
                 let ty = self.wildcard_type(wildcards);
-                self.env.insert(*name, Scheme::mono(ty));
+
+                // If this name has been given a type before, then this is
+                // another branch in an or-pattern and the two types must be
+                // equal.
+                if let Some(prev) = self.env.try_lookup(name) {
+                    assert!(prev.is_mono());
+                    let mut pretty = self.pretty.build();
+                    self.solver
+                        .unify(&mut pretty, self.alloc, self.errors, span, prev.ty, ty);
+                } else {
+                    self.env.insert(*name, Scheme::mono(ty));
+                }
+
                 (o::MonoPatternNode::Bind(*name), ty)
             }
 

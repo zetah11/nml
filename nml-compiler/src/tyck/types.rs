@@ -99,4 +99,8 @@ impl<'a> Env<'a> {
             .get(name)
             .expect("all names are defined before use")
     }
+
+    pub(super) fn try_lookup(&self, name: &Name) -> Option<&Scheme<'a>> {
+        self.context.get(name)
+    }
 }
