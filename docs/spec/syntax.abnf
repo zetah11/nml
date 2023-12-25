@@ -21,10 +21,9 @@ let           = ("let" / "data") def *("and" def) ["in" thing]
 def           = anno ["=" thing]
 
 if            = "if" thing "do" thing ("else" thing / "end")
-case          = "case" [arrow] [lambda] "end"
+case          = "case" [anno] [lambda] "end"
 
-lambda        = ["|"] arrow *("|" arrow)
-arrow         = simple ["=>" arrow]
+lambda        = ["|"] simple *(("|" / "=>") simple)
 
 anno          = apply [":" apply]
 apply         = 1*field

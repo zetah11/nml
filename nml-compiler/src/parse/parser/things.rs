@@ -67,7 +67,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// simple = item{apply}
     /// ```
-    fn simple(&mut self) -> &'a Thing<'a> {
+    pub(super) fn simple(&mut self) -> &'a Thing<'a> {
         self.item(Self::anno)
     }
 
@@ -151,7 +151,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn case(&mut self, opener: Span) -> &'a Thing<'a> {
         trace!("parse `case`");
 
-        let scrutinee = self.peek(Self::ARROW_STARTS).map(|_| self.arrow());
+        let scrutinee = self.peek(Self::ANNO_STARTS).map(|_| self.simple());
         let thing = if self.peek(Self::LAMBDA_STARTS).is_some() {
             self.lambda()
         } else {
@@ -191,31 +191,9 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Pipe,
     ];
 
-    /// ```abnf
-    /// lambda = ["|"] arrow *("|" arrow)
-    /// ```
-    fn lambda(&mut self) -> &'a Thing<'a> {
-        let opener = self.consume(Token::Pipe);
-        let expr = self.arrow();
-        let mut span = opener.unwrap_or(expr.span);
-        let mut alts = vec![expr];
-
-        while self.consume(Token::Pipe).is_some() {
-            let expr = self.arrow();
-            span += expr.span;
-            alts.push(expr);
-        }
-
-        if alts.len() == 1 {
-            alts.remove(0)
-        } else {
-            let node = Node::Alt(alts);
-            &*self.alloc.alloc(Thing { node, span })
-        }
-    }
-
-    const ARROW_STARTS: &'static [Token<'static>] = &[
+    const ANNO_STARTS: &'static [Token<'static>] = &[
         Token::Name(""),
+        Token::Symbol(""),
         Token::Universal(""),
         Token::Number(""),
         Token::Underscore,
@@ -225,21 +203,6 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::LeftParen,
         Token::LeftBrace,
     ];
-
-    /// ```abnf
-    /// arrow = simple ["=>" arrow]
-    /// ```
-    fn arrow(&mut self) -> &'a Thing<'a> {
-        let expr = self.simple();
-        if let Some(arrow) = self.consume(Token::EqualArrow) {
-            let result = self.arrow();
-            let span = expr.span + arrow + result.span;
-            let node = Node::Arrow(expr, result);
-            self.alloc.alloc(Thing { node, span })
-        } else {
-            expr
-        }
-    }
 
     /// ```abnf
     /// anno = apply [":" apply]

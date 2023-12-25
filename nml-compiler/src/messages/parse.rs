@@ -56,6 +56,11 @@ impl ParseErrors<'_> {
         self.errors.add(error)
     }
 
+    pub fn expected_equal_arrow(&mut self) -> ErrorId {
+        let error = self.error("expected an arrow `=>`");
+        self.errors.add(error)
+    }
+
     pub fn expected_expr(&mut self) -> ErrorId {
         let error = self.error("expected an expression");
         self.errors.add(error)

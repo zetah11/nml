@@ -1,3 +1,4 @@
+mod lambda;
 mod things;
 
 use bumpalo::Bump;

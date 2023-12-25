@@ -1,1 +1,1 @@
-let pat (x | x) = 0
+let pat (x | x) = 123_456
