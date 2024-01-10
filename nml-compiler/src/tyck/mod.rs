@@ -47,20 +47,20 @@ struct Reporting<'a, 'b, 'c, 'd> {
     at: Span,
 }
 
-struct Checker<'a, 'err, 'ids, 'p> {
+struct Checker<'a, 'err, 'lit, 'p> {
     alloc: &'a Bump,
     env: Env<'a>,
     solver: Solver<'a>,
     errors: &'err mut Errors,
-    pretty: &'p mut Pretty<'a, 'ids>,
+    pretty: &'p mut Pretty<'a, 'lit>,
     holes: Vec<(Span, &'a Type<'a>)>,
 }
 
-impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
+impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
     pub fn new(
         alloc: &'a Bump,
         errors: &'err mut Errors,
-        pretty: &'p mut Pretty<'a, 'ids>,
+        pretty: &'p mut Pretty<'a, 'lit>,
     ) -> Self {
         Self {
             alloc,
@@ -75,8 +75,8 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     /// Check a set of mutually recursive items.
     pub fn check_items<'b>(
         &mut self,
-        items: &'b [resolved::Item<'_, 'ids>],
-    ) -> &'a [inferred::Item<'a, 'ids>] {
+        items: &'b [resolved::Item<'_, 'lit>],
+    ) -> &'a [inferred::Item<'a, 'lit>] {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {
@@ -92,11 +92,10 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
                         let keep = wildcards
                             .into_iter()
-                            .flat_map(|ty| this.solver.vars_in_ty(ty))
+                            .flat_map(|ty| this.vars_in_ty(ty))
                             .collect();
-                        let mut pretty = this.pretty.build();
-                        this.solver
-                            .minimize(&mut pretty, this.alloc, &keep, pattern.ty);
+
+                        this.minimize(&keep, pattern.ty);
 
                         let scope = this
                             .alloc
@@ -126,17 +125,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                     inferred::BoundItemNode::Invalid(e) => inferred::BoundItemNode::Invalid(e),
                     inferred::BoundItemNode::Let(pattern, body, scope) => {
                         let body = this.infer(body);
-
-                        let mut pretty = this.pretty.build();
-                        this.solver.unify(
-                            &mut pretty,
-                            this.alloc,
-                            this.errors,
-                            item.span,
-                            pattern.ty,
-                            body.ty,
-                        );
-
+                        this.unify(item.span, pattern.ty, body.ty);
                         inferred::BoundItemNode::Let(pattern, body, scope)
                     }
 
@@ -161,7 +150,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
                 let node = match item.node {
                     inferred::BoundItemNode::Invalid(e) => inferred::ItemNode::Invalid(e),
                     inferred::BoundItemNode::Let(pattern, expr, scope) => {
-                        let pattern = self.generalize(scope, &pattern);
+                        let pattern = self.generalize_pattern(scope, &pattern);
                         inferred::ItemNode::Let(pattern, expr, ())
                     }
 
@@ -203,7 +192,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     fn check_data(
         &mut self,
         scheme: &Scheme<'a>,
-        data: &resolved::Data<'_, 'ids>,
+        data: &resolved::Data<'_, 'lit>,
     ) -> inferred::Data<'a> {
         let span = data.span;
         let node = match &data.node {
@@ -225,7 +214,7 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
     fn check_constructor(
         &mut self,
         scheme: &Scheme<'a>,
-        ctor: &resolved::Constructor<'_, 'ids>,
+        ctor: &resolved::Constructor<'_, 'lit>,
     ) -> inferred::Constructor<'a> {
         let span = ctor.span;
         let node = match &ctor.node {
@@ -252,24 +241,6 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
         inferred::Constructor { node, span }
     }
 
-    fn fresh(&mut self) -> &'a Type<'a> {
-        self.solver.fresh(self.alloc)
-    }
-
-    fn fresh_row(&mut self) -> &'a Row<'a> {
-        self.solver.fresh_record(self.alloc)
-    }
-
-    fn enter<F, T>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        self.solver.enter();
-        let result = f(self);
-        self.solver.exit();
-        result
-    }
-
     #[cfg(test)]
     fn assert_alpha_equal(&mut self, lhs: &'a Type<'a>, rhs: &'a Type<'a>) {
         let lhs = self.apply(lhs);
@@ -277,16 +248,11 @@ impl<'a, 'err, 'ids, 'p> Checker<'a, 'err, 'ids, 'p> {
 
         if !alpha_equal(lhs, rhs) {
             let mut pretty = self.pretty.build();
-            let lhs = pretty.ty(self.alloc.alloc(self.solver.apply(self.alloc, lhs)));
-            let rhs = pretty.ty(self.alloc.alloc(self.solver.apply(self.alloc, rhs)));
+            let lhs = pretty.ty(lhs);
+            let rhs = pretty.ty(rhs);
 
             panic!("Inequal types\n    {lhs}\nand {rhs}");
         }
-    }
-
-    #[cfg(test)]
-    pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
-        self.alloc.alloc(self.solver.apply(self.alloc, ty))
     }
 }
 

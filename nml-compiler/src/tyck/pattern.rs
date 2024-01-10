@@ -4,16 +4,12 @@ use crate::trees::nodes::PatternNode;
 use super::{Checker, Generic, Scheme};
 
 impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
-    pub(super) fn generalize(
+    pub(super) fn generalize_pattern(
         &mut self,
         explicit: &[Generic],
         pattern: &MonoPattern<'a>,
     ) -> PolyPattern<'a> {
-        let mut pretty = self.pretty.build();
-        let scheme = self
-            .solver
-            .generalize(&mut pretty, self.alloc, explicit, pattern.ty);
-
+        let scheme = self.generalize(explicit, pattern.ty);
         self.gen_pattern(&scheme, pattern)
     }
 
@@ -56,7 +52,7 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
 
     fn gen_pattern(&mut self, scheme: &Scheme<'a>, pattern: &MonoPattern<'a>) -> PolyPattern<'a> {
         let span = pattern.span;
-        let ty = self.alloc.alloc(self.solver.apply(self.alloc, pattern.ty));
+        let ty = self.alloc.alloc(self.apply(pattern.ty));
         let scheme = scheme.onto(ty);
         let node = match &pattern.node {
             PatternNode::Invalid(e) => PatternNode::Invalid(*e),

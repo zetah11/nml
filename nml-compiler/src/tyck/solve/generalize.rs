@@ -11,7 +11,7 @@ use super::Solver;
 
 /// Generalization
 impl<'a> Solver<'a> {
-    pub fn generalize(
+    pub(super) fn generalize(
         &mut self,
         pretty: &mut Prettifier,
         alloc: &'a Bump,

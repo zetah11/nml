@@ -11,7 +11,7 @@ use super::{Level, Solver, TypeVar};
 
 /// Instantiation
 impl<'a> Solver<'a> {
-    pub fn instantiate(
+    pub(super) fn instantiate(
         &mut self,
         pretty: &mut Prettifier,
         alloc: &'a Bump,

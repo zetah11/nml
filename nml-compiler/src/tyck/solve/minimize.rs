@@ -13,7 +13,7 @@ use super::{Solver, TypeVar};
 impl<'a> Solver<'a> {
     /// Unify all of the unbound row variables with the empty row in the given
     /// type, fixing/minimizing it to its current labels.
-    pub fn minimize(
+    pub(super) fn minimize(
         &mut self,
         pretty: &mut Prettifier,
         alloc: &'a Bump,

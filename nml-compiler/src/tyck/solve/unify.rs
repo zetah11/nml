@@ -12,7 +12,7 @@ use super::{Level, Solver, TypeVar};
 
 /// Unification
 impl<'a> Solver<'a> {
-    pub fn unify(
+    pub(super) fn unify(
         &mut self,
         pretty: &mut Prettifier,
         alloc: &'a Bump,
@@ -335,8 +335,8 @@ impl<'a> Solver<'a> {
                     return (et, e);
                 }
 
-                let r = self.fresh_record(alloc);
-                let t = self.fresh(alloc);
+                let r = alloc.alloc(self.fresh_row());
+                let t = alloc.alloc(self.fresh());
                 let rhs = alloc.alloc(Row::Extend(*label, t, r));
                 self.unify_row(reporting, alloc, rest, rhs);
 

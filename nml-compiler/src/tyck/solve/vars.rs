@@ -30,7 +30,7 @@ impl Level {
 impl Solver<'_> {
     /// Return a set of all (currently) unbound type variables referenced by a
     /// particular type.
-    pub fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
+    pub(super) fn vars_in_ty(&self, ty: &Type) -> BTreeSet<TypeVar> {
         match ty {
             Type::Invalid(_)
             | Type::Unit

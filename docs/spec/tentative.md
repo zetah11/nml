@@ -89,3 +89,42 @@ Spine = Affix? Name SimplePattern*
 ```
 
 ## Expressions
+
+## Assertions
+
+## Effects
+
+The effect system is used to track side effects, which is how a program does
+anything useful. An _effect_ is a type describing a set of allowed _operations_.
+Operations are used just like functions: they are invoked by applying their name
+to the appropriate number of values.
+
+Operations are _dynamically scoped_. When an operation is invoked, the call
+stack is walked backwards from the current frame to find an appropriate
+_handler_.
+
+Handlers define the meaning of operations by implementing them. Within a handler
+operations may `resume` or return. Returning a value produces that value at the
+handler expression. Invoking `resume` with a value yields control back to where
+the operation was initially invoked with that value.
+
+```nml
+data simple = effect
+  | invoke : string -> int
+end
+
+let f () = invoke "hello" + 5
+
+type h1 = (unit -> string / simple & 'e) -> string / 'e
+let h1 : h1 = simple handler
+  | invoke s = s
+end
+
+type h2 = (unit -> 'a / simple & 'e) -> 'a / 'e
+let h2 : h2 = simple handler
+  | invoke s = resume (String.Utf8.toBytes s |> length)
+end
+
+assert "hello" = h1 f
+assert 10 = h2 f
+```

@@ -10,7 +10,7 @@ impl<'a> Solver<'a> {
     /// Apply the current substitution to the given type, producing a new type
     /// where the only remaining unification variables are the ones not yet
     /// solved.
-    pub fn apply(&self, alloc: &'a Bump, ty: &'a Type<'a>) -> Type<'a> {
+    pub(super) fn apply(&self, alloc: &'a Bump, ty: &'a Type<'a>) -> Type<'a> {
         match ty {
             Type::Invalid(_)
             | Type::Unit
