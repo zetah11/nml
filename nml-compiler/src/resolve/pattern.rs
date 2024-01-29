@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{ItemId, Namekind, Namespace, Resolver};
+use crate::errors::ErrorId;
 use crate::names::{Ident, Name};
+use crate::source::Span;
 use crate::trees::declared;
 use crate::trees::{parsed, resolved};
 
@@ -273,8 +275,12 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                     let names = difference
                         .into_iter()
                         .map(|name| self.names.get_ident(name));
+
                     let e = self.errors.name_error(span).or_patterns_disagree(names);
-                    (resolved::PatternNode::Invalid(e), BTreeMap::new())
+
+                    let names: BTreeMap<_, _> = a_names.into_iter().chain(b_names).collect();
+                    let node = self.poison(span, e, names.values().copied());
+                    return (node, names);
                 }
             }
 
@@ -293,5 +299,27 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         };
 
         (resolved::Pattern { node, span }, names)
+    }
+
+    /// Apply an error node to a set of names.  This makes sure that the given
+    /// names exist _somewhere_, while keeping them erroneous.
+    fn poison(
+        &self,
+        span: Span,
+        e: ErrorId,
+        names: impl IntoIterator<Item = Name>,
+    ) -> resolved::Pattern<'a, 'lit> {
+        let node = resolved::PatternNode::Invalid(e);
+        let mut pattern = resolved::Pattern { node, span };
+
+        for name in names {
+            let node = resolved::PatternNode::Bind(name);
+            let arg = resolved::Pattern { node, span };
+            let terms = self.alloc.alloc([pattern, arg]);
+            let node = resolved::PatternNode::Apply(terms);
+            pattern = resolved::Pattern { node, span };
+        }
+
+        pattern
     }
 }
