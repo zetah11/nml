@@ -16,7 +16,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
             resolved::PatternNode::Anno(pattern, _) => Resolver::name_of(pattern),
             resolved::PatternNode::Group(pattern) => Resolver::name_of(pattern),
 
-            resolved::PatternNode::Apply([a, b]) | resolved::PatternNode::Or([a, b]) => {
+            resolved::PatternNode::Apply([a, b])
+            | resolved::PatternNode::Or([a, b])
+            | resolved::PatternNode::And([a, b]) => {
                 Resolver::name_of(a).or_else(|| Resolver::name_of(b))
             }
         }
@@ -132,6 +134,13 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                 declared::spined::PatternNode::Or(terms)
             }
 
+            parsed::PatternNode::And([a, b]) => {
+                let a = self.single_pattern(item_id, gen_scope, a);
+                let b = self.single_pattern(item_id, gen_scope, b);
+                let terms = self.scratch.alloc([a, b]);
+                declared::spined::PatternNode::And(terms)
+            }
+
             parsed::PatternNode::Constructor(v) => match *v {},
         };
 
@@ -152,6 +161,12 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         pattern
     }
 
+    /// Declare (and hence resolve) the names bound by `pattern`.
+    ///
+    /// The map `known` is used with or-patterns: when the right-hand side of an
+    /// or-pattern declares a name, that name _should_ have been declared by the
+    /// left-hand side.  To ensure both names resolve to the same [`Name`], the
+    /// `known` map "caches" identifiers between or-patterns.
     fn declare_pattern(
         &mut self,
         ns: Namespace,
@@ -261,6 +276,19 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
                     let e = self.errors.name_error(span).or_patterns_disagree(names);
                     (resolved::PatternNode::Invalid(e), BTreeMap::new())
                 }
+            }
+
+            declared::spined::PatternNode::And([a, b]) => {
+                let (a, mut a_names) = self.declare_pattern(ns, gen_scope, a, known);
+                let (b, b_names) = self.declare_pattern(ns, gen_scope, b, known);
+
+                for (ident, name) in b_names {
+                    let prev = a_names.insert(ident, name);
+                    assert!(prev.is_none());
+                }
+
+                let terms = self.alloc.alloc([a, b]);
+                (resolved::PatternNode::And(terms), a_names)
             }
         };
 

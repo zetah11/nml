@@ -105,6 +105,9 @@ pub enum PatternNode<'a, Pattern, Type, Name, ConstructorName, ApplyPattern> {
 
     /// Either the first or second pattern.
     Or(&'a [Pattern; 2]),
+
+    /// The first and then the second pattern.
+    And(&'a [Pattern; 2]),
 }
 
 pub enum TypeNode<'a, 'lit, Type, Name, Universal, ApplyType> {

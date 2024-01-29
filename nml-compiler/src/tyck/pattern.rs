@@ -44,6 +44,13 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 PatternNode::Or(terms)
             }
 
+            PatternNode::And([a, b]) => {
+                let a = self.monomorphic(a);
+                let b = self.monomorphic(b);
+                let terms: &'a [PolyPattern<'a>; 2] = self.alloc.alloc([a, b]);
+                PatternNode::And(terms)
+            }
+
             PatternNode::Anno(_, v) => match *v {},
         };
 
@@ -80,6 +87,13 @@ impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
                 let b = self.gen_pattern(&scheme, b);
                 let terms: &'a [PolyPattern<'a>; 2] = self.alloc.alloc([a, b]);
                 PatternNode::Or(terms)
+            }
+
+            PatternNode::And([a, b]) => {
+                let a = self.gen_pattern(&scheme, a);
+                let b = self.gen_pattern(&scheme, b);
+                let terms: &'a [PolyPattern<'a>; 2] = self.alloc.alloc([a, b]);
+                PatternNode::And(terms)
             }
 
             PatternNode::Anno(_, v) => match *v {},

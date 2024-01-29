@@ -1,4 +1,3 @@
 data list a = End | Prepend a (list a)
 let map f =
-  | End => End
-  | Prepend x xs => Prepend (f x) (map f xs)
+  | Prepend y ys & Prepend x xs => Prepend (f x) (map f xs)

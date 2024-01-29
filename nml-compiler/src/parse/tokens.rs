@@ -32,6 +32,8 @@ pub enum Token<'src> {
     #[token("postfix")]
     Postfix,
 
+    #[token("&")]
+    Ampersand,
     #[token(",")]
     Comma,
     #[token(".")]

@@ -64,12 +64,9 @@ impl<'a, 'lit> HintsBuilder<'a, 'lit> {
 
             PolyPatternNode::Group(pattern) => self.pattern(pattern),
 
-            PolyPatternNode::Apply([fun, arg]) => {
-                self.pattern(fun);
-                self.pattern(arg);
-            }
-
-            PolyPatternNode::Or([a, b]) => {
+            PolyPatternNode::Apply([a, b])
+            | PolyPatternNode::Or([a, b])
+            | PolyPatternNode::And([a, b]) => {
                 self.pattern(a);
                 self.pattern(b);
             }

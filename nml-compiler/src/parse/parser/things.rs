@@ -65,10 +65,10 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// ```abnf
-    /// simple = item{apply}
+    /// simple = item{and}
     /// ```
     pub(super) fn simple(&mut self) -> &'a Thing<'a> {
-        self.item(Self::anno)
+        self.item(Self::and)
     }
 
     /// ```abnf
@@ -132,7 +132,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn def(&mut self, opener: Option<Span>) -> ValueDef<'a> {
         trace!("parse def");
 
-        let pattern = self.anno();
+        let pattern = self.and();
         let definition = self.consume(Token::Equal).map(|_| self.thing());
 
         trace!("done def");
@@ -151,7 +151,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     fn case(&mut self, opener: Span) -> &'a Thing<'a> {
         trace!("parse `case`");
 
-        let scrutinee = self.peek(Self::ANNO_STARTS).map(|_| self.simple());
+        let scrutinee = self.peek(Self::AND_STARTS).map(|_| self.simple());
         let thing = if self.peek(Self::LAMBDA_STARTS).is_some() {
             self.lambda()
         } else {
@@ -191,7 +191,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::Pipe,
     ];
 
-    const ANNO_STARTS: &'static [Token<'static>] = &[
+    const AND_STARTS: &'static [Token<'static>] = &[
         Token::Name(""),
         Token::Symbol(""),
         Token::Universal(""),
@@ -203,6 +203,22 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Token::LeftParen,
         Token::LeftBrace,
     ];
+
+    /// ```abnf
+    /// and = anno *("&" anno)
+    /// ```
+    fn and(&mut self) -> &'a Thing<'a> {
+        let mut expr = self.anno();
+
+        while self.consume(Token::Ampersand).is_some() {
+            let rhs = self.anno();
+            let span = expr.span + rhs.span;
+            let node = Node::And(expr, rhs);
+            expr = self.alloc.alloc(Thing { node, span });
+        }
+
+        expr
+    }
 
     /// ```abnf
     /// anno = apply [":" apply]

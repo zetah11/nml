@@ -35,6 +35,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
 
             i::PatternNode::Apply([ctr, arg]) => self.apply_pattern(wildcards, ctr, arg, span),
             i::PatternNode::Or([a, b]) => self.or_pattern(a, b, wildcards, span),
+            i::PatternNode::And([a, b]) => self.and_pattern(a, b, wildcards, span),
 
             i::PatternNode::Group(pattern) => return self.infer_pattern(wildcards, pattern),
         };
@@ -173,6 +174,28 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
 
         let terms = self.alloc.alloc([a, b]);
         (o::MonoPatternNode::Or(terms), res_ty)
+    }
+
+    /// ```types
+    /// G => a1 : t1   G => a2 : t1
+    /// ---------------------------
+    ///      G => a1 & a2 : t1
+    /// ```
+    fn and_pattern(
+        &mut self,
+        lhs: &i::Pattern<'_, 'lit>,
+        rhs: &i::Pattern<'_, 'lit>,
+        wildcards: &mut Vec<&'a Type<'a>>,
+        span: Span,
+    ) -> (o::MonoPatternNode<'a>, &'a Type<'a>) {
+        let a = self.infer_pattern(wildcards, lhs);
+        let b = self.infer_pattern(wildcards, rhs);
+
+        let res_ty = a.ty;
+        self.unify(span, a.ty, b.ty);
+
+        let terms = self.alloc.alloc([a, b]);
+        (o::MonoPatternNode::And(terms), res_ty)
     }
 
     /// Create a fresh type and add it as a wildcard type.

@@ -32,6 +32,7 @@ pub enum Node<'a> {
     Case(Option<&'a Thing<'a>>, &'a Thing<'a>),
 
     Alt(Vec<&'a Thing<'a>>),
+    And(&'a Thing<'a>, &'a Thing<'a>),
     Arrow(&'a Thing<'a>, &'a Thing<'a>),
 
     Apply(Vec<&'a Thing<'a>>),

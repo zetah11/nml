@@ -14,17 +14,18 @@ start         = things
 things        = *thing
 
 thing         = item{lambda}
-simple        = item{anno}
+simple        = item{and}
 item{default} = let / if / case / default
 
 let           = ("let" / "data") def *("and" def) ["in" thing]
-def           = anno ["=" thing]
+def           = and ["=" thing]
 
 if            = "if" thing "do" thing ("else" thing / "end")
-case          = "case" [anno] [lambda] "end"
+case          = "case" [and] [lambda] "end"
 
 lambda        = ["|"] simple *(("|" / "=>") simple)
 
+and           = anno *("&" anno)
 anno          = apply [":" apply]
 apply         = 1*field
 field         = base *("." name)

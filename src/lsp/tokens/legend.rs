@@ -31,7 +31,8 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
         | Token::Let
         | Token::Postfix => Some((types::KEYWORD, mods::NONE)),
 
-        Token::Comma
+        Token::Ampersand
+        | Token::Comma
         | Token::Dot
         | Token::Ellipses
         | Token::Colon
