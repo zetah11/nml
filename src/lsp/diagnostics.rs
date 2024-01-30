@@ -5,10 +5,10 @@ use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Location, NumberOrString,
     Position, Range, Url,
 };
-use nml_compiler::errors::{Error, ErrorType, Errors, Severity};
-use nml_compiler::source::{Source, SourceId, Span};
 
 use super::Server;
+use crate::frontend::errors::{Error, ErrorType, Errors, Severity};
+use crate::frontend::source::{Source, SourceId, Span};
 use crate::meta;
 
 impl Server {

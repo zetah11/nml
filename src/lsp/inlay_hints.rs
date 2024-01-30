@@ -1,12 +1,12 @@
 use lsp_document::{IndexedText, TextMap};
 use lsp_types as lsp;
-use nml_compiler::alloc::Bump;
-use nml_compiler::names::Names;
-use nml_compiler::source::{Source, Span};
-use nml_compiler::trees::inferred::{Item, ItemNode, PolyPattern, PolyPatternNode};
-use nml_compiler::tyck::{Pretty, Scheme};
 
 use super::Server;
+use crate::frontend::alloc::Bump;
+use crate::frontend::names::Names;
+use crate::frontend::source::{Source, Span};
+use crate::frontend::trees::inferred::{Item, ItemNode, PolyPattern, PolyPatternNode};
+use crate::frontend::tyck::{Pretty, Scheme};
 
 impl Server {
     pub fn make_hints(&self, source: &Source) -> Vec<lsp::InlayHint> {

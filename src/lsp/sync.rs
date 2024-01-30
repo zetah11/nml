@@ -1,7 +1,7 @@
 use lsp_types::Url;
-use nml_compiler::source::SourceId;
 
 use super::Server;
+use crate::frontend::source::SourceId;
 
 impl Server {
     pub fn insert_document(&mut self, name: Url, text: String) -> SourceId {

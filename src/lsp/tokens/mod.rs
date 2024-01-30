@@ -1,8 +1,9 @@
 pub mod legend;
 
 use lsp_types::{SemanticToken, SemanticTokens};
-use nml_compiler::parse::{tokens, Token};
-use nml_compiler::source::{Source, Span};
+
+use crate::frontend::parse::{tokens, Token};
+use crate::frontend::source::{Source, Span};
 
 use super::Server;
 

@@ -3,13 +3,13 @@
 
 use std::path::Path;
 
-use nml_compiler::alloc::Bump;
-use nml_compiler::intern::Arena;
-use nml_compiler::names::Names;
-use nml_compiler::parse::parse;
-use nml_compiler::resolve::resolve;
-use nml_compiler::source::Sources;
-use nml_compiler::tyck::infer;
+use crate::frontend::alloc::Bump;
+use crate::frontend::intern::Arena;
+use crate::frontend::names::Names;
+use crate::frontend::parse::parse;
+use crate::frontend::resolve::resolve;
+use crate::frontend::source::Sources;
+use crate::frontend::tyck::infer;
 
 pub fn run(path: &Path) -> Result<(), BatchError> {
     let file = std::fs::read_to_string(path)?;

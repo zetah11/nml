@@ -1,10 +1,10 @@
-use nml_compiler::alloc::Bump;
-use nml_compiler::names::Names;
-use nml_compiler::parse::parse;
-use nml_compiler::resolve::resolve;
-use nml_compiler::source::Source;
-use nml_compiler::trees::inferred;
-use nml_compiler::tyck;
+use crate::frontend::alloc::Bump;
+use crate::frontend::names::Names;
+use crate::frontend::parse::parse;
+use crate::frontend::resolve::resolve;
+use crate::frontend::source::Source;
+use crate::frontend::trees::inferred;
+use crate::frontend::tyck;
 
 use super::Server;
 

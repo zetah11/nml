@@ -1,5 +1,6 @@
 use lsp_types::{SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend};
-use nml_compiler::parse::Token;
+
+use crate::frontend::parse::Token;
 
 pub fn get() -> SemanticTokensLegend {
     SemanticTokensLegend {

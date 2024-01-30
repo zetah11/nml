@@ -9,18 +9,19 @@ mod lsp_error;
 mod sync;
 mod tokens;
 
-use lsp::TraceValue;
-use lsp_types::{self as lsp, Url};
-use nml_compiler::alloc::Bump;
-use nml_compiler::intern::Arena;
-use nml_compiler::literals::Literal;
-use nml_compiler::names::Names;
-use nml_compiler::source::{Source, SourceId, Sources};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use lsp::TraceValue;
+use lsp_types::{self as lsp, Url};
+
 use self::framework::{Client, Error};
 use self::log::{AtomicTraceValue, Logger};
+use crate::frontend::alloc::Bump;
+use crate::frontend::intern::Arena;
+use crate::frontend::literals::Literal;
+use crate::frontend::names::Names;
+use crate::frontend::source::{Source, SourceId, Sources};
 use crate::meta;
 
 pub fn run() -> Result<(), LspError> {

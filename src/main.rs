@@ -1,8 +1,16 @@
+#![feature(if_let_guard)]
+
+mod args;
+mod batch;
+mod frontend;
+mod lsp;
+mod meta;
+
 use std::process::ExitCode;
 
-use nmlc::args::{Args, Check, Command, Lsp};
-use nmlc::batch::BatchError;
-use nmlc::lsp::LspError;
+use self::args::{Args, Check, Command, Lsp};
+use self::batch::BatchError;
+use self::lsp::LspError;
 
 fn main() -> ExitCode {
     let args: Args = argh::from_env();
@@ -10,7 +18,7 @@ fn main() -> ExitCode {
     match args.command {
         Command::Lsp(Lsp { log, stdio: true }) => {
             log::set_max_level(log.to_level_filter());
-            lsp_error(nmlc::lsp::run())
+            lsp_error(lsp::run())
         }
 
         Command::Lsp(_) => lsp_error(Err(LspError::NoChannel)),
@@ -24,7 +32,7 @@ fn main() -> ExitCode {
                 simple_logger::init_with_env().expect("this is the only logger");
             }
 
-            batch_error(nmlc::batch::run(&path))
+            batch_error(batch::run(&path))
         }
     }
 }
