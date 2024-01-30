@@ -1,4 +1,4 @@
-#![feature(if_let_guard)]
+#![feature(if_let_guard, lint_reasons)]
 
 mod args;
 mod batch;

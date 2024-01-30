@@ -53,7 +53,7 @@ pub enum LogLevel {
 }
 
 impl LogLevel {
-    pub fn to_level_filter(&self) -> log::LevelFilter {
+    pub fn to_level_filter(self) -> log::LevelFilter {
         match self {
             LogLevel::Off => log::LevelFilter::Off,
             LogLevel::Trace => log::LevelFilter::Trace,

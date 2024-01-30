@@ -41,24 +41,15 @@ pub struct Names<'name> {
     intern: &'name Arena<str>,
     names: DashMap<Name, Qualified<'name>>,
     counter: AtomicUsize,
-    builtins: Builtins<'name>,
 }
 
 impl<'name> Names<'name> {
     pub fn new(intern: &'name Arena<str>) -> Self {
-        let minus_arrow = Ident(intern.intern("->").into_ref());
-        let builtins = Builtins { minus_arrow };
-
         Self {
             intern,
             names: DashMap::new(),
             counter: AtomicUsize::new(0),
-            builtins,
         }
-    }
-
-    pub fn builtins(&self) -> &Builtins<'name> {
-        &self.builtins
     }
 
     pub fn intern(&self, name: impl AsRef<str>) -> Ident<'name> {
@@ -85,16 +76,5 @@ impl<'name> Names<'name> {
             .names
             .get(name)
             .expect("names from separate name stores are never mixed")
-    }
-}
-
-pub struct Builtins<'name> {
-    minus_arrow: Ident<'name>,
-}
-
-impl<'name> Builtins<'name> {
-    /// `->`
-    pub fn minus_arrow(&self) -> Ident<'name> {
-        self.minus_arrow
     }
 }

@@ -1,0 +1,39 @@
+# to do
+
+## architecture
+
+- [ ] decoupled errors
+  - name resolution, type checking, etc. should not involve pretty printing
+  - types are allocated in an arena; the error reporting infrastructure must
+    be able to understand references inside there
+- [ ] non-leaking names
+  - names are interned in an arena: this will just keep growing forever and
+    ever (which is very bad).
+  - it's probably fine for now to just keep names as `&'src str`s (identifiers
+    are usually quite small)
+  - if it's bad, a less temporary solution is maybe `(&'src str, hash)`, where
+    the hash is used to discard comparisons
+- [ ] figure out the caching/quering/salsaing/incrementalling situation
+- [ ] ... and asyncify everything (i.e. make things cancellable)
+
+## design
+
+- [ ] syntax for anonymous sums/polymorphic variants
+- [ ] labels for record types; nominal records
+- [ ] module type system
+
+## language
+
+- [ ] report the type of expression holes
+- [ ] translate the inferred program to one without unification vars
+
+## continuous goals
+
+- rid the dependency list!
+  - see "non-leaking names" for `internment`
+  - maybe some simple homegrown stuff for `malachite`
+  - rethink the command line and hence get rid of `argh` (radical)
+  - what's up with `dashmap`
+  - move to `async-lsp`?
+- tinify the binary size
+  - below a megabyte on release builds is the dream
