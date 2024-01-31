@@ -1,5 +1,4 @@
 use log::trace;
-use malachite::Integer;
 
 use crate::frontend::errors::ErrorId;
 use crate::frontend::names::{Label, Name};
@@ -8,8 +7,8 @@ use crate::frontend::trees::{inferred as o, resolved as i};
 use crate::frontend::tyck::Generic;
 use crate::frontend::tyck::{Checker, Row, Type};
 
-impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
-    pub fn infer(&mut self, expr: &i::Expr<'_, 'lit>) -> o::Expr<'a, 'lit> {
+impl<'a, 'src> Checker<'a, '_, 'src, '_> {
+    pub fn infer(&mut self, expr: &i::Expr<'_, 'src>) -> o::Expr<'a, 'src> {
         let span = expr.span;
         let (node, ty) = match &expr.node {
             i::ExprNode::Invalid(e) => self.invalid_expr(e),
@@ -41,7 +40,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```types
     /// <err> : <err>
     /// ```
-    fn invalid_expr(&mut self, e: &ErrorId) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    fn invalid_expr(&mut self, e: &ErrorId) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer err");
         trace!("done err");
         (
@@ -55,7 +54,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ----------------
     /// G => x : inst(T)
     /// ```
-    fn var(&mut self, name: &Name) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    fn var(&mut self, name: &Name) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer var");
         let ty = self.instantiate_name(name);
         let ty = &*self.alloc.alloc(ty);
@@ -68,7 +67,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// --------
     ///  _ : 'a
     /// ```
-    fn hole(&mut self, span: Span) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    fn hole(&mut self, span: Span) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer hole");
         let ty = self.fresh();
         self.holes.push((span, ty));
@@ -80,7 +79,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ---------
     /// () : unit
     /// ```
-    fn unit(&mut self) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    fn unit(&mut self) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         (o::ExprNode::Unit, &*self.alloc.alloc(Type::Unit))
     }
 
@@ -88,7 +87,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// -------
     /// n : int
     /// ```
-    fn number(&mut self, v: &'lit Integer) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    fn number(&mut self, v: &'src str) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer num");
         trace!("done num");
         (o::ExprNode::Number(v), &*self.alloc.alloc(Type::Integer))
@@ -101,10 +100,10 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn anno(
         &mut self,
-        expr: &i::Expr<'_, 'lit>,
-        ty: &i::Type<'_, 'lit>,
+        expr: &i::Expr<'_, 'src>,
+        ty: &i::Type<'_, 'src>,
         span: Span,
-    ) -> o::Expr<'a, 'lit> {
+    ) -> o::Expr<'a, 'src> {
         trace!("infer anno");
         let expr = self.infer(expr);
         let ty = self.lower(ty);
@@ -120,11 +119,11 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn field(
         &mut self,
-        record: &i::Expr<'_, 'lit>,
-        label: &Result<Label<'lit>, ErrorId>,
+        record: &i::Expr<'_, 'src>,
+        label: &Result<Label<'src>, ErrorId>,
         span: Span,
         label_span: &Span,
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer field");
         let record = self.infer(record);
         let record = self.alloc.alloc(record);
@@ -154,10 +153,10 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn record(
         &mut self,
-        fields: &[(Result<Label<'lit>, ErrorId>, Span, i::Expr<'_, 'lit>)],
-        extend: &Option<&i::Expr<'_, 'lit>>,
+        fields: &[(Result<Label<'src>, ErrorId>, Span, i::Expr<'_, 'src>)],
+        extend: &Option<&i::Expr<'_, 'src>>,
         span: Span,
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer record");
         let (extend, mut row) = if let Some(extend) = extend {
             let row = self.fresh_row();
@@ -205,10 +204,10 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn restrict(
         &mut self,
-        old: &i::Expr<'_, 'lit>,
-        label: &Label<'lit>,
+        old: &i::Expr<'_, 'src>,
+        label: &Label<'src>,
         span: Span,
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer restrict");
         let t = self.fresh();
         let r = self.fresh_row();
@@ -233,8 +232,8 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn lambda(
         &mut self,
-        arrows: &[(i::Pattern<'_, 'lit>, i::Expr<'_, 'lit>)],
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+        arrows: &[(i::Pattern<'_, 'src>, i::Expr<'_, 'src>)],
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         let mut wildcards = Vec::new();
         let input_ty = self.fresh();
         let output_ty = self.fresh();
@@ -273,10 +272,10 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn infer_apply(
         &mut self,
-        fun: &i::Expr<'_, 'lit>,
-        arg: &i::Expr<'_, 'lit>,
+        fun: &i::Expr<'_, 'src>,
+        arg: &i::Expr<'_, 'src>,
         span: Span,
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer apply");
         let fun = self.infer(fun);
         let arg = self.infer(arg);
@@ -299,11 +298,11 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
     /// ```
     fn infer_let(
         &mut self,
-        pattern: &i::Pattern<'_, 'lit>,
-        bound: &i::Expr<'_, 'lit>,
-        body: &i::Expr<'_, 'lit>,
+        pattern: &i::Pattern<'_, 'src>,
+        bound: &i::Expr<'_, 'src>,
+        body: &i::Expr<'_, 'src>,
         scope: &[Name],
-    ) -> (o::ExprNode<'a, 'lit>, &'a Type<'a>) {
+    ) -> (o::ExprNode<'a, 'src>, &'a Type<'a>) {
         trace!("infer let");
         let (pattern, bound) = self.enter(|this| {
             let bound = this.infer(bound);

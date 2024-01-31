@@ -6,87 +6,87 @@ use crate::frontend::source::{SourceId, Span};
 
 use super::nodes;
 
-pub struct Source<'a, 'lit> {
-    pub items: &'a [Item<'a, 'lit>],
+pub struct Source<'a, 'src> {
+    pub items: &'a [Item<'a, 'src>],
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
     pub source: SourceId,
 }
 
-pub struct Item<'a, 'lit> {
-    pub node: ItemNode<'a, 'lit>,
+pub struct Item<'a, 'src> {
+    pub node: ItemNode<'a, 'src>,
     pub span: Span,
 }
 
-pub struct Expr<'a, 'lit> {
-    pub node: ExprNode<'a, 'lit>,
+pub struct Expr<'a, 'src> {
+    pub node: ExprNode<'a, 'src>,
     pub span: Span,
 }
 
-pub struct Pattern<'a, 'lit> {
-    pub node: PatternNode<'a, 'lit>,
+pub struct Pattern<'a, 'src> {
+    pub node: PatternNode<'a, 'src>,
     pub span: Span,
 }
 
 #[derive(Clone, Copy)]
-pub struct Type<'a, 'lit> {
-    pub node: TypeNode<'a, 'lit>,
+pub struct Type<'a, 'src> {
+    pub node: TypeNode<'a, 'src>,
     pub span: Span,
 }
 
 /// The body of a `data` item is a list of [`Constructor`]s.
-pub struct Data<'a, 'lit> {
-    pub node: DataNode<'a, 'lit>,
+pub struct Data<'a, 'src> {
+    pub node: DataNode<'a, 'src>,
     pub span: Span,
 }
 
 /// Every constructor is an (optional) affix, an identifier, and an optional
 /// list of types.
-pub struct Constructor<'a, 'lit> {
-    pub node: ConstructorNode<'a, 'lit>,
+pub struct Constructor<'a, 'src> {
+    pub node: ConstructorNode<'a, 'src>,
     pub span: Span,
 }
 
 type GenScope = ();
-type Name<'lit> = Ident<'lit>;
-type PatternVar<'lit> = (Affix, Ident<'lit>);
+type Name<'src> = Ident<'src>;
+type PatternVar<'src> = (Affix, Ident<'src>);
 type ConstructorName = Infallible;
-type Universal<'lit> = Ident<'lit>;
+type Universal<'src> = Ident<'src>;
 
-type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>];
-type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>];
-type ApplyType<'a, 'lit> = &'a [Type<'a, 'lit>];
+type ApplyExpr<'a, 'src> = &'a [Expr<'a, 'src>];
+type ApplyPattern<'a, 'src> = &'a [Pattern<'a, 'src>];
+type ApplyType<'a, 'src> = &'a [Type<'a, 'src>];
 
-pub type ItemNode<'a, 'lit> =
-    nodes::ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, Pattern<'a, 'lit>, Data<'a, 'lit>, GenScope>;
+pub type ItemNode<'a, 'src> =
+    nodes::ItemNode<Expr<'a, 'src>, Pattern<'a, 'src>, Pattern<'a, 'src>, Data<'a, 'src>, GenScope>;
 
-pub type ExprNode<'a, 'lit> = nodes::ExprNode<
+pub type ExprNode<'a, 'src> = nodes::ExprNode<
     'a,
-    'lit,
-    Expr<'a, 'lit>,
-    Pattern<'a, 'lit>,
-    Type<'a, 'lit>,
-    Name<'lit>,
-    ApplyExpr<'a, 'lit>,
+    'src,
+    Expr<'a, 'src>,
+    Pattern<'a, 'src>,
+    Type<'a, 'src>,
+    Name<'src>,
+    ApplyExpr<'a, 'src>,
     GenScope,
 >;
 
-pub type PatternNode<'a, 'lit> = nodes::PatternNode<
+pub type PatternNode<'a, 'src> = nodes::PatternNode<
     'a,
-    Pattern<'a, 'lit>,
-    Type<'a, 'lit>,
-    PatternVar<'lit>,
+    Pattern<'a, 'src>,
+    Type<'a, 'src>,
+    PatternVar<'src>,
     ConstructorName,
-    ApplyPattern<'a, 'lit>,
+    ApplyPattern<'a, 'src>,
 >;
 
-pub type TypeNode<'a, 'lit> =
-    nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name<'lit>, Universal<'lit>, ApplyType<'a, 'lit>>;
+pub type TypeNode<'a, 'src> =
+    nodes::TypeNode<'a, 'src, Type<'a, 'src>, Name<'src>, Universal<'src>, ApplyType<'a, 'src>>;
 
-pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
+pub type DataNode<'a, 'src> = nodes::DataNode<'a, Constructor<'a, 'src>>;
 
-pub type ConstructorNode<'a, 'lit> =
-    nodes::ConstructorNode<'a, (Affix, Name<'lit>), Type<'a, 'lit>>;
+pub type ConstructorNode<'a, 'src> =
+    nodes::ConstructorNode<'a, (Affix, Name<'src>), Type<'a, 'src>>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Affix {

@@ -7,13 +7,11 @@ mod parser;
 mod tokens;
 
 use bumpalo::Bump;
-use internment::Arena;
 use logos::Logos;
 
 use self::abstractify::Abstractifier;
 use self::parser::Parser;
 use crate::frontend::errors::Errors;
-use crate::frontend::literals::Literal;
 use crate::frontend::names::Names;
 use crate::frontend::source::{Source, Span};
 use crate::frontend::trees::parsed;
@@ -24,12 +22,11 @@ pub fn tokens(source: &Source) -> impl Iterator<Item = (Result<Token, ()>, Span)
         .map(|(result, span)| (result, source.id.span(span.start, span.end)))
 }
 
-pub fn parse<'a, 'lit>(
+pub fn parse<'a, 'src>(
     alloc: &'a Bump,
-    names: &'a Names<'lit>,
-    literals: &'lit Arena<Literal>,
-    source: &Source,
-) -> parsed::Source<'a, 'lit> {
+    names: &'a Names<'src>,
+    source: &'src Source,
+) -> parsed::Source<'a, 'src> {
     debug!("lexing");
     let tokens = tokens(source);
 
@@ -44,7 +41,7 @@ pub fn parse<'a, 'lit>(
 
     debug!("abstracting");
     let (abstracted, unattached) = {
-        let abstractifier = Abstractifier::new(alloc, names, literals, &mut errors, parse_errors);
+        let abstractifier = Abstractifier::new(alloc, names, &mut errors, parse_errors);
         abstractifier.program(concrete)
     };
 

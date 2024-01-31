@@ -11,21 +11,21 @@ use crate::frontend::resolve::ItemId;
 use crate::frontend::source::Span;
 use crate::frontend::tyck::{Generic, Scheme, Type};
 
-pub struct Program<'a, 'lit> {
-    pub items: &'a [&'a [Item<'a, 'lit>]],
+pub struct Program<'a, 'src> {
+    pub items: &'a [&'a [Item<'a, 'src>]],
     pub defs: BTreeMap<Name, Span>,
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
 }
 
-pub struct Item<'a, 'lit> {
-    pub node: ItemNode<'a, 'lit>,
+pub struct Item<'a, 'src> {
+    pub node: ItemNode<'a, 'src>,
     pub span: Span,
     pub id: ItemId,
 }
 
-pub struct Expr<'a, 'lit> {
-    pub node: ExprNode<'a, 'lit>,
+pub struct Expr<'a, 'src> {
+    pub node: ExprNode<'a, 'src>,
     pub span: Span,
     pub ty: &'a Type<'a>,
 }
@@ -57,22 +57,22 @@ pub struct MonoPattern<'a> {
 type TypeSyntax = Infallible;
 type TypePattern<'a> = Scheme<'a>;
 type ConstructorName = Name;
-type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
+type ApplyExpr<'a, 'src> = &'a [Expr<'a, 'src>; 2];
 type ApplyPolyPattern<'a> = &'a [PolyPattern<'a>; 2];
 type ApplyMonoPattern<'a> = &'a [MonoPattern<'a>; 2];
 type GenScope = ();
 
-pub type ItemNode<'a, 'lit> =
-    nodes::ItemNode<Expr<'a, 'lit>, PolyPattern<'a>, TypePattern<'a>, Data<'a>, GenScope>;
+pub type ItemNode<'a, 'src> =
+    nodes::ItemNode<Expr<'a, 'src>, PolyPattern<'a>, TypePattern<'a>, Data<'a>, GenScope>;
 
-pub type ExprNode<'a, 'lit> = nodes::ExprNode<
+pub type ExprNode<'a, 'src> = nodes::ExprNode<
     'a,
-    'lit,
-    Expr<'a, 'lit>,
+    'src,
+    Expr<'a, 'src>,
     PolyPattern<'a>,
     TypeSyntax,
     Name,
-    ApplyExpr<'a, 'lit>,
+    ApplyExpr<'a, 'src>,
     GenScope,
 >;
 

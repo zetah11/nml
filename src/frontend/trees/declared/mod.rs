@@ -35,11 +35,11 @@
 //!
 //! # Lifetime conventions
 //!
-//! - `'lit` - used for literals and raw identifiers
+//! - `'src` - used for literals and raw identifiers
 //! - `'a` - references to [`resolved`] patterns
 //! - `'parsed` - references into the [`parsed`] syntax tree
 //!
-//! [`spined::Pattern`]s only take two lifetimes `'scratch` and `'lit`; they
+//! [`spined::Pattern`]s only take two lifetimes `'scratch` and `'src`; they
 //! should be temporary and not outlive any [`parsed`] subtrees.
 
 pub(crate) mod patterns;
@@ -52,38 +52,38 @@ use crate::frontend::names::{Ident, Name};
 use crate::frontend::resolve::ItemId;
 use crate::frontend::source::Span;
 
-pub(crate) struct Item<'a, 'parsed, 'lit> {
-    pub node: ItemNode<'a, 'parsed, 'lit>,
+pub(crate) struct Item<'a, 'parsed, 'src> {
+    pub node: ItemNode<'a, 'parsed, 'src>,
     pub span: Span,
     pub id: ItemId,
 }
 
-type Expr<'parsed, 'lit> = &'parsed parsed::Expr<'parsed, 'lit>;
-type Pattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
-type TypePattern<'a, 'parsed, 'lit> = Spine<'parsed, 'lit, resolved::Pattern<'a, 'lit>>;
-type Data<'parsed, 'lit> = patterns::Data<'parsed, 'lit>;
-type GenScope<'lit> = BTreeMap<Ident<'lit>, Name>;
+type Expr<'parsed, 'src> = &'parsed parsed::Expr<'parsed, 'src>;
+type Pattern<'a, 'parsed, 'src> = Spine<'parsed, 'src, resolved::Pattern<'a, 'src>>;
+type TypePattern<'a, 'parsed, 'src> = Spine<'parsed, 'src, resolved::Pattern<'a, 'src>>;
+type Data<'parsed, 'src> = patterns::Data<'parsed, 'src>;
+type GenScope<'src> = BTreeMap<Ident<'src>, Name>;
 
-pub(crate) type ItemNode<'a, 'parsed, 'lit> = nodes::ItemNode<
-    Expr<'parsed, 'lit>,
-    Pattern<'a, 'parsed, 'lit>,
-    TypePattern<'a, 'parsed, 'lit>,
-    Data<'parsed, 'lit>,
-    GenScope<'lit>,
+pub(crate) type ItemNode<'a, 'parsed, 'src> = nodes::ItemNode<
+    Expr<'parsed, 'src>,
+    Pattern<'a, 'parsed, 'src>,
+    TypePattern<'a, 'parsed, 'src>,
+    Data<'parsed, 'src>,
+    GenScope<'src>,
 >;
 
-pub(crate) enum Spine<'a, 'lit, T> {
+pub(crate) enum Spine<'a, 'src, T> {
     Fun {
         head: T,
-        args: Vec<spined::Pattern<'a, 'lit>>,
-        anno: Option<&'a parsed::Type<'a, 'lit>>,
+        args: Vec<spined::Pattern<'a, 'src>>,
+        anno: Option<&'a parsed::Type<'a, 'src>>,
     },
 
     Single(T),
 }
 
-impl<'a, 'lit, T> Spine<'a, 'lit, T> {
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spine<'a, 'lit, U> {
+impl<'a, 'src, T> Spine<'a, 'src, T> {
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spine<'a, 'src, U> {
         match self {
             Self::Fun { head, args, anno } => Spine::Fun {
                 head: f(head),

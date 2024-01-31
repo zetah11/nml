@@ -5,13 +5,13 @@ use crate::frontend::names::{Ident, Name};
 use crate::frontend::trees::declared;
 use crate::frontend::trees::{parsed, resolved};
 
-impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
+impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
     pub fn expr(
         &mut self,
         item: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        expr: &'scratch parsed::Expr<'scratch, 'lit>,
-    ) -> resolved::Expr<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        expr: &'scratch parsed::Expr<'scratch, 'src>,
+    ) -> resolved::Expr<'a, 'src> {
         let span = expr.span;
         let node = match &expr.node {
             parsed::ExprNode::Invalid(e) => resolved::ExprNode::Invalid(*e),
@@ -133,10 +133,10 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn lambda(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        params: &[declared::spined::Pattern<'scratch, 'lit>],
-        body: &'scratch parsed::Expr<'_, 'lit>,
-    ) -> resolved::Expr<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        params: &[declared::spined::Pattern<'scratch, 'src>],
+        body: &'scratch parsed::Expr<'_, 'src>,
+    ) -> resolved::Expr<'a, 'src> {
         if let [param, params @ ..] = params {
             self.scope(None, |this| {
                 let pattern = this.pattern(Namespace::Value, gen_scope, param);

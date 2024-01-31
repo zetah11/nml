@@ -7,7 +7,7 @@ use crate::frontend::source::Span;
 use crate::frontend::trees::declared;
 use crate::frontend::trees::{parsed, resolved};
 
-impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
+impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
     pub fn name_of(pattern: &resolved::Pattern) -> Option<Name> {
         match &pattern.node {
             resolved::PatternNode::Invalid(_) => None,
@@ -29,9 +29,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn function_spine(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
-    ) -> declared::Spine<'scratch, 'lit, declared::spined::Pattern<'scratch, 'lit>> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        pattern: &'scratch parsed::Pattern<'scratch, 'src>,
+    ) -> declared::Spine<'scratch, 'src, declared::spined::Pattern<'scratch, 'src>> {
         match &pattern.node {
             parsed::PatternNode::Anno(pattern, ty) => {
                 match self.function_spine(item_id, gen_scope, pattern) {
@@ -85,9 +85,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn single_pattern(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &'scratch parsed::Pattern<'scratch, 'lit>,
-    ) -> declared::spined::Pattern<'scratch, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        pattern: &'scratch parsed::Pattern<'scratch, 'src>,
+    ) -> declared::spined::Pattern<'scratch, 'src> {
         let span = pattern.span;
         let node = match &pattern.node {
             parsed::PatternNode::Invalid(e) => declared::spined::PatternNode::Invalid(*e),
@@ -156,9 +156,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub fn pattern(
         &mut self,
         ns: Namespace,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &declared::spined::Pattern<'scratch, 'lit>,
-    ) -> resolved::Pattern<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        pattern: &declared::spined::Pattern<'scratch, 'src>,
+    ) -> resolved::Pattern<'a, 'src> {
         let (pattern, _) = self.declare_pattern(ns, gen_scope, pattern, &BTreeMap::new());
         pattern
     }
@@ -172,10 +172,10 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     fn declare_pattern(
         &mut self,
         ns: Namespace,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        pattern: &declared::spined::Pattern<'scratch, 'lit>,
-        known: &BTreeMap<Ident<'lit>, Name>,
-    ) -> (resolved::Pattern<'a, 'lit>, BTreeMap<Ident<'lit>, Name>) {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        pattern: &declared::spined::Pattern<'scratch, 'src>,
+        known: &BTreeMap<Ident<'src>, Name>,
+    ) -> (resolved::Pattern<'a, 'src>, BTreeMap<Ident<'src>, Name>) {
         let item_id = pattern.item_id;
         let span = pattern.span;
         let (node, names) = match &pattern.node {
@@ -308,7 +308,7 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
         span: Span,
         e: ErrorId,
         names: impl IntoIterator<Item = Name>,
-    ) -> resolved::Pattern<'a, 'lit> {
+    ) -> resolved::Pattern<'a, 'src> {
         let node = resolved::PatternNode::Invalid(e);
         let mut pattern = resolved::Pattern { node, span };
 

@@ -5,13 +5,13 @@ use crate::frontend::trees::{parsed as i, resolved as o};
 
 use super::{ItemId, Resolver};
 
-impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
+impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
     pub fn resolve_type(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        ty: &'scratch i::Type<'scratch, 'lit>,
-    ) -> o::Type<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        ty: &'scratch i::Type<'scratch, 'src>,
+    ) -> o::Type<'a, 'src> {
         let span = ty.span;
         let node = match &ty.node {
             i::TypeNode::Invalid(e) => o::TypeNode::Invalid(*e),

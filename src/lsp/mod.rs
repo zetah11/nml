@@ -18,8 +18,6 @@ use lsp_types::{self as lsp, Url};
 use self::framework::{Client, Error};
 use self::log::{AtomicTraceValue, Logger};
 use crate::frontend::alloc::Bump;
-use crate::frontend::intern::Arena;
-use crate::frontend::literals::Literal;
 use crate::frontend::names::Names;
 use crate::frontend::source::{Source, SourceId, Sources};
 use crate::meta;
@@ -91,8 +89,6 @@ struct Server {
     names: HashMap<SourceId, Url>,
     sources: Sources,
 
-    idents: Arena<str>,
-    literals: Arena<Literal>,
     errors: HashSet<Url>,
 }
 
@@ -104,8 +100,6 @@ impl Server {
             names: HashMap::new(),
             sources: Sources::new(),
 
-            idents: Arena::new(),
-            literals: Arena::new(),
             errors: HashSet::new(),
         }
     }
@@ -123,7 +117,7 @@ impl Server {
 
         let mut errors = {
             let alloc = Bump::new();
-            let names = Names::new(&self.idents);
+            let names = Names::new();
             let source = self.tracked.get(&name).expect("just inserted");
             self.check_source(&names, &alloc, source).errors
         };
@@ -139,7 +133,7 @@ impl Server {
 
         let mut errors = {
             let alloc = Bump::new();
-            let names = Names::new(&self.idents);
+            let names = Names::new();
             let source = self.tracked.get(&name).expect("just inserted");
             self.check_source(&names, &alloc, source).errors
         };
@@ -155,7 +149,7 @@ impl Server {
 
             let mut errors = {
                 let alloc = Bump::new();
-                let names = Names::new(&self.idents);
+                let names = Names::new();
                 let source = self.tracked.get(&name).expect("just inserted");
                 self.check_source(&names, &alloc, source).errors
             };

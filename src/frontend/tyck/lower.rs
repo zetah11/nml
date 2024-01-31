@@ -1,9 +1,9 @@
 use super::{types as o, Checker};
 use crate::frontend::trees::resolved as i;
 
-impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
+impl<'a, 'err, 'src, 'p> Checker<'a, 'err, 'src, 'p> {
     /// Lower a type expression into its semantic equivalent.
-    pub(super) fn lower(&mut self, ty: &i::Type<'_, 'lit>) -> &'a o::Type<'a> {
+    pub(super) fn lower(&mut self, ty: &i::Type<'_, 'src>) -> &'a o::Type<'a> {
         let ty = match &ty.node {
             i::TypeNode::Invalid(e) => o::Type::Invalid(*e),
             i::TypeNode::Wildcard => return self.fresh(),

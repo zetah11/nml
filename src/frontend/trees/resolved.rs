@@ -6,31 +6,31 @@ use crate::frontend::names::Name;
 use crate::frontend::resolve::ItemId;
 use crate::frontend::source::Span;
 
-pub struct Program<'a, 'lit> {
-    pub items: &'a [&'a [Item<'a, 'lit>]],
+pub struct Program<'a, 'src> {
+    pub items: &'a [&'a [Item<'a, 'src>]],
     pub defs: BTreeMap<Name, Span>,
     pub errors: Errors,
     pub unattached: Vec<(ErrorId, Span)>,
 }
 
-pub struct Item<'a, 'lit> {
-    pub node: ItemNode<'a, 'lit>,
+pub struct Item<'a, 'src> {
+    pub node: ItemNode<'a, 'src>,
     pub span: Span,
     pub id: ItemId,
 }
 
-pub struct Expr<'a, 'lit> {
-    pub node: ExprNode<'a, 'lit>,
+pub struct Expr<'a, 'src> {
+    pub node: ExprNode<'a, 'src>,
     pub span: Span,
 }
 
-pub struct Pattern<'a, 'lit> {
-    pub node: PatternNode<'a, 'lit>,
+pub struct Pattern<'a, 'src> {
+    pub node: PatternNode<'a, 'src>,
     pub span: Span,
 }
 
-pub struct Type<'a, 'lit> {
-    pub node: TypeNode<'a, 'lit>,
+pub struct Type<'a, 'src> {
+    pub node: TypeNode<'a, 'src>,
     pub span: Span,
 }
 
@@ -39,54 +39,54 @@ pub struct DataPattern<'a> {
     pub args: &'a [Result<Name, ErrorId>],
 }
 
-pub struct Data<'a, 'lit> {
-    pub node: DataNode<'a, 'lit>,
+pub struct Data<'a, 'src> {
+    pub node: DataNode<'a, 'src>,
     pub span: Span,
 }
 
-pub struct Constructor<'a, 'lit> {
-    pub node: ConstructorNode<'a, 'lit>,
+pub struct Constructor<'a, 'src> {
+    pub node: ConstructorNode<'a, 'src>,
     pub span: Span,
 }
 
 type ConstructorName = Name;
 type Universal = Name;
-type ApplyExpr<'a, 'lit> = &'a [Expr<'a, 'lit>; 2];
-type ApplyPattern<'a, 'lit> = &'a [Pattern<'a, 'lit>; 2];
-type ApplyType<'a, 'lit> = &'a [Type<'a, 'lit>; 2];
+type ApplyExpr<'a, 'src> = &'a [Expr<'a, 'src>; 2];
+type ApplyPattern<'a, 'src> = &'a [Pattern<'a, 'src>; 2];
+type ApplyType<'a, 'src> = &'a [Type<'a, 'src>; 2];
 type GenScope<'a> = &'a [Name];
 
-pub type ItemNode<'a, 'lit> = nodes::ItemNode<
-    Expr<'a, 'lit>,
-    Pattern<'a, 'lit>,
+pub type ItemNode<'a, 'src> = nodes::ItemNode<
+    Expr<'a, 'src>,
+    Pattern<'a, 'src>,
     DataPattern<'a>,
-    Data<'a, 'lit>,
+    Data<'a, 'src>,
     GenScope<'a>,
 >;
 
-pub type ExprNode<'a, 'lit> = nodes::ExprNode<
+pub type ExprNode<'a, 'src> = nodes::ExprNode<
     'a,
-    'lit,
-    Expr<'a, 'lit>,
-    Pattern<'a, 'lit>,
-    Type<'a, 'lit>,
+    'src,
+    Expr<'a, 'src>,
+    Pattern<'a, 'src>,
+    Type<'a, 'src>,
     Name,
-    ApplyExpr<'a, 'lit>,
+    ApplyExpr<'a, 'src>,
     GenScope<'a>,
 >;
 
-pub type PatternNode<'a, 'lit> = nodes::PatternNode<
+pub type PatternNode<'a, 'src> = nodes::PatternNode<
     'a,
-    Pattern<'a, 'lit>,
-    Type<'a, 'lit>,
+    Pattern<'a, 'src>,
+    Type<'a, 'src>,
     Name,
     ConstructorName,
-    ApplyPattern<'a, 'lit>,
+    ApplyPattern<'a, 'src>,
 >;
 
-pub type TypeNode<'a, 'lit> =
-    nodes::TypeNode<'a, 'lit, Type<'a, 'lit>, Name, Universal, ApplyType<'a, 'lit>>;
+pub type TypeNode<'a, 'src> =
+    nodes::TypeNode<'a, 'src, Type<'a, 'src>, Name, Universal, ApplyType<'a, 'src>>;
 
-pub type DataNode<'a, 'lit> = nodes::DataNode<'a, Constructor<'a, 'lit>>;
+pub type DataNode<'a, 'src> = nodes::DataNode<'a, Constructor<'a, 'src>>;
 
-pub type ConstructorNode<'a, 'lit> = nodes::ConstructorNode<'a, Name, Type<'a, 'lit>>;
+pub type ConstructorNode<'a, 'src> = nodes::ConstructorNode<'a, Name, Type<'a, 'src>>;

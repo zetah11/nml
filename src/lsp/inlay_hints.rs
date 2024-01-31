@@ -11,7 +11,7 @@ use crate::frontend::tyck::{Pretty, Scheme};
 impl Server {
     pub fn make_hints(&self, source: &Source) -> Vec<lsp::InlayHint> {
         let alloc = Bump::new();
-        let names = Names::new(&self.idents);
+        let names = Names::new();
         let program = self.check_source(&names, &alloc, source);
 
         let mut builder = HintsBuilder::new(&names, source.content.as_str());
@@ -24,14 +24,14 @@ impl Server {
     }
 }
 
-struct HintsBuilder<'a, 'lit> {
+struct HintsBuilder<'a, 'src> {
     index: IndexedText<&'a str>,
     hints: Vec<lsp::InlayHint>,
-    pretty: Pretty<'a, 'lit>,
+    pretty: Pretty<'a, 'src>,
 }
 
-impl<'a, 'lit> HintsBuilder<'a, 'lit> {
-    pub fn new(names: &'a Names<'lit>, text: &'a str) -> Self {
+impl<'a, 'src> HintsBuilder<'a, 'src> {
+    pub fn new(names: &'a Names<'src>, text: &'a str) -> Self {
         Self {
             index: IndexedText::new(text),
             hints: Vec::new(),

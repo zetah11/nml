@@ -7,17 +7,17 @@ use super::solve::{Level, TypeVar};
 use super::types::{Generic, Row, VarKind};
 use super::{to_name, Scheme, Type};
 
-pub struct Pretty<'a, 'lit> {
+pub struct Pretty<'a, 'src> {
     vars: BTreeMap<TypeVar, String>,
     show_levels: bool,
     show_error_id: bool,
 
     counter: usize,
-    names: &'a Names<'lit>,
+    names: &'a Names<'src>,
 }
 
-impl<'a, 'lit> Pretty<'a, 'lit> {
-    pub fn new(names: &'a Names<'lit>) -> Self {
+impl<'a, 'src> Pretty<'a, 'src> {
+    pub fn new(names: &'a Names<'src>) -> Self {
         Self {
             vars: BTreeMap::new(),
             show_levels: false,
@@ -27,7 +27,7 @@ impl<'a, 'lit> Pretty<'a, 'lit> {
         }
     }
 
-    pub fn build(&mut self) -> Prettifier<'_, 'a, 'lit> {
+    pub fn build(&mut self) -> Prettifier<'_, 'a, 'src> {
         Prettifier { pretty: self }
     }
 
@@ -60,8 +60,8 @@ impl<'a, 'lit> Pretty<'a, 'lit> {
     }
 }
 
-pub struct Prettifier<'a, 'b, 'ids> {
-    pretty: &'a mut Pretty<'b, 'ids>,
+pub struct Prettifier<'a, 'b, 'src> {
+    pretty: &'a mut Pretty<'b, 'src>,
 }
 
 impl Prettifier<'_, '_, '_> {

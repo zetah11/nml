@@ -27,11 +27,14 @@ use crate::frontend::source::Span;
 
 use super::Parser;
 
-impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'err, I> {
+impl<'a, 'src, 'err, I> Parser<'a, 'src, 'err, I>
+where
+    I: Iterator<Item = (Result<Token<'src>, ()>, Span)>,
+{
     /// ```abnf
     /// lambda = ["|"] simple *(("|" / "=>") simple)
     /// ```
-    pub(super) fn lambda(&mut self) -> &'a Thing<'a> {
+    pub(super) fn lambda(&mut self) -> &'a Thing<'a, 'src> {
         trace!("parse lambda");
 
         let opener = self.consume(Token::Pipe);
@@ -145,7 +148,11 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         }
     }
 
-    fn make_arrow(&self, patterns: Vec<&'a Thing<'a>>, mut body: &'a Thing<'a>) -> &'a Thing<'a> {
+    fn make_arrow(
+        &self,
+        patterns: Vec<&'a Thing<'a, 'src>>,
+        mut body: &'a Thing<'a, 'src>,
+    ) -> &'a Thing<'a, 'src> {
         for pat in patterns.into_iter().rev() {
             let span = pat.span + body.span;
             let node = Node::Arrow(pat, body);
@@ -156,14 +163,14 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 }
 
-enum State<'a> {
+enum State<'a, 'src> {
     Alts {
-        alternatives: Vec<&'a Thing<'a>>,
+        alternatives: Vec<&'a Thing<'a, 'src>>,
         span: Span,
     },
 
     Arrow {
-        patterns: Vec<&'a Thing<'a>>,
-        body: &'a Thing<'a>,
+        patterns: Vec<&'a Thing<'a, 'src>>,
+        body: &'a Thing<'a, 'src>,
     },
 }

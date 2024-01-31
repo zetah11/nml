@@ -5,8 +5,8 @@ use crate::frontend::parse::cst;
 use crate::frontend::source::Span;
 use crate::frontend::trees::parsed as ast;
 
-impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
-    pub fn expr(&mut self, node: &cst::Thing) -> ast::Expr<'a, 'lit> {
+impl<'a, 'src> Abstractifier<'a, 'src, '_> {
+    pub fn expr(&mut self, node: &cst::Thing<'_, 'src>) -> ast::Expr<'a, 'src> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ExprNode::Invalid(*e),
@@ -26,10 +26,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
                 ast::ExprNode::Invalid(e)
             }
 
-            cst::Node::Number(lit) => {
-                let num = self.parse_number(lit);
-                ast::ExprNode::Number(num)
-            }
+            cst::Node::Number(lit) => ast::ExprNode::Number(lit),
 
             cst::Node::Anno(expr, ty) => {
                 let expr = self.alloc.alloc(self.expr(expr));
@@ -149,7 +146,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         ast::Expr { node, span }
     }
 
-    fn record(&mut self, defs: &[cst::ValueDef]) -> ast::ExprNode<'a, 'lit> {
+    fn record(&mut self, defs: &[cst::ValueDef<'_, 'src>]) -> ast::ExprNode<'a, 'src> {
         let mut extend = None;
 
         let fields: Vec<_> = defs
@@ -181,9 +178,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     /// record extensions met so far.
     fn record_field(
         &mut self,
-        def: &cst::ValueDef<'_>,
-        extend: &mut Option<Result<ast::Expr<'a, 'lit>, Span>>,
-    ) -> Option<(Result<Label<'lit>, ErrorId>, Span, ast::Expr<'a, 'lit>)> {
+        def: &cst::ValueDef<'_, 'src>,
+        extend: &mut Option<Result<ast::Expr<'a, 'src>, Span>>,
+    ) -> Option<(Result<Label<'src>, ErrorId>, Span, ast::Expr<'a, 'src>)> {
         if let Some(extension_terms) = Self::get_record_extension(def.pattern) {
             // Get the extension term
             let mut term = match extension_terms {
@@ -232,9 +229,9 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
     /// Returns `Some(x y z) if the given node is an application like
     /// `... x y z`.
-    fn get_record_extension<'tree>(
-        node: &'tree cst::Thing<'tree>,
-    ) -> Option<&'tree [&'tree cst::Thing<'tree>]> {
+    fn get_record_extension<'tree, 's>(
+        node: &'tree cst::Thing<'tree, 's>,
+    ) -> Option<&'tree [&'tree cst::Thing<'tree, 's>]> {
         let cst::Node::Apply(terms) = &node.node else {
             return None;
         };

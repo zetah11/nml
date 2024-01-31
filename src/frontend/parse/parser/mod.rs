@@ -8,19 +8,21 @@ use super::tokens::Token;
 use crate::frontend::errors::{ErrorId, Errors};
 use crate::frontend::source::{SourceId, Span};
 
-pub struct Parser<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> {
+pub struct Parser<'a, 'src, 'err, I: Iterator<Item = (Result<Token<'src>, ()>, Span)>> {
     tokens: I,
     alloc: &'a Bump,
 
     current_span: Span,
-    next: Option<(Token<'a>, Span)>,
-    prev: Option<(Token<'a>, Span)>,
+    next: Option<(Token<'src>, Span)>,
+    prev: Option<(Token<'src>, Span)>,
 
     errors: &'err mut Errors,
     parse_errors: Vec<(ErrorId, Span)>,
 }
 
-impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'err, I> {
+impl<'a, 'src, 'err, I: Iterator<Item = (Result<Token<'src>, ()>, Span)>>
+    Parser<'a, 'src, 'err, I>
+{
     pub fn new(alloc: &'a Bump, errors: &'err mut Errors, tokens: I, source: SourceId) -> Self {
         let current_span = source.span(0, 0);
         Self {
@@ -35,7 +37,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     }
 
     /// Parse an entire source.
-    pub fn program(mut self) -> (Vec<&'a Thing<'a>>, Vec<(ErrorId, Span)>) {
+    pub fn program(mut self) -> (Vec<&'a Thing<'a, 'src>>, Vec<(ErrorId, Span)>) {
         self.advance();
         let result = self.top_level();
         (result, self.parse_errors)

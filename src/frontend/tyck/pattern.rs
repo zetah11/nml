@@ -2,7 +2,7 @@ use super::{Checker, Generic, Scheme};
 use crate::frontend::trees::inferred::{MonoPattern, PolyPattern};
 use crate::frontend::trees::nodes::PatternNode;
 
-impl<'a, 'ids> Checker<'a, '_, 'ids, '_> {
+impl<'a, 'src> Checker<'a, '_, 'src, '_> {
     pub(super) fn generalize_pattern(
         &mut self,
         explicit: &[Generic],

@@ -8,7 +8,7 @@ fn nested() {
         let inner = s.lambda(s.bind("z"), s.var("x"));
         let inner = s.let_in(s.bind("y"), inner, s.var("y"));
         let lambda = s.lambda(s.bind("x"), inner);
-        let expr = s.let_in(s.bind("f"), lambda, s.apply(s.var("f"), s.num(5)));
+        let expr = s.let_in(s.bind("f"), lambda, s.apply(s.var("f"), s.num("5")));
 
         let expected = s.arrow(checker.fresh(), s.int());
 

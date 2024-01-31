@@ -1,11 +1,11 @@
 use super::{ItemId, Namekind, Resolver};
 use crate::frontend::trees::{declared, parsed};
 
-impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
+impl<'a, 'scratch, 'src, 'err> Resolver<'a, 'scratch, 'src, 'err> {
     pub(super) fn constructor_items(
         &mut self,
-        item: &'scratch parsed::Item<'scratch, 'lit>,
-    ) -> declared::patterns::Item<'scratch, 'lit> {
+        item: &'scratch parsed::Item<'scratch, 'src>,
+    ) -> declared::patterns::Item<'scratch, 'src> {
         let id = ItemId(self.item_ids);
         self.item_ids += 1;
         let span = item.span;
@@ -27,8 +27,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
     fn constructor_data(
         &mut self,
         id: ItemId,
-        data: &'scratch parsed::Data<'scratch, 'lit>,
-    ) -> declared::patterns::Data<'scratch, 'lit> {
+        data: &'scratch parsed::Data<'scratch, 'src>,
+    ) -> declared::patterns::Data<'scratch, 'src> {
         let span = data.span;
         let node = match &data.node {
             parsed::DataNode::Invalid(e) => declared::patterns::DataNode::Invalid(*e),
@@ -49,8 +49,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
     fn constructor_constructor(
         &mut self,
         id: ItemId,
-        ctor: &'scratch parsed::Constructor<'scratch, 'lit>,
-    ) -> declared::patterns::Constructor<'scratch, 'lit> {
+        ctor: &'scratch parsed::Constructor<'scratch, 'src>,
+    ) -> declared::patterns::Constructor<'scratch, 'src> {
         let span = ctor.span;
         let node = match &ctor.node {
             parsed::ConstructorNode::Invalid(e) => declared::patterns::ConstructorNode::Invalid(*e),

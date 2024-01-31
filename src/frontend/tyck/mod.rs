@@ -19,11 +19,11 @@ use crate::frontend::names::{Name, Names};
 use crate::frontend::source::Span;
 use crate::frontend::trees::{inferred, resolved};
 
-pub fn infer<'a, 'lit>(
+pub fn infer<'a, 'src>(
     alloc: &'a Bump,
-    names: &'a Names<'lit>,
-    program: &resolved::Program<'_, 'lit>,
-) -> inferred::Program<'a, 'lit> {
+    names: &'a Names<'src>,
+    program: &resolved::Program<'_, 'src>,
+) -> inferred::Program<'a, 'src> {
     let mut errors = program.errors.clone();
     let mut pretty = Pretty::new(names)
         .with_show_levels(false)
@@ -47,20 +47,20 @@ struct Reporting<'a, 'b, 'c, 'd> {
     at: Span,
 }
 
-struct Checker<'a, 'err, 'lit, 'p> {
+struct Checker<'a, 'err, 'src, 'p> {
     alloc: &'a Bump,
     env: Env<'a>,
     solver: Solver<'a>,
     errors: &'err mut Errors,
-    pretty: &'p mut Pretty<'a, 'lit>,
+    pretty: &'p mut Pretty<'a, 'src>,
     holes: Vec<(Span, &'a Type<'a>)>,
 }
 
-impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
+impl<'a, 'err, 'src, 'p> Checker<'a, 'err, 'src, 'p> {
     pub fn new(
         alloc: &'a Bump,
         errors: &'err mut Errors,
-        pretty: &'p mut Pretty<'a, 'lit>,
+        pretty: &'p mut Pretty<'a, 'src>,
     ) -> Self {
         Self {
             alloc,
@@ -75,8 +75,8 @@ impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
     /// Check a set of mutually recursive items.
     pub fn check_items<'b>(
         &mut self,
-        items: &'b [resolved::Item<'_, 'lit>],
-    ) -> &'a [inferred::Item<'a, 'lit>] {
+        items: &'b [resolved::Item<'_, 'src>],
+    ) -> &'a [inferred::Item<'a, 'src>] {
         let mut inferred_items = Vec::with_capacity(items.len());
 
         self.enter(|this| {
@@ -192,7 +192,7 @@ impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
     fn check_data(
         &mut self,
         scheme: &Scheme<'a>,
-        data: &resolved::Data<'_, 'lit>,
+        data: &resolved::Data<'_, 'src>,
     ) -> inferred::Data<'a> {
         let span = data.span;
         let node = match &data.node {
@@ -214,7 +214,7 @@ impl<'a, 'err, 'lit, 'p> Checker<'a, 'err, 'lit, 'p> {
     fn check_constructor(
         &mut self,
         scheme: &Scheme<'a>,
-        ctor: &resolved::Constructor<'_, 'lit>,
+        ctor: &resolved::Constructor<'_, 'src>,
     ) -> inferred::Constructor<'a> {
         let span = ctor.span;
         let node = match &ctor.node {

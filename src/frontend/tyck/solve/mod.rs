@@ -38,7 +38,7 @@ impl<'a> Solver<'a> {
     }
 }
 
-impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
+impl<'a, 'src> Checker<'a, '_, 'src, '_> {
     pub fn apply(&self, ty: &'a Type<'a>) -> &'a Type<'a> {
         let ty = self.solver.apply(self.alloc, ty);
         self.alloc.alloc(ty)
@@ -84,7 +84,7 @@ impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
 }
 
 /// Creating types
-impl<'a, 'lit> Checker<'a, '_, 'lit, '_> {
+impl<'a, 'src> Checker<'a, '_, 'src, '_> {
     /// Create a fresh, unique unification variable of type kind
     pub fn fresh(&mut self) -> &'a Type<'a> {
         let ty = self.solver.fresh();

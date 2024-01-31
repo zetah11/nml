@@ -9,13 +9,13 @@ use crate::frontend::tyck;
 use super::Server;
 
 impl Server {
-    pub fn check_source<'a, 'lit>(
-        &'lit self,
-        names: &'a Names<'lit>,
+    pub fn check_source<'a, 'src>(
+        &'src self,
+        names: &'a Names<'src>,
         alloc: &'a Bump,
-        source: &Source,
-    ) -> inferred::Program<'a, 'lit> {
-        let parsed = parse(alloc, names, &self.literals, source);
+        source: &'src Source,
+    ) -> inferred::Program<'a, 'src> {
+        let parsed = parse(alloc, names, source);
         let resolved = resolve(names, alloc, &parsed);
         let inferred = tyck::infer(alloc, names, &resolved);
         inferred

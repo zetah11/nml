@@ -2,11 +2,11 @@ use super::Abstractifier;
 use crate::frontend::parse::cst::{self};
 use crate::frontend::trees::parsed as ast;
 
-impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
+impl<'a, 'src> Abstractifier<'a, 'src, '_> {
     pub(super) fn cases(
         &mut self,
-        node: &cst::Thing,
-    ) -> &'a [(ast::Pattern<'a, 'lit>, ast::Expr<'a, 'lit>)] {
+        node: &cst::Thing<'_, 'src>,
+    ) -> &'a [(ast::Pattern<'a, 'src>, ast::Expr<'a, 'src>)] {
         if let cst::Node::Alt(lambdas) = &node.node {
             self.alloc
                 .alloc_slice_fill_iter(lambdas.iter().map(|node| self.arrow(node)))
@@ -18,8 +18,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
     pub(super) fn arrow(
         &mut self,
-        node: &cst::Thing,
-    ) -> (ast::Pattern<'a, 'lit>, ast::Expr<'a, 'lit>) {
+        node: &cst::Thing<'_, 'src>,
+    ) -> (ast::Pattern<'a, 'src>, ast::Expr<'a, 'src>) {
         let span = node.span;
         match &node.node {
             cst::Node::Invalid(e) => {

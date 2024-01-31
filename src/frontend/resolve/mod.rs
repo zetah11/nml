@@ -24,26 +24,26 @@ use crate::frontend::trees::{declared, parsed, resolved};
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ItemId(usize);
 
-pub fn resolve<'a, 'b, 'lit>(
-    names: &'a Names<'lit>,
+pub fn resolve<'a, 'b, 'src>(
+    names: &'a Names<'src>,
     alloc: &'a Bump,
-    program: &'b parsed::Source<'b, 'lit>,
-) -> resolved::Program<'a, 'lit>
+    program: &'b parsed::Source<'b, 'src>,
+) -> resolved::Program<'a, 'src>
 where
-    'lit: 'a,
+    'src: 'a,
 {
     let scratch = Bump::new();
-    resolve_program::<'a, '_, 'lit>(names, alloc, &scratch, program)
+    resolve_program::<'a, '_, 'src>(names, alloc, &scratch, program)
 }
 
-fn resolve_program<'a, 'b: 'b, 'lit>(
-    names: &'a Names<'lit>,
+fn resolve_program<'a, 'b: 'b, 'src>(
+    names: &'a Names<'src>,
     alloc: &'a Bump,
     scratch: &'b Bump,
-    program: &'b parsed::Source<'b, 'lit>,
-) -> resolved::Program<'a, 'lit>
+    program: &'b parsed::Source<'b, 'src>,
+) -> resolved::Program<'a, 'src>
 where
-    'lit: 'a,
+    'src: 'a,
 {
     let mut errors = program.errors.clone();
     let mut resolver = Resolver::new(names, alloc, scratch, &mut errors, program.source);
@@ -71,8 +71,8 @@ where
     }
 }
 
-struct Resolver<'a, 'scratch, 'lit, 'err> {
-    names: &'a Names<'lit>,
+struct Resolver<'a, 'scratch, 'src, 'err> {
+    names: &'a Names<'src>,
     alloc: &'a Bump,
     scratch: &'scratch Bump,
     errors: &'err mut Errors,
@@ -82,14 +82,14 @@ struct Resolver<'a, 'scratch, 'lit, 'err> {
     affii: BTreeMap<Name, Affix>,
     explicit_universals: BTreeSet<Name>,
 
-    scopes: (Vec<Scope<'lit>>, Scope<'lit>),
+    scopes: (Vec<Scope<'src>>, Scope<'src>),
     counter: usize,
     item_ids: usize,
 }
 
-impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
+impl<'a, 'scratch, 'src, 'err> Resolver<'a, 'scratch, 'src, 'err> {
     pub fn new(
-        names: &'a Names<'lit>,
+        names: &'a Names<'src>,
         alloc: &'a Bump,
         scratch: &'scratch Bump,
         errors: &'err mut Errors,
@@ -116,17 +116,17 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
 
     pub fn items(
         &mut self,
-        items: &'scratch [parsed::Item<'scratch, 'lit>],
-    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
-        let items: Vec<declared::patterns::Item<'scratch, 'lit>> = self.pattern_items(items);
-        let items: Vec<declared::Item<'a, 'scratch, 'lit>> = self.declare_items(items);
+        items: &'scratch [parsed::Item<'scratch, 'src>],
+    ) -> BTreeMap<ItemId, resolved::Item<'a, 'src>> {
+        let items: Vec<declared::patterns::Item<'scratch, 'src>> = self.pattern_items(items);
+        let items: Vec<declared::Item<'a, 'scratch, 'src>> = self.declare_items(items);
         self.resolve_items(items)
     }
 
     fn pattern_items(
         &mut self,
-        items: &'scratch [parsed::Item<'scratch, 'lit>],
-    ) -> Vec<declared::patterns::Item<'scratch, 'lit>> {
+        items: &'scratch [parsed::Item<'scratch, 'src>],
+    ) -> Vec<declared::patterns::Item<'scratch, 'src>> {
         debug!("patterning {} items", items.len());
         items
             .iter()
@@ -136,8 +136,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
 
     fn declare_items(
         &mut self,
-        items: Vec<declared::patterns::Item<'scratch, 'lit>>,
-    ) -> Vec<declared::Item<'a, 'scratch, 'lit>> {
+        items: Vec<declared::patterns::Item<'scratch, 'src>>,
+    ) -> Vec<declared::Item<'a, 'scratch, 'src>> {
         debug!("declaring {} items", items.len());
         items
             .into_iter()
@@ -147,8 +147,8 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
 
     fn resolve_items(
         &mut self,
-        items: Vec<declared::Item<'a, 'scratch, 'lit>>,
-    ) -> BTreeMap<ItemId, resolved::Item<'a, 'lit>> {
+        items: Vec<declared::Item<'a, 'scratch, 'src>>,
+    ) -> BTreeMap<ItemId, resolved::Item<'a, 'src>> {
         debug!("resolving {} items", items.len());
         items
             .into_iter()
@@ -161,7 +161,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         item: ItemId,
         at: Span,
         affix: Affix,
-        ident: Ident<'lit>,
+        ident: Ident<'src>,
         kind: Namekind,
         ns: Namespace,
     ) -> Result<Name, ErrorId> {
@@ -176,7 +176,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         item: ItemId,
         at: Span,
         affix: Affix,
-        ident: Ident<'lit>,
+        ident: Ident<'src>,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
         let prev = self.items.insert(name, item);
@@ -202,7 +202,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
         item: ItemId,
         at: Span,
         affix: Affix,
-        ident: Ident<'lit>,
+        ident: Ident<'src>,
         kind: Namekind,
     ) -> Result<Name, ErrorId> {
         let name = self.names.name(self.scopes.1.name, ident);
@@ -292,10 +292,10 @@ enum Namekind {
 }
 
 #[derive(Debug)]
-struct Scope<'lit> {
+struct Scope<'src> {
     name: ScopeName,
-    values: BTreeMap<Ident<'lit>, (Name, Namekind)>,
-    types: BTreeMap<Ident<'lit>, Name>,
+    values: BTreeMap<Ident<'src>, (Name, Namekind)>,
+    types: BTreeMap<Ident<'src>, Name>,
 }
 
 impl Scope<'_> {

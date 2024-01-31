@@ -4,7 +4,6 @@
 use std::path::Path;
 
 use crate::frontend::alloc::Bump;
-use crate::frontend::intern::Arena;
 use crate::frontend::names::Names;
 use crate::frontend::parse::parse;
 use crate::frontend::resolve::resolve;
@@ -17,11 +16,9 @@ pub fn run(path: &Path) -> Result<(), BatchError> {
     let source = sources.add(file);
 
     let alloc = Bump::new();
-    let idents = Arena::new();
-    let literals = Arena::new();
-    let names = Names::new(&idents);
+    let names = Names::new();
 
-    let parsed = parse(&alloc, &names, &literals, &source);
+    let parsed = parse(&alloc, &names, &source);
     let resolved = resolve(&names, &alloc, &parsed);
     let result = infer(&alloc, &names, &resolved);
     let result = result.errors;

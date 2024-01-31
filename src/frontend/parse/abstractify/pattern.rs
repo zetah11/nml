@@ -2,12 +2,12 @@ use super::Abstractifier;
 use crate::frontend::parse::cst;
 use crate::frontend::trees::parsed as ast;
 
-impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
+impl<'a, 'src> Abstractifier<'a, 'src, '_> {
     /// Abstract an applied sequence of patterns. A resulting slice with a
     /// length longer than 1 does _not_ mean that this is a function definition.
     /// Any type annotations "outside" the spine are collected and returned
     /// separately.
-    pub fn pattern(&mut self, node: &cst::Thing) -> ast::Pattern<'a, 'lit> {
+    pub fn pattern(&mut self, node: &cst::Thing<'_, 'src>) -> ast::Pattern<'a, 'src> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::PatternNode::Invalid(*e),
@@ -92,8 +92,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     fn affixed_name(
         &mut self,
         affix: ast::Affix,
-        suspected_name: &cst::Thing,
-    ) -> ast::Pattern<'a, 'lit> {
+        suspected_name: &cst::Thing<'_, 'src>,
+    ) -> ast::Pattern<'a, 'src> {
         let span = suspected_name.span;
         let node = match &suspected_name.node {
             cst::Node::Invalid(e) => ast::PatternNode::Invalid(*e),

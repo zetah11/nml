@@ -10,38 +10,31 @@ mod pattern;
 mod types;
 
 use bumpalo::Bump;
-use internment::Arena;
-use malachite::num::basic::traits::Zero;
-use malachite::Integer;
 
 use super::cst;
 use crate::frontend::errors::{ErrorId, Errors};
-use crate::frontend::literals::Literal;
 use crate::frontend::names::{Ident, Names};
 use crate::frontend::source::Span;
 use crate::frontend::trees::parsed as ast;
 
-pub struct Abstractifier<'a, 'lit, 'err> {
+pub struct Abstractifier<'a, 'src, 'err> {
     alloc: &'a Bump,
-    names: &'a Names<'lit>,
-    literals: &'lit Arena<Literal>,
+    names: &'a Names<'src>,
     errors: &'err mut Errors,
 
     parse_errors: Vec<(ErrorId, Span)>,
 }
 
-impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
+impl<'a, 'src, 'err> Abstractifier<'a, 'src, 'err> {
     pub fn new(
         alloc: &'a Bump,
-        names: &'a Names<'lit>,
-        literals: &'lit Arena<Literal>,
+        names: &'a Names<'src>,
         errors: &'err mut Errors,
         parse_errors: Vec<(ErrorId, Span)>,
     ) -> Self {
         Self {
             alloc,
             names,
-            literals,
             errors,
             parse_errors,
         }
@@ -49,8 +42,8 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
 
     pub fn program(
         mut self,
-        items: Vec<&cst::Thing>,
-    ) -> (&'a [ast::Item<'a, 'lit>], Vec<(ErrorId, Span)>) {
+        items: Vec<&cst::Thing<'_, 'src>>,
+    ) -> (&'a [ast::Item<'a, 'src>], Vec<(ErrorId, Span)>) {
         let mut into = bumpalo::collections::Vec::with_capacity_in(items.len(), self.alloc);
 
         for node in items {
@@ -61,7 +54,10 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         (into.into_bump_slice(), self.parse_errors)
     }
 
-    fn normal_name(&mut self, thing: &cst::Thing) -> (Result<Ident<'lit>, ErrorId>, Span) {
+    fn normal_name(
+        &mut self,
+        thing: &cst::Thing<'_, 'src>,
+    ) -> (Result<Ident<'src>, ErrorId>, Span) {
         let span = thing.span;
         let ident = match thing.node {
             cst::Node::Invalid(e) => Err(e),
@@ -76,18 +72,5 @@ impl<'a, 'lit, 'err> Abstractifier<'a, 'lit, 'err> {
         };
 
         (ident, span)
-    }
-
-    fn parse_number(&self, lit: &str) -> &'lit Integer {
-        let mut res = Integer::ZERO;
-
-        for c in lit.chars() {
-            let Some(digit) = c.to_digit(10) else {
-                continue;
-            };
-            res = res * Integer::from(10) + Integer::from(digit);
-        }
-
-        Literal::int(self.literals, res)
     }
 }

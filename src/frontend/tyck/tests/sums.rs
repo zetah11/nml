@@ -16,7 +16,7 @@ fn two_sum() {
         checker.env.insert(none, Scheme::mono(option));
 
         let case1 = (s.apply_pat(s.named("Some"), s.bind("y")), s.var("y"));
-        let case2 = (s.named("None"), s.num(5));
+        let case2 = (s.named("None"), s.num("5"));
         let case = s.case(s.var("x"), [case1, case2]);
         let expr = s.lambda(s.bind("x"), case);
 

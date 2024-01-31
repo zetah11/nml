@@ -6,10 +6,13 @@ use crate::frontend::source::Span;
 
 use super::Parser;
 
-impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'err, I> {
+impl<'a, 'src, 'err, I> Parser<'a, 'src, 'err, I>
+where
+    I: Iterator<Item = (Result<Token<'src>, ()>, Span)>,
+{
     /// Parse the current token stream with the assumption of being a finite
     /// program.
-    pub fn top_level(&mut self) -> Vec<&'a Thing<'a>> {
+    pub fn top_level(&mut self) -> Vec<&'a Thing<'a, 'src>> {
         let mut things = Vec::new();
 
         while self.next.is_some() {
@@ -60,21 +63,24 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// thing = item{lambda}
     /// ```
-    pub fn thing(&mut self) -> &'a Thing<'a> {
+    pub fn thing(&mut self) -> &'a Thing<'a, 'src> {
         self.item(Self::lambda)
     }
 
     /// ```abnf
     /// simple = item{and}
     /// ```
-    pub(super) fn simple(&mut self) -> &'a Thing<'a> {
+    pub(super) fn simple(&mut self) -> &'a Thing<'a, 'src> {
         self.item(Self::and)
     }
 
     /// ```abnf
     /// item{default} = let / if / case / default
     /// ```
-    fn item(&mut self, default: impl FnOnce(&mut Self) -> &'a Thing<'a>) -> &'a Thing<'a> {
+    fn item(
+        &mut self,
+        default: impl FnOnce(&mut Self) -> &'a Thing<'a, 'src>,
+    ) -> &'a Thing<'a, 'src> {
         if let Some(opener) = self.consume(Token::Let) {
             self.let_def(LetKw::Let, opener)
         } else if let Some(opener) = self.consume(Token::Data) {
@@ -89,7 +95,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// let = "let" def *("and" def) ["in" thing]
     /// ```
-    fn let_def(&mut self, kw: LetKw, opener: Span) -> &'a Thing<'a> {
+    fn let_def(&mut self, kw: LetKw, opener: Span) -> &'a Thing<'a, 'src> {
         trace!("parse let-def");
 
         let primary = self.def(Some(opener));
@@ -129,7 +135,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// def = apply ["=" thing]
     /// ```
-    fn def(&mut self, opener: Option<Span>) -> ValueDef<'a> {
+    fn def(&mut self, opener: Option<Span>) -> ValueDef<'a, 'src> {
         trace!("parse def");
 
         let pattern = self.and();
@@ -148,7 +154,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// case = "case" [arrow] [lambda] "end"
     /// ```
-    fn case(&mut self, opener: Span) -> &'a Thing<'a> {
+    fn case(&mut self, opener: Span) -> &'a Thing<'a, 'src> {
         trace!("parse `case`");
 
         let scrutinee = self.peek(Self::AND_STARTS).map(|_| self.simple());
@@ -207,7 +213,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// and = anno *("&" anno)
     /// ```
-    fn and(&mut self) -> &'a Thing<'a> {
+    fn and(&mut self) -> &'a Thing<'a, 'src> {
         let mut expr = self.anno();
 
         while self.consume(Token::Ampersand).is_some() {
@@ -223,7 +229,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// anno = apply [":" apply]
     /// ```
-    fn anno(&mut self) -> &'a Thing<'a> {
+    fn anno(&mut self) -> &'a Thing<'a, 'src> {
         let expr = self.apply();
 
         if self.consume(Token::Colon).is_some() {
@@ -239,7 +245,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// apply = 1*field
     /// ```
-    fn apply(&mut self) -> &'a Thing<'a> {
+    fn apply(&mut self) -> &'a Thing<'a, 'src> {
         trace!("parsing apply");
 
         let expr = self.field();
@@ -278,7 +284,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// field = base *("." name)
     /// ```
-    fn field(&mut self) -> &'a Thing<'a> {
+    fn field(&mut self) -> &'a Thing<'a, 'src> {
         trace!("parse field");
 
         let thing = self.base();
@@ -311,7 +317,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// base =/ "(" thing ")"
     /// base =/ "{" *(def ",") [def] ["|" thing] "}"
     /// ```
-    fn base(&mut self) -> &'a Thing<'a> {
+    fn base(&mut self) -> &'a Thing<'a, 'src> {
         let (node, span) = if let Some((name, span)) = self.name() {
             trace!("name");
             let node = Node::Name(name);
@@ -365,7 +371,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         self.alloc.alloc(Thing { node, span })
     }
 
-    fn record(&mut self, opener: Span) -> (Node<'a>, Span) {
+    fn record(&mut self, opener: Span) -> (Node<'a, 'src>, Span) {
         trace!("parse record");
         let mut defs = Vec::new();
         let mut expected_comma = None;
@@ -410,7 +416,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
     /// ```abnf
     /// name = NAME / OPERATOR / UNIVERSAL
     /// ```
-    fn name(&mut self) -> Option<(Name<'a>, Span)> {
+    fn name(&mut self) -> Option<(Name<'src>, Span)> {
         let (name, span) = match self.next.as_ref()? {
             (Token::Name(name), span) => (Name::Normal(name), *span),
             (Token::Symbol(name), span) => (Name::Normal(name), *span),
@@ -422,7 +428,7 @@ impl<'a, 'err, I: Iterator<Item = (Result<Token<'a>, ()>, Span)>> Parser<'a, 'er
         Some((name, span))
     }
 
-    fn number(&mut self) -> Option<(&'a str, Span)> {
+    fn number(&mut self) -> Option<(&'src str, Span)> {
         let (num, span) = match self.next.as_ref()? {
             (Token::Number(num), span) => (*num, *span),
             _ => return None,

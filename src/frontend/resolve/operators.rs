@@ -16,13 +16,13 @@ enum OneOrMany<T> {
     Many(T, Vec<T>),
 }
 
-impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
+impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
     pub(super) fn apply_expr_run(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        terms: &'scratch [parsed::Expr<'scratch, 'lit>],
-    ) -> resolved::Expr<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        terms: &'scratch [parsed::Expr<'scratch, 'src>],
+    ) -> resolved::Expr<'a, 'src> {
         trace!("resolving expression run of {} terms", terms.len());
 
         let terms = terms
@@ -39,9 +39,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub(super) fn apply_pattern_run(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        terms: &'scratch [parsed::Pattern<'scratch, 'lit>],
-    ) -> declared::Spine<'scratch, 'lit, declared::spined::Pattern<'scratch, 'lit>> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        terms: &'scratch [parsed::Pattern<'scratch, 'src>],
+    ) -> declared::Spine<'scratch, 'src, declared::spined::Pattern<'scratch, 'src>> {
         trace!("resolving pattern run of {} terms", terms.len());
 
         let terms: Vec<_> = terms
@@ -69,9 +69,9 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     pub(super) fn apply_type_run(
         &mut self,
         item_id: ItemId,
-        gen_scope: &mut BTreeMap<Ident<'lit>, Name>,
-        terms: &'scratch [parsed::Type<'scratch, 'lit>],
-    ) -> resolved::Type<'a, 'lit> {
+        gen_scope: &mut BTreeMap<Ident<'src>, Name>,
+        terms: &'scratch [parsed::Type<'scratch, 'src>],
+    ) -> resolved::Type<'a, 'src> {
         trace!("resolving type run of {} terms", terms.len());
 
         let terms = terms
@@ -86,21 +86,21 @@ impl<'a, 'scratch, 'lit> Resolver<'a, 'scratch, 'lit, '_> {
     }
 }
 
-struct Precedencer<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A> {
-    resolver: &'resolver mut Resolver<'a, 'scratch, 'lit, 'err>,
+struct Precedencer<'a, 'scratch, 'src, 'err, 'resolver, 'alloc, A> {
+    resolver: &'resolver mut Resolver<'a, 'scratch, 'src, 'err>,
     alloc: &'alloc Bump,
     item_id: ItemId,
     infix: Option<(Vec<A>, A, Name)>,
     exprs: Vec<A>,
 }
 
-impl<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A>
-    Precedencer<'a, 'scratch, 'lit, 'err, 'resolver, 'alloc, A>
+impl<'a, 'scratch, 'src, 'err, 'resolver, 'alloc, A>
+    Precedencer<'a, 'scratch, 'src, 'err, 'resolver, 'alloc, A>
 where
     A: Affixable<'alloc>,
 {
     pub fn new(
-        resolver: &'resolver mut Resolver<'a, 'scratch, 'lit, 'err>,
+        resolver: &'resolver mut Resolver<'a, 'scratch, 'src, 'err>,
         alloc: &'alloc Bump,
         item_id: ItemId,
     ) -> Self {
@@ -215,7 +215,7 @@ trait Affixable<'a>: Sized {
     fn span(&self) -> Span;
 }
 
-impl<'a, 'lit> Affixable<'a> for resolved::Expr<'a, 'lit> {
+impl<'a, 'src> Affixable<'a> for resolved::Expr<'a, 'src> {
     fn invalid(_: ItemId, error: ErrorId, span: Span) -> Self {
         let node = resolved::ExprNode::Invalid(error);
         Self { node, span }
@@ -241,7 +241,7 @@ impl<'a, 'lit> Affixable<'a> for resolved::Expr<'a, 'lit> {
     }
 }
 
-impl<'a, 'lit> Affixable<'a> for declared::spined::Pattern<'a, 'lit> {
+impl<'a, 'src> Affixable<'a> for declared::spined::Pattern<'a, 'src> {
     fn invalid(item_id: ItemId, error: ErrorId, span: Span) -> Self {
         let node = declared::spined::PatternNode::Invalid(error);
         Self {
@@ -275,7 +275,7 @@ impl<'a, 'lit> Affixable<'a> for declared::spined::Pattern<'a, 'lit> {
     }
 }
 
-impl<'a, 'lit> Affixable<'a> for resolved::Type<'a, 'lit> {
+impl<'a, 'src> Affixable<'a> for resolved::Type<'a, 'src> {
     fn invalid(_: ItemId, error: ErrorId, span: Span) -> Self {
         let node = resolved::TypeNode::Invalid(error);
         Self { node, span }

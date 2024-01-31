@@ -6,8 +6,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use bumpalo::Bump;
-use internment::Arena;
-use malachite::Integer;
 
 use super::pretty::Pretty;
 use super::types::Row;
@@ -17,32 +15,27 @@ use crate::frontend::names::{Name, Names, ScopeName};
 use crate::frontend::source::SourceId;
 use crate::frontend::trees::resolved::{Expr, ExprNode, Pattern, PatternNode};
 
-struct Store<'a, 'ids> {
+struct Store<'a> {
     pub alloc: &'a Bump,
-    pub names: &'a Names<'ids>,
+    pub names: &'a Names<'static>,
     pub source: SourceId,
-
-    literals: &'ids Arena<Integer>,
-    name_intern: RefCell<BTreeMap<String, Name>>,
+    name_intern: RefCell<BTreeMap<&'static str, Name>>,
 }
 
-impl<'a, 'ids> Store<'a, 'ids> {
+impl<'a> Store<'a> {
     pub fn with<F, T>(f: F) -> T
     where
-        F: for<'b, 'c, 'e, 'p> FnOnce(Store<'b, 'c>, Checker<'b, 'e, 'c, 'p>) -> T,
+        F: for<'b, 'e, 'p> FnOnce(Store<'b>, Checker<'b, 'e, 'static, 'p>) -> T,
     {
         let _ = pretty_env_logger::try_init();
         let alloc = Bump::new();
         let source = SourceId::new(0);
-        let ids = Arena::new();
-        let literals = Arena::new();
-        let names = Names::new(&ids);
+        let names = Names::new();
 
         let this = Store {
             alloc: &alloc,
             source,
             names: &names,
-            literals: &literals,
             name_intern: RefCell::new(BTreeMap::new()),
         };
 
@@ -55,26 +48,24 @@ impl<'a, 'ids> Store<'a, 'ids> {
         f(this, checker)
     }
 
-    pub fn num(&self, value: impl Into<Integer>) -> Expr<'a, 'ids> {
-        let value = self.literals.intern(value.into()).into_ref();
+    pub fn num(&self, value: &'static str) -> Expr<'a, 'static> {
         self.expr(ExprNode::Number(value))
     }
 
-    pub fn var(&self, name: impl Into<String>) -> Expr<'a, 'ids> {
+    pub fn var(&self, name: &'static str) -> Expr<'a, 'static> {
         let name = self.name(name);
         self.expr(ExprNode::Var(name))
     }
 
-    pub fn field(&self, of: Expr<'a, 'ids>, label: impl AsRef<str>) -> Expr<'a, 'ids> {
+    pub fn field(&self, of: Expr<'a, 'static>, label: &'static str) -> Expr<'a, 'static> {
         let of = self.alloc.alloc(of);
         let label = self.names.label(label);
         self.expr(ExprNode::Field(of, Ok(label), self.source.span(0, 0)))
     }
 
-    pub fn record<L, I>(&self, fields: I, rest: Option<Expr<'a, 'ids>>) -> Expr<'a, 'ids>
+    pub fn record<I>(&self, fields: I, rest: Option<Expr<'a, 'static>>) -> Expr<'a, 'static>
     where
-        L: AsRef<str>,
-        I: IntoIterator<Item = (L, Expr<'a, 'ids>)>,
+        I: IntoIterator<Item = (&'static str, Expr<'a, 'static>)>,
         I::IntoIter: ExactSizeIterator,
     {
         let rest = rest.map(|rest| &*self.alloc.alloc(rest));
@@ -89,15 +80,15 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Record(fields, rest))
     }
 
-    pub fn restrict(&self, expr: Expr<'a, 'ids>, label: impl AsRef<str>) -> Expr<'a, 'ids> {
+    pub fn restrict(&self, expr: Expr<'a, 'static>, label: &'static str) -> Expr<'a, 'static> {
         let expr = self.alloc.alloc(expr);
         let label = self.names.label(label);
         self.expr(ExprNode::Restrict(expr, label))
     }
 
-    pub fn case<I>(&self, scrutinee: Expr<'a, 'ids>, cases: I) -> Expr<'a, 'ids>
+    pub fn case<I>(&self, scrutinee: Expr<'a, 'static>, cases: I) -> Expr<'a, 'static>
     where
-        I: IntoIterator<Item = (Pattern<'a, 'ids>, Expr<'a, 'ids>)>,
+        I: IntoIterator<Item = (Pattern<'a, 'static>, Expr<'a, 'static>)>,
         I::IntoIter: ExactSizeIterator,
     {
         let cases = self.alloc.alloc_slice_fill_iter(cases);
@@ -106,12 +97,12 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.expr(ExprNode::Apply(terms))
     }
 
-    pub fn apply(&self, fun: Expr<'a, 'ids>, arg: Expr<'a, 'ids>) -> Expr<'a, 'ids> {
+    pub fn apply(&self, fun: Expr<'a, 'static>, arg: Expr<'a, 'static>) -> Expr<'a, 'static> {
         let terms = self.alloc.alloc([fun, arg]);
         self.expr(ExprNode::Apply(terms))
     }
 
-    pub fn lambda(&self, arg: Pattern<'a, 'ids>, body: Expr<'a, 'ids>) -> Expr<'a, 'ids> {
+    pub fn lambda(&self, arg: Pattern<'a, 'static>, body: Expr<'a, 'static>) -> Expr<'a, 'static> {
         let arrows = self
             .alloc
             .alloc_slice_fill_iter(std::iter::once((arg, body)));
@@ -120,25 +111,29 @@ impl<'a, 'ids> Store<'a, 'ids> {
 
     pub fn let_in(
         &self,
-        pattern: Pattern<'a, 'ids>,
-        bound: Expr<'a, 'ids>,
-        body: Expr<'a, 'ids>,
-    ) -> Expr<'a, 'ids> {
+        pattern: Pattern<'a, 'static>,
+        bound: Expr<'a, 'static>,
+        body: Expr<'a, 'static>,
+    ) -> Expr<'a, 'static> {
         let terms = self.alloc.alloc([bound, body]);
         self.expr(ExprNode::Let(pattern, terms, self.alloc.alloc([])))
     }
 
-    pub fn bind(&self, name: impl Into<String>) -> Pattern<'a, 'ids> {
+    pub fn bind(&self, name: &'static str) -> Pattern<'a, 'static> {
         let name = self.name(name);
         self.pattern(PatternNode::Bind(name))
     }
 
-    pub fn named(&self, name: impl Into<String>) -> Pattern<'a, 'ids> {
+    pub fn named(&self, name: &'static str) -> Pattern<'a, 'static> {
         let name = self.name(name);
         self.pattern(PatternNode::Constructor(name))
     }
 
-    pub fn apply_pat(&self, ctr: Pattern<'a, 'ids>, arg: Pattern<'a, 'ids>) -> Pattern<'a, 'ids> {
+    pub fn apply_pat(
+        &self,
+        ctr: Pattern<'a, 'static>,
+        arg: Pattern<'a, 'static>,
+    ) -> Pattern<'a, 'static> {
         let terms = self.alloc.alloc([ctr, arg]);
         self.pattern(PatternNode::Apply(terms))
     }
@@ -153,23 +148,21 @@ impl<'a, 'ids> Store<'a, 'ids> {
         self.alloc.alloc(Type::Integer)
     }
 
-    pub fn extend<L, I, Ii>(&self, fields: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
+    pub fn extend<I, Ii>(&self, fields: I, rest: Option<&'a Row<'a>>) -> &'a Type<'a>
     where
-        L: AsRef<str>,
-        I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
-        Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
+        I: IntoIterator<Item = (&'static str, &'a Type<'a>), IntoIter = Ii>,
+        Ii: DoubleEndedIterator<Item = (&'static str, &'a Type<'a>)>,
     {
         let row = self.row(fields, rest);
         self.alloc.alloc(Type::Record(row))
     }
 
-    pub fn nominal(&self, name: impl Into<String>) -> &'a Type<'a> {
+    pub fn nominal(&self, name: &'static str) -> &'a Type<'a> {
         let name = self.name(name);
         self.alloc.alloc(Type::Named(name))
     }
 
-    pub fn name(&self, name: impl Into<String>) -> Name {
-        let name = name.into();
+    pub fn name(&self, name: &'static str) -> Name {
         let mut interned = self.name_intern.borrow_mut();
         if let Some(name) = interned.get(&name) {
             *name
@@ -181,21 +174,20 @@ impl<'a, 'ids> Store<'a, 'ids> {
         }
     }
 
-    fn expr(&self, node: ExprNode<'a, 'ids>) -> Expr<'a, 'ids> {
+    fn expr(&self, node: ExprNode<'a, 'static>) -> Expr<'a, 'static> {
         let span = self.source.span(0, 0);
         Expr { node, span }
     }
 
-    fn pattern(&self, node: PatternNode<'a, 'ids>) -> Pattern<'a, 'ids> {
+    fn pattern(&self, node: PatternNode<'a, 'static>) -> Pattern<'a, 'static> {
         let span = self.source.span(0, 0);
         Pattern { node, span }
     }
 
-    fn row<L, I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>
+    fn row<I, Ii>(&self, labels: I, rest: Option<&'a Row<'a>>) -> &'a Row<'a>
     where
-        L: AsRef<str>,
-        I: IntoIterator<Item = (L, &'a Type<'a>), IntoIter = Ii>,
-        Ii: DoubleEndedIterator<Item = (L, &'a Type<'a>)>,
+        I: IntoIterator<Item = (&'static str, &'a Type<'a>), IntoIter = Ii>,
+        Ii: DoubleEndedIterator<Item = (&'static str, &'a Type<'a>)>,
     {
         let mut rest = rest.unwrap_or_else(|| self.alloc.alloc(Row::Empty));
         for (label, field) in labels.into_iter().rev() {

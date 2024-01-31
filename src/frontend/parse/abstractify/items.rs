@@ -6,8 +6,8 @@ use crate::frontend::names::Ident;
 use crate::frontend::parse::cst;
 use crate::frontend::trees::parsed as ast;
 
-impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
-    pub fn item(&mut self, into: &mut Vec<ast::Item<'a, 'lit>>, node: &cst::Thing) {
+impl<'a, 'src> Abstractifier<'a, 'src, '_> {
+    pub fn item(&mut self, into: &mut Vec<ast::Item<'a, 'src>>, node: &cst::Thing<'_, 'src>) {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::ItemNode::Invalid(*e),
@@ -62,7 +62,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         into.push(ast::Item { node, span });
     }
 
-    fn single_value(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
+    fn single_value(&mut self, def: &cst::ValueDef<'_, 'src>) -> ast::Item<'a, 'src> {
         let pattern = self.pattern(def.pattern);
 
         let body = def
@@ -80,7 +80,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         ast::Item { node, span }
     }
 
-    fn single_data_type(&mut self, def: &cst::ValueDef) -> ast::Item<'a, 'lit> {
+    fn single_data_type(&mut self, def: &cst::ValueDef<'_, 'src>) -> ast::Item<'a, 'src> {
         let pattern = self.pattern(def.pattern);
 
         let span = def.span;
@@ -97,7 +97,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         ast::Item { node, span }
     }
 
-    fn data_body(&mut self, node: &cst::Thing) -> ast::Data<'a, 'lit> {
+    fn data_body(&mut self, node: &cst::Thing<'_, 'src>) -> ast::Data<'a, 'src> {
         let span = node.span;
         match &node.node {
             cst::Node::Group(thing) => self.data_body(thing),
@@ -136,7 +136,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         }
     }
 
-    fn data_constructor(&mut self, node: &cst::Thing) -> ast::Constructor<'a, 'lit> {
+    fn data_constructor(&mut self, node: &cst::Thing<'_, 'src>) -> ast::Constructor<'a, 'src> {
         let span = node.span;
         match &node.node {
             cst::Node::Group(thing) => self.data_constructor(thing),
@@ -181,8 +181,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
     fn data_constructor_name(
         &mut self,
-        node: &cst::Thing,
-    ) -> Result<(ast::Affix, Ident<'lit>), ErrorId> {
+        node: &cst::Thing<'_, 'src>,
+    ) -> Result<(ast::Affix, Ident<'src>), ErrorId> {
         match &node.node {
             cst::Node::Invalid(e) => Err(*e),
             cst::Node::Group(thing) => self.data_constructor_name(thing),

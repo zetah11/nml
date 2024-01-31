@@ -4,11 +4,11 @@ use crate::frontend::trees::{declared, resolved};
 
 use super::{Namespace, Resolver};
 
-impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
+impl<'a, 'scratch, 'src, 'err> Resolver<'a, 'scratch, 'src, 'err> {
     pub(super) fn declare_item(
         &mut self,
-        item: declared::patterns::Item<'scratch, 'lit>,
-    ) -> declared::Item<'a, 'scratch, 'lit> {
+        item: declared::patterns::Item<'scratch, 'src>,
+    ) -> declared::Item<'a, 'scratch, 'src> {
         let id = item.id;
         let span = item.span;
         let node = match item.node {
@@ -16,7 +16,7 @@ impl<'a, 'scratch, 'lit, 'err> Resolver<'a, 'scratch, 'lit, 'err> {
             declared::patterns::ItemNode::Let(pattern, expr, ()) => {
                 let mut this_scope = BTreeMap::new();
                 let spine = self.function_spine(id, &mut this_scope, pattern);
-                let spine: declared::Spine<'scratch, 'lit, resolved::Pattern<'a, 'lit>> =
+                let spine: declared::Spine<'scratch, 'src, resolved::Pattern<'a, 'src>> =
                     spine.map(|pattern| self.pattern(Namespace::Value, &mut this_scope, &pattern));
 
                 declared::ItemNode::Let(spine, expr, this_scope)

@@ -30,7 +30,7 @@ fn overwrite() {
     // --> { x: '1 | '2 } -> { x: int | '2 }
     Store::with(|s, mut checker| {
         let old = s.restrict(s.var("r"), "x");
-        let body = s.record([("x", s.num(5))], Some(old));
+        let body = s.record([("x", s.num("5"))], Some(old));
         let expr = s.lambda(s.bind("r"), body);
 
         let rest = checker.fresh_row();
@@ -53,13 +53,13 @@ fn sneakily_recursive() {
     // "Extensible Records with Scoped Labels" (Daan Leijen, 2004) at
     // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf
     Store::with(|s, mut checker| {
-        let arm1 = s.record([("x", s.num(2))], Some(s.var("r")));
-        let arm2 = s.record([("y", s.num(2))], Some(s.var("r")));
+        let arm1 = s.record([("x", s.num("2"))], Some(s.var("r")));
+        let arm2 = s.record([("y", s.num("2"))], Some(s.var("r")));
 
         let pat1 = s.bind("a");
         let pat2 = s.bind("b");
 
-        let case = s.case(s.num(0), [(pat1, arm1), (pat2, arm2)]);
+        let case = s.case(s.num("0"), [(pat1, arm1), (pat2, arm2)]);
         let expr = s.lambda(s.bind("r"), case);
 
         let _actual = checker.infer(&expr);
@@ -72,8 +72,8 @@ fn record_literal() {
     // { x = 1, y = f => f 0 }
     // --> { x: int, y: (int -> '1) -> '1 }
     Store::with(|s, mut checker| {
-        let lit = s.num(1);
-        let lambda = s.lambda(s.bind("f"), s.apply(s.var("f"), s.num(0)));
+        let lit = s.num("1");
+        let lambda = s.lambda(s.bind("f"), s.apply(s.var("f"), s.num("0")));
         let expr = s.record([("x", lit), ("y", lambda)], None);
 
         let a = checker.fresh();

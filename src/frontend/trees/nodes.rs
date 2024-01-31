@@ -15,8 +15,6 @@
 //! - `GenScope` - data bound at generalizing nodes, like `let` items and
 //!   expressions.
 
-use malachite::Integer;
-
 use crate::frontend::errors::ErrorId;
 use crate::frontend::names::Label;
 use crate::frontend::source::Span;
@@ -32,7 +30,7 @@ pub enum ItemNode<Expr, Pattern, DataPattern, DataBody, GenScope> {
     Data(DataPattern, DataBody),
 }
 
-pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
+pub enum ExprNode<'a, 'src, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
     /// Something fishy
     Invalid(ErrorId),
 
@@ -46,7 +44,7 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
     Unit,
 
     /// Some integer
-    Number(&'lit Integer),
+    Number(&'src str),
 
     /// `x : t`
     Anno(&'a Expr, Type),
@@ -56,16 +54,16 @@ pub enum ExprNode<'a, 'lit, Expr, Pattern, Type, Name, ApplyExpr, GenScope> {
 
     /* Records -------------------------------------------------------------- */
     /// `x.a`
-    Field(&'a Expr, Result<Label<'lit>, ErrorId>, Span),
+    Field(&'a Expr, Result<Label<'src>, ErrorId>, Span),
 
     /// `{ a = x, b = y, ...r }`
     Record(
-        &'a [(Result<Label<'lit>, ErrorId>, Span, Expr)],
+        &'a [(Result<Label<'src>, ErrorId>, Span, Expr)],
         Option<&'a Expr>,
     ),
 
     /// `x \ a`
-    Restrict(&'a Expr, Label<'lit>),
+    Restrict(&'a Expr, Label<'src>),
 
     /* Functions ------------------------------------------------------------ */
     /// `x y`
@@ -110,7 +108,7 @@ pub enum PatternNode<'a, Pattern, Type, Name, ConstructorName, ApplyPattern> {
     And(&'a [Pattern; 2]),
 }
 
-pub enum TypeNode<'a, 'lit, Type, Name, Universal, ApplyType> {
+pub enum TypeNode<'a, 'src, Type, Name, Universal, ApplyType> {
     /// Bad stuff.
     Invalid(ErrorId),
 
@@ -127,7 +125,7 @@ pub enum TypeNode<'a, 'lit, Type, Name, Universal, ApplyType> {
     Function(&'a [Type; 2]),
 
     /// `{ a : t, b : u }`
-    Record(&'a [(Result<Label<'lit>, ErrorId>, Span, Type)]),
+    Record(&'a [(Result<Label<'src>, ErrorId>, Span, Type)]),
 
     /// `(t)`
     Group(&'a Type),
@@ -288,42 +286,42 @@ mod variance_checking {
 
     use super::{ExprNode, ItemNode, PatternNode, TypeNode};
 
-    struct Item<'a, 'lit>(
-        ItemNode<Expr<'a, 'lit>, Pattern<'a, 'lit>, Infallible, Infallible, Infallible>,
+    struct Item<'a, 'src>(
+        ItemNode<Expr<'a, 'src>, Pattern<'a, 'src>, Infallible, Infallible, Infallible>,
     );
 
-    struct Expr<'a, 'lit>(
+    struct Expr<'a, 'src>(
         ExprNode<
             'a,
-            'lit,
+            'src,
             Self,
-            Pattern<'a, 'lit>,
-            Type<'a, 'lit>,
+            Pattern<'a, 'src>,
+            Type<'a, 'src>,
             Infallible,
             Infallible,
             Infallible,
         >,
     );
 
-    struct Pattern<'a, 'lit>(
-        PatternNode<'a, Self, Type<'a, 'lit>, Infallible, Infallible, Infallible>,
+    struct Pattern<'a, 'src>(
+        PatternNode<'a, Self, Type<'a, 'src>, Infallible, Infallible, Infallible>,
     );
 
-    struct Type<'a, 'lit>(TypeNode<'a, 'lit, Self, Infallible, Infallible, Infallible>);
+    struct Type<'a, 'src>(TypeNode<'a, 'src, Self, Infallible, Infallible, Infallible>);
 
-    fn assert_item_covariance<'a: 'b, 'b, 'lit>(v: Item<'a, 'lit>) -> Item<'b, 'lit> {
+    fn assert_item_covariance<'a: 'b, 'b, 'src>(v: Item<'a, 'src>) -> Item<'b, 'src> {
         v
     }
 
-    fn assert_expr_covariance<'a: 'b, 'b, 'lit>(v: Expr<'a, 'lit>) -> Expr<'b, 'lit> {
+    fn assert_expr_covariance<'a: 'b, 'b, 'src>(v: Expr<'a, 'src>) -> Expr<'b, 'src> {
         v
     }
 
-    fn assert_pattern_covariance<'a: 'b, 'b, 'lit>(v: Pattern<'a, 'lit>) -> Pattern<'b, 'lit> {
+    fn assert_pattern_covariance<'a: 'b, 'b, 'src>(v: Pattern<'a, 'src>) -> Pattern<'b, 'src> {
         v
     }
 
-    fn assert_type_covariance<'a: 'b, 'b, 'lit>(v: Type<'a, 'lit>) -> Type<'b, 'lit> {
+    fn assert_type_covariance<'a: 'b, 'b, 'src>(v: Type<'a, 'src>) -> Type<'b, 'src> {
         v
     }
 }

@@ -5,8 +5,8 @@ use crate::frontend::parse::cst::{self, ValueDef};
 use crate::frontend::source::Span;
 use crate::frontend::trees::parsed as ast;
 
-impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
-    pub fn ty(&mut self, node: &cst::Thing) -> ast::Type<'a, 'lit> {
+impl<'a, 'src> Abstractifier<'a, 'src, '_> {
+    pub fn ty(&mut self, node: &cst::Thing<'_, 'src>) -> ast::Type<'a, 'src> {
         let span = node.span;
         let node = match &node.node {
             cst::Node::Invalid(e) => ast::TypeNode::Invalid(*e),
@@ -50,8 +50,8 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
 
     fn field(
         &mut self,
-        def: &ValueDef,
-    ) -> (Result<Label<'lit>, ErrorId>, Span, ast::Type<'a, 'lit>) {
+        def: &ValueDef<'_, 'src>,
+    ) -> (Result<Label<'src>, ErrorId>, Span, ast::Type<'a, 'src>) {
         let (name, ty) = self.anno(def.pattern);
         let (name, name_span) = match name {
             (Ok(name), _) => self.normal_name(name),
@@ -78,7 +78,7 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
         (name, name_span, ty)
     }
 
-    fn anno<'b>(&mut self, node: &'b cst::Thing<'b>) -> (Bit<'b>, Bit<'b>) {
+    fn anno<'b, 's>(&mut self, node: &'b cst::Thing<'b, 's>) -> (Bit<'b, 's>, Bit<'b, 's>) {
         let span = node.span;
         match &node.node {
             cst::Node::Invalid(e) => ((Err(*e), span), (Err(*e), span)),
@@ -98,4 +98,4 @@ impl<'a, 'lit> Abstractifier<'a, 'lit, '_> {
     }
 }
 
-type Bit<'a> = (Result<&'a cst::Thing<'a>, ErrorId>, Span);
+type Bit<'a, 's> = (Result<&'a cst::Thing<'a, 's>, ErrorId>, Span);
