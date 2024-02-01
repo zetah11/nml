@@ -6,15 +6,25 @@
   - name resolution, type checking, etc. should not involve pretty printing
   - types are allocated in an arena; the error reporting infrastructure must
     be able to understand references inside there
-- [x] non-leaking names and literals
-  - names and literals are interned in an arena: this will just keep growing
-    forever and ever (which is bad).
-  - it's probably fine for now to just keep them as `&'src str`s (identifiers
-    are usually quite small)
+  - errors should maybe be realized in an "error-code" system, where error level
+    is inferred (e.g. move a specific warning to an error)
+- [ ] "external" pretty-printing/formatting machinery
+- [ ] non-leaking names and literals
+  - identifiers & literals are represented as `&'src str`
   - since names are compared a lot, perhaps something like `(&'src str, hash)`
-    is suitable
+    is better?
+  - qualified names are globally interned - this is leaky
+  - specifically, a qualified name does not disappear when its definition does
 - [ ] figure out the caching/quering/salsaing/incrementalling situation
 - [ ] and asyncify everything (i.e. make things cancellable)
+- [ ] testing of everything
+- [ ] "the tree situation"
+  - all trees are currently instantiations of the trees in
+    `frontend::trees::nodes` (using generic parameters instead of associated
+    types for lifetime subtyping reasons)
+  - this makes it easy to change the trees, but it is hard to read and create
+    new instantiations
+- [ ] source ↔ cst ↔ asts bijection
 
 ## design
 
@@ -35,5 +45,6 @@
   - rethink the command line and hence get rid of `argh` (radical)
   - what's up with `dashmap`
   - move to `async-lsp`?
+  - `simple_logger` is maybe pointless, since the server has its own anyway
 - tinify the binary size
   - below a megabyte on release builds is the dream

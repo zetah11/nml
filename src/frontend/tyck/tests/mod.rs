@@ -167,7 +167,7 @@ impl<'a> Store<'a> {
         if let Some(name) = interned.get(&name) {
             *name
         } else {
-            let id = self.names.intern(&name);
+            let id = self.names.intern(name);
             let id = self.names.name(ScopeName::TopLevel(self.source), id);
             interned.insert(name, id);
             id

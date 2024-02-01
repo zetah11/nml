@@ -1,4 +1,5 @@
-use crate::frontend::alloc::Bump;
+use bumpalo::Bump;
+
 use crate::frontend::names::Names;
 use crate::frontend::parse::parse;
 use crate::frontend::resolve::resolve;

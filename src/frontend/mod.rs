@@ -6,7 +6,5 @@ pub mod source;
 pub mod trees;
 pub mod tyck;
 
-pub use bumpalo as alloc;
-
 mod messages;
 mod topology;

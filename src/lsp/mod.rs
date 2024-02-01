@@ -12,12 +12,12 @@ mod tokens;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use bumpalo::Bump;
 use lsp::TraceValue;
 use lsp_types::{self as lsp, Url};
 
 use self::framework::{Client, Error};
 use self::log::{AtomicTraceValue, Logger};
-use crate::frontend::alloc::Bump;
 use crate::frontend::names::Names;
 use crate::frontend::source::{Source, SourceId, Sources};
 use crate::meta;

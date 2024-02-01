@@ -58,7 +58,7 @@ impl<'a, 'src, 'err, I: Iterator<Item = (Result<Token<'src>, ()>, Span)>>
         let mut erred = false;
         for (token, span) in self.tokens.by_ref() {
             if let Ok(token) = token {
-                if let Token::Comment = token {
+                if let Token::Comment(_) = token {
                     continue;
                 }
 

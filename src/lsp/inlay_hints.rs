@@ -1,8 +1,9 @@
 use lsp_document::{IndexedText, TextMap};
 use lsp_types as lsp;
 
+use bumpalo::Bump;
+
 use super::Server;
-use crate::frontend::alloc::Bump;
 use crate::frontend::names::Names;
 use crate::frontend::source::{Source, Span};
 use crate::frontend::trees::inferred::{Item, ItemNode, PolyPattern, PolyPatternNode};

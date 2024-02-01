@@ -1,7 +1,6 @@
 use logos::Logos;
 
-#[derive(Logos, Debug, Eq, PartialEq)]
-#[logos(skip r"\s+")]
+#[derive(Logos, Clone, Debug, Eq, PartialEq)]
 pub enum Token<'src> {
     #[regex(r"[\p{XID_Start}][\p{XID_Continue}_']*", |lexer| lexer.slice(), priority = 2)]
     Name(&'src str),
@@ -60,6 +59,10 @@ pub enum Token<'src> {
     #[token("}")]
     RightBrace,
 
-    #[regex(r"--[^\n]*")]
-    Comment,
+    // Trivia
+    #[regex(r"--[^\n]*", |lexer| lexer.slice())]
+    Comment(&'src str),
+
+    #[regex(r"\s+", |lexer| lexer.slice())]
+    Whitespace(&'src str),
 }

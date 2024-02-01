@@ -17,7 +17,7 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
     };
 
     match token {
-        Token::Comment => Some((types::COMMENT, mods::NONE)),
+        Token::Comment(_) => Some((types::COMMENT, mods::NONE)),
         Token::Name(_) | Token::Symbol(_) => None,
         Token::Universal(_) => Some((types::TYPE_PARAMETER, mods::NONE)),
 
@@ -42,7 +42,11 @@ pub fn for_token(token: Result<Token, ()>) -> Option<(u32, u32)> {
         | Token::Pipe
         | Token::Underscore => Some((types::OPERATOR, mods::NONE)),
 
-        Token::LeftParen | Token::RightParen | Token::LeftBrace | Token::RightBrace => None,
+        Token::LeftParen
+        | Token::RightParen
+        | Token::LeftBrace
+        | Token::RightBrace
+        | Token::Whitespace(_) => None,
     }
 }
 
