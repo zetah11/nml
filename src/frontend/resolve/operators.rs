@@ -127,7 +127,7 @@ where
             let rhs = if self.exprs.is_empty() {
                 let span = op.span();
                 let name = self.resolver.names.get_name(&name);
-                let name = self.resolver.names.get_ident(&name.name);
+                let name = name.name.name();
                 let error = self.resolver.errors.parse_error(span).infix_function(name);
                 A::invalid(self.item_id, error, span)
             } else {
@@ -169,7 +169,7 @@ where
         } else if self.exprs.is_empty() {
             let span = term.span();
             let name = self.resolver.names.get_name(&name);
-            let name = self.resolver.names.get_ident(&name.name);
+            let name = name.name.name();
             let error = self.resolver.errors.parse_error(span).infix_function(name);
             let expr = A::invalid(self.item_id, error, span);
             self.exprs.push(expr);
@@ -186,7 +186,7 @@ where
         } else {
             let span = term.span();
             let name = self.resolver.names.get_name(&name);
-            let name = self.resolver.names.get_ident(&name.name);
+            let name = name.name.name();
             let error = self
                 .resolver
                 .errors

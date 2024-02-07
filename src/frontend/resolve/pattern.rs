@@ -272,12 +272,8 @@ impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
                     let terms = self.alloc.alloc([a, b]);
                     (resolved::PatternNode::Or(terms), a_names)
                 } else {
-                    let names = difference
-                        .into_iter()
-                        .map(|name| self.names.get_ident(name));
-
+                    let names = difference.into_iter().map(|name| name.name());
                     let e = self.errors.name_error(span).or_patterns_disagree(names);
-
                     let names: BTreeMap<_, _> = a_names.into_iter().chain(b_names).collect();
                     let node = self.poison(span, e, names.values().copied());
                     return (node, names);

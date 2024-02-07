@@ -90,7 +90,7 @@ impl Prettifier<'_, '_, '_> {
     }
 
     pub fn label(&self, label: &Label) -> String {
-        self.pretty.names.get_ident(&label.0).into()
+        label.0.name().into()
     }
 
     pub fn var(&mut self, var: &TypeVar, level: Option<&Level>) -> String {
@@ -235,7 +235,7 @@ impl Prettifier<'_, '_, '_> {
 
     fn name(&mut self, name: &Name) -> String {
         let ident = self.pretty.names.get_name(name).name;
-        self.pretty.names.get_ident(&ident).into()
+        ident.name().into()
     }
 
     fn param(&mut self, name: &Generic, subst: &BTreeMap<Generic, String>) -> String {

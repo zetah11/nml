@@ -25,7 +25,7 @@ impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
                         o::TypeNode::Named(name)
                     }
                 } else {
-                    let name = self.names.get_ident(name);
+                    let name = name.name();
                     o::TypeNode::Invalid(self.errors.name_error(span).unknown_name(name))
                 }
             }

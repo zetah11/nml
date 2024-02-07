@@ -25,6 +25,14 @@
   - this makes it easy to change the trees, but it is hard to read and create
     new instantiations
 - [ ] source ↔ cst ↔ asts bijection
+- [ ] module types!
+  - i think this has potential to solve the leaky qualified names
+  - basically, the identifier ↔ name mapping is stored in module types
+  - when a module disappears, so does its type (no leaking!)
+  - currently, `Name`s are used to give constant time hashes and comparisons -
+    but to do that, they must be more or less "global" (to ensure they're always
+    distinct)
+  - should names just be stored as a qualified path for now? 
 
 ## design
 

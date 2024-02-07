@@ -23,7 +23,7 @@ impl<'a, 'scratch, 'src> Resolver<'a, 'scratch, 'src, '_> {
                 if let Some((name, _)) = self.lookup_value(name) {
                     resolved::ExprNode::Var(name)
                 } else {
-                    let name = self.names.get_ident(name);
+                    let name = name.name();
                     resolved::ExprNode::Invalid(self.errors.name_error(span).unknown_name(name))
                 }
             }

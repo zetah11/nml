@@ -187,7 +187,7 @@ impl<'a, 'scratch, 'src, 'err> Resolver<'a, 'scratch, 'src, 'err> {
                 .spans
                 .get(prev)
                 .expect("all defined names have a defining span");
-            let name = self.names.get_ident(&ident);
+            let name = ident.name();
             Err(self.errors.name_error(at).redefined_type(*prev_span, name))
         } else {
             self.scopes.1.types.insert(ident, name);
@@ -217,7 +217,7 @@ impl<'a, 'scratch, 'src, 'err> Resolver<'a, 'scratch, 'src, 'err> {
                 .spans
                 .get(prev)
                 .expect("all defined names have a defining span");
-            let name = self.names.get_ident(&ident);
+            let name = ident.name();
             Err(self.errors.name_error(at).redefined_value(*prev_span, name))
         } else {
             self.scopes.1.values.insert(ident, (name, kind));

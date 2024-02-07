@@ -5,6 +5,7 @@ mod batch;
 mod frontend;
 mod lsp;
 mod meta;
+mod modules;
 
 use std::process::ExitCode;
 

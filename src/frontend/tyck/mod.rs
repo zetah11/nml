@@ -3,7 +3,6 @@ pub use self::types::{Env, Generic, Row, Scheme, Type};
 
 mod infer;
 mod lower;
-mod messages;
 mod pattern;
 mod pretty;
 mod solve;

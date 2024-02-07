@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use dashmap::DashMap;
 
 use crate::frontend::source::SourceId;
+use crate::modules::Identifier;
 
 /// A fully qualified name, globally and uniquely identifying a particular
 /// entity.
@@ -14,10 +15,7 @@ pub struct Name(usize);
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Label<'src>(pub Ident<'src>);
 
-/// An identifier directly corresponds to the literal identifiers appearing in
-/// the source code.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Ident<'src>(&'src str);
+pub type Ident<'src> = Identifier<'src>;
 
 /// Globally and uniquely identifies a particular lexical scope.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -50,7 +48,7 @@ impl<'src> Names<'src> {
     }
 
     pub fn intern(&self, name: &'src str) -> Ident<'src> {
-        Ident(name)
+        Identifier::new(name)
     }
 
     pub fn label(&self, name: &'src str) -> Label<'src> {
@@ -62,10 +60,6 @@ impl<'src> Names<'src> {
         let name = Name(self.counter.fetch_add(1, Ordering::SeqCst));
         self.names.insert(name, qualified);
         name
-    }
-
-    pub fn get_ident<'b>(&self, ident: &Ident<'b>) -> &'b str {
-        ident.0
     }
 
     pub fn get_name(&self, name: &Name) -> Qualified<'src> {
