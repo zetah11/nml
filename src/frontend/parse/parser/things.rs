@@ -75,7 +75,7 @@ where
     }
 
     /// ```abnf
-    /// item{default} = let / if / case / default
+    /// item{default} = let / case / default
     /// ```
     fn item(
         &mut self,

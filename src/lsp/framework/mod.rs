@@ -49,7 +49,7 @@ pub(super) trait Builder {
     }
 }
 
-#[allow(unused)]
+#[expect(unused)]
 #[derive(Clone, Debug)]
 pub enum Error {
     InvalidRequest(String),

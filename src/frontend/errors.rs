@@ -113,6 +113,7 @@ impl Error {
     }
 }
 
+#[expect(unused)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ErrorType {
     Syntax,
@@ -121,6 +122,7 @@ pub enum ErrorType {
     Evaluation,
 }
 
+#[expect(unused)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Severity {
     Error,

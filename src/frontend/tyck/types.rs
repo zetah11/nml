@@ -19,7 +19,7 @@ pub enum Type<'a> {
     Arrow,
     Record(&'a Row<'a>),
 
-    #[allow(unused, reason = "eventually, the anonymous sums will rise!")]
+    #[expect(unused, reason = "eventually, the anonymous sums will rise!")]
     Variant(&'a Row<'a>),
 
     Apply(&'a Type<'a>, &'a Type<'a>),

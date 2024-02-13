@@ -6,6 +6,7 @@ mod frontend;
 mod lsp;
 mod meta;
 mod modules;
+mod syntax;
 
 use std::process::ExitCode;
 

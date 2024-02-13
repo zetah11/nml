@@ -82,7 +82,6 @@ impl framework::Builder for Builder {
 }
 
 struct Server {
-    #[allow(unused)]
     client: Client,
 
     tracked: HashMap<Url, Source>,
