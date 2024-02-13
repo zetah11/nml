@@ -64,6 +64,9 @@ pub enum Token {
     #[regex(r"--[^\n]*")]
     Comment,
 
-    #[regex(r"\s+")]
+    // Whitespace is tokenized as a bunch of non-lineshifts followed by a
+    // single lineshift to ensure lexing produces the same result if done on a
+    // line-by-line basis or on the entire string.
+    #[regex(r"[\s--[\n\r]]+[\n\r]?|[\n\r]")]
     Whitespace,
 }

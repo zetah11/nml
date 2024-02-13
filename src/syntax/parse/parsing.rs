@@ -1,5 +1,7 @@
 #![expect(unused)]
 
+use std::ops::Range;
+
 use crate::syntax::green::{Data, Kind, Node};
 
 pub fn parse(tokens: impl IntoIterator<Item = Node>) -> Node {
@@ -100,17 +102,15 @@ where
 
         debug_assert!(end_idx >= start_idx, "{end_idx} < {start_idx}");
 
-        // Only wrap the nodes in a new node if there is more than one item on
-        // the stack
-        if 1 < end_idx - start_idx {
-            let children: Vec<_> = self.stack.drain(start_idx..end_idx).collect();
-            let width = children.iter().map(|node| node.width).sum();
+        // Only reduce to a new node if there is more than one non-skippable
+        // node on the stack
+        let non_skippable = self.stack[start_idx..end_idx]
+            .iter()
+            .filter(|node| !node.kind.is_skipped())
+            .count();
 
-            self.stack.push(Node {
-                width,
-                kind,
-                data: Data::Node(children.into()),
-            });
+        if 1 < non_skippable {
+            self.reduce(kind, start_idx..end_idx);
         }
     }
 
@@ -120,8 +120,11 @@ where
         let end_idx = self.stack.len();
 
         debug_assert!(end_idx >= start_idx, "{end_idx} < {start_idx}");
+        self.reduce(kind, start_idx..end_idx);
+    }
 
-        let children: Vec<_> = self.stack.drain(start_idx..end_idx).collect();
+    fn reduce(&mut self, kind: Kind, range: Range<usize>) {
+        let children: Vec<_> = self.stack.drain(range).collect();
         let width = children.iter().map(|node| node.width).sum();
 
         self.stack.push(Node {
@@ -321,8 +324,22 @@ impl Production for DefGroup {
 /// ```abnf
 /// def = apply ["=" thing]
 /// ```
-const DEF: Def = pair(Kind::Definition, APPLY, Kind::Equal, THING);
-type Def = Pair<Apply, Thing>;
+const DEF: Def = Def;
+struct Def;
+
+impl Production for Def {
+    const FIRST: &'static [Kind] = Apply::FIRST;
+
+    fn parse<I: Iterator<Item = Node>>(&self, parser: &mut Parser<I>) {
+        parser.always_collect(Kind::Definition, |parser| {
+            APPLY.parse(parser);
+
+            if parser.consume(Kind::Equal) {
+                THING.parse(parser);
+            }
+        })
+    }
+}
 
 /// ```abnf
 /// disjoined = ["|"] implied *("|" implied)
@@ -353,10 +370,28 @@ impl Production for Disjoined {
 }
 
 /// ```abnf
-/// implied = conjoined *("=>" conjoined)
+/// implied = conjoined *("=>" simple)
 /// ```
-const IMPLIED: Implied = separated(Kind::Implied, Kind::EqualArrow, CONJOINED);
-type Implied = Separated<Conjoined>;
+const IMPLIED: Implied = Implied;
+struct Implied;
+
+impl Production for Implied {
+    const FIRST: &'static [Kind] = Conjoined::FIRST;
+
+    fn parse<I: Iterator<Item = Node>>(&self, parser: &mut Parser<I>) {
+        parser.collect(Kind::Implied, |parser| {
+            CONJOINED.parse(parser);
+
+            loop {
+                if !parser.consume(Kind::EqualArrow) {
+                    break;
+                }
+
+                SIMPLE.parse(parser);
+            }
+        })
+    }
+}
 
 /// ```abnf
 /// conjoined = apply *("&" apply)

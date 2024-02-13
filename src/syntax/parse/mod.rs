@@ -9,7 +9,7 @@ pub fn parse(s: &str) -> Node {
     parsing::parse(tokenize(s))
 }
 
-fn tokenize(s: &str) -> impl Iterator<Item = Node> + '_ {
+pub(super) fn tokenize(s: &str) -> impl Iterator<Item = Node> + '_ {
     use logos::Logos;
 
     tokens::Token::lexer(s).spanned().map(|(result, range)| {

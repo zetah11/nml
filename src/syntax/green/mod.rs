@@ -1,6 +1,6 @@
-#![expect(unused)]
+#![expect(dead_code)]
 
-mod checks;
+mod debug;
 
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ use smol_str::SmolStr;
 
 /// A green node is a lossless and immutable syntax tree facilitating sharing.
 /// Each node stores its total width in bytes.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Node {
     /// The total width of this node. This must be the equal to
     /// `self.data.width()`.
