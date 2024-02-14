@@ -141,7 +141,8 @@ trait Production {
 }
 
 /// Concatenate multiple slices at compile time.  The first argument is an
-/// initializer, used only to create the array.
+/// arbitrary initializer of the element type and will not be present in the
+/// final array.
 ///
 /// ```
 /// const A: &'static [char] = &['a', 'b', 'c'];
@@ -206,7 +207,7 @@ impl Production for Source {
 }
 
 /// ```abnf
-/// thing = kw-or{disjoined}
+/// thing = kw-or{arrows}
 /// kw-or{default} = case / scoped / default
 /// ```
 const THING: Thing = Thing;
@@ -216,7 +217,7 @@ impl Production for Thing {
     const FIRST: &'static [Kind] = constcat!(Kind::Ampersand;
         Case::FIRST,
         Scoped::FIRST,
-        Disjoined::FIRST
+        Arrows::FIRST
     );
 
     fn parse<I: Iterator<Item = Node>>(&self, parser: &mut Parser<I>) {
@@ -224,8 +225,8 @@ impl Production for Thing {
             CASE.parse(parser)
         } else if parser.peek_any(Scoped::FIRST) {
             SCOPED.parse(parser)
-        } else if parser.peek_any(Disjoined::FIRST) {
-            DISJOINED.parse(parser)
+        } else if parser.peek_any(Arrows::FIRST) {
+            ARROWS.parse(parser)
         } else {
             // TODO: better error recovery here
             parser.expect_any(Self::FIRST);
@@ -261,7 +262,7 @@ impl Production for Simple {
 }
 
 /// ```abnf
-/// case = "case" [implied] [disjoined] "end"
+/// case = "case" [conjoined] [arrows] "end"
 /// ```
 const CASE: Case = Case;
 struct Case;
@@ -273,12 +274,12 @@ impl Production for Case {
         parser.collect(Kind::CaseGroup, |parser| {
             parser.expect(Kind::Case);
 
-            if parser.peek_any(Implied::FIRST) {
-                IMPLIED.parse(parser);
+            if parser.peek_any(Conjoined::FIRST) {
+                CONJOINED.parse(parser);
             }
 
-            if parser.peek_any(Disjoined::FIRST) {
-                DISJOINED.parse(parser);
+            if parser.peek_any(Arrows::FIRST) {
+                ARROWS.parse(parser);
             }
 
             parser.expect(Kind::End);
@@ -342,52 +343,43 @@ impl Production for Def {
 }
 
 /// ```abnf
-/// disjoined = ["|"] implied *("|" implied)
+/// arrows     = ["|"] arrow *("|" arrow)
+/// arrow      = or-pattern *("=>" simple)
+/// or-pattern = simple *("|" simple)
 /// ```
-const DISJOINED: Disjoined = Disjoined;
-struct Disjoined;
+const ARROWS: Arrows = Arrows;
+struct Arrows;
 
-impl Production for Disjoined {
-    const FIRST: &'static [Kind] = constcat!(Kind::Pipe; Implied::FIRST, &[Kind::Pipe]);
+impl Production for Arrows {
+    const FIRST: &'static [Kind] = constcat!(Kind::Ampersand; Simple::FIRST, &[Kind::Pipe]);
 
     fn parse<I: Iterator<Item = Node>>(&self, parser: &mut Parser<I>) {
+        // Collects the pipes _between_ arrows (and the leading pipe) as the
+        // `arrows` production
         parser.collect(Kind::Disjoined, |parser| {
             parser.consume(Kind::Pipe);
 
             loop {
-                IMPLIED.parse(parser);
+                // Collects the arrow-separated things as the `arrow` production
+                parser.collect(Kind::Implied, |parser| {
+                    // Collect the pipes _inside_ the first pattern, as the
+                    // `or-pattern` production
+                    parser.collect(Kind::Disjoined, |parser| loop {
+                        SIMPLE.parse(parser);
+
+                        if !parser.consume(Kind::Pipe) {
+                            break;
+                        }
+                    });
+
+                    while parser.consume(Kind::EqualArrow) {
+                        SIMPLE.parse(parser);
+                    }
+                });
 
                 if !parser.consume(Kind::Pipe) {
                     break;
                 }
-
-                if !parser.peek_any(Implied::FIRST) {
-                    break;
-                }
-            }
-        })
-    }
-}
-
-/// ```abnf
-/// implied = conjoined *("=>" simple)
-/// ```
-const IMPLIED: Implied = Implied;
-struct Implied;
-
-impl Production for Implied {
-    const FIRST: &'static [Kind] = Conjoined::FIRST;
-
-    fn parse<I: Iterator<Item = Node>>(&self, parser: &mut Parser<I>) {
-        parser.collect(Kind::Implied, |parser| {
-            CONJOINED.parse(parser);
-
-            loop {
-                if !parser.consume(Kind::EqualArrow) {
-                    break;
-                }
-
-                SIMPLE.parse(parser);
             }
         })
     }

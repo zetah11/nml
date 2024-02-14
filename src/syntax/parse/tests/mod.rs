@@ -83,6 +83,34 @@ fn multiple_lines() {
     assert_eq!(expected, actual);
 }
 
+/// `A | B => x | y => z` should parse as `((A | B) => x) | (y => z)`.  The
+/// last pipe `|` differentiates cases while the first pipe differentiates
+/// branches.  Only before an arrow does the pipe bind tighter.
+#[test]
+fn or_patterns() {
+    let line = "A|B=>x|y=>z";
+    let expected = Node::source([Node::disjoined([
+        Node::implied([
+            Node::disjoined([
+                Node::token_name("A"),
+                Node::token_pipe(),
+                Node::token_name("B"),
+            ]),
+            Node::token_equal_arrow(),
+            Node::token_name("x"),
+        ]),
+        Node::token_pipe(),
+        Node::implied([
+            Node::token_name("y"),
+            Node::token_equal_arrow(),
+            Node::token_name("z"),
+        ]),
+    ])]);
+
+    let actual = parse(line);
+    assert_eq!(expected, actual);
+}
+
 impl Node {
     fn source(children: impl IntoIterator<Item = Self>) -> Self {
         Self::make_node(Kind::Source, children)
@@ -94,6 +122,10 @@ impl Node {
 
     fn definition(children: impl IntoIterator<Item = Self>) -> Self {
         Self::make_node(Kind::Definition, children)
+    }
+
+    fn disjoined(children: impl IntoIterator<Item = Self>) -> Self {
+        Self::make_node(Kind::Disjoined, children)
     }
 
     fn implied(children: impl IntoIterator<Item = Self>) -> Self {
@@ -118,6 +150,10 @@ impl Node {
 
     fn token_equal_arrow() -> Self {
         Self::make_token(Kind::EqualArrow, "=>")
+    }
+
+    fn token_pipe() -> Self {
+        Self::make_token(Kind::Pipe, "|")
     }
 
     fn token_name(name: &str) -> Self {
