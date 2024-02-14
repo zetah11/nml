@@ -1,8 +1,9 @@
 use smol_str::SmolStr;
 
-use super::green::{Data, Kind, Node};
-use super::parse::parse;
+use super::parse;
+use crate::syntax::green::{Data, Kind, Node};
 
+mod impls;
 mod invariants;
 mod junk;
 mod lexing;

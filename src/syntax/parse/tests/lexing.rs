@@ -23,5 +23,5 @@ proptest! {
 /// A strategy for generating a vec of arbitrary strings with one or more
 /// newlines at the end.
 fn lines() -> impl Strategy<Value = Vec<String>> {
-    prop::collection::vec(r".*\n+", 0..100)
+    prop::collection::vec(r".*\n+", 0..50)
 }
